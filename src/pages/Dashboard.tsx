@@ -24,6 +24,7 @@ export default function Dashboard() {
 
   const contracts = mockContracts.filter(c => c.project_id === pid);
   const payments = mockPayments.filter(p => p.project_id === pid);
+  const budget = mockBudgetItems.filter(b => b.project_id === pid);
 
   const [sortKey, setSortKey] = useState('balance');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
@@ -55,21 +56,22 @@ export default function Dashboard() {
     });
   }, [contracts, payments, sortKey, sortDir]);
 
-  const spendingData = [
-    { name: 'Subcontractors', amount: t.contractPaid },
-    { name: 'Materials', amount: t.materialsVendorsTotal },
-    { name: 'Fixtures', amount: t.fixturesFittingsTotal },
-    { name: 'Soft Costs', amount: t.softCostStudioLAB + t.softCostSLAB },
-    { name: 'Field Labor', amount: t.fieldLaborTotal },
-  ];
-  const COLORS = ['hsl(210, 60%, 55%)', 'hsl(0, 65%, 70%)', 'hsl(160, 55%, 38%)', 'hsl(280, 50%, 55%)', 'hsl(36, 90%, 50%)'];
-
-  const budget = mockBudgetItems.filter(b => b.project_id === pid);
-  const budgetCategories = [...new Set(budget.map(b => b.category))];
+  // Budget categories from Excel: Site, Exterior, Interior, Owner Purchased, Landscape, Extras
+  const budgetCategories = ['Site', 'Exterior', 'Interior', 'Owner Purchased', 'Landscape', 'Extras'];
   const budgetChartData = budgetCategories.map(cat => ({
     name: cat,
-    total: budget.filter(b => b.category === cat).reduce((s, b) => s + b.labor + b.material + b.optional, 0),
-  }));
+    total: budget.filter(b => b.category === cat).reduce((s, b) => s + b.labor + b.material, 0),
+  })).filter(d => d.total > 0);
+
+  // Pie chart uses same budget categories
+  const COLORS = [
+    'hsl(353, 49%, 54%)', // primary rose
+    'hsl(32, 90%, 45%)',  // warning orange
+    'hsl(142, 50%, 38%)', // success green
+    'hsl(210, 60%, 55%)', // blue
+    'hsl(280, 50%, 55%)', // purple
+    'hsl(353, 30%, 70%)', // secondary rose
+  ];
 
   const sh = (label: string, key: string, cls?: string) => (
     <SortBtn label={label} active={sortKey === key} dir={sortDir} onClick={() => toggle(key)} className={cls} />
@@ -119,14 +121,14 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Spending Breakdown</CardTitle>
+            <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Budget by Category</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={spendingData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={3} dataKey="amount" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                    {spendingData.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
+                  <Pie data={budgetChartData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={3} dataKey="total" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                    {budgetChartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
                   <Tooltip formatter={(val: number) => fmt(val)} />
                 </PieChart>
@@ -136,17 +138,17 @@ export default function Dashboard() {
         </Card>
         <Card>
           <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Budget by Category</CardTitle>
+            <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Budget Breakdown</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <div className="h-56">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={budgetChartData} layout="vertical" margin={{ left: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(210, 18%, 87%)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 8%, 88%)" />
                   <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={90} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
                   <Tooltip formatter={(val: number) => fmt(val)} />
-                  <Bar dataKey="total" fill="hsl(210, 60%, 55%)" radius={[0, 3, 3, 0]} />
+                  <Bar dataKey="total" fill="hsl(353, 49%, 54%)" radius={[0, 3, 3, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

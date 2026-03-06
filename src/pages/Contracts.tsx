@@ -124,7 +124,7 @@ export default function ContractsPage() {
                     </>
                   ) : (
                     <>
-                      <TableCell className="tabular-nums">{format(new Date(c.date), 'MM/dd/yy')}</TableCell>
+                      <TableCell className="tabular-nums">{format(new Date(c.date), 'MM.dd.yy')}</TableCell>
                       <TableCell className="font-medium">{c.name}</TableCell>
                       <TableCell>{typeBadge(c.type)}</TableCell>
                       <TableCell className={`text-right tabular-nums font-medium ${c.amount < 0 ? 'text-[hsl(var(--success))]' : ''}`}>{fmt(c.amount)}</TableCell>
