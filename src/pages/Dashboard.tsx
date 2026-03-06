@@ -73,13 +73,12 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1">
         <div>
-          <h1 className="text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Dashboard</h1>
-          
+          <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Dashboard</h1>
         </div>
         <div className="text-right">
-          <p className="text-xl font-bold" style={{ color: '#7b7c81' }}>{selectedProject.name}</p>
+          <p className="text-sm md:text-xl font-bold" style={{ color: '#7b7c81' }}>{selectedProject.name}</p>
         </div>
       </div>
 
@@ -88,8 +87,8 @@ export default function Dashboard() {
           <CardHeader className="pb-1 pt-3 px-4">
             <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Project Balances</CardTitle>
           </CardHeader>
-          <CardContent className="px-4 pb-3">
-            <div className="h-96">
+          <CardContent className="px-2 md:px-4 pb-3">
+            <div className="h-64 md:h-96">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={[
                   { name: 'Contract Owed', total: t.contractOwed },
@@ -102,8 +101,8 @@ export default function Dashboard() {
                   { name: 'Current Projected Total', total: t.projectedTotal },
                 ]} layout="vertical" margin={{ left: 10, right: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 8%, 88%)" />
-                  <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => v >= 1000000 ? `$${(v / 1000000).toFixed(1)}M` : `$${(v / 1000).toFixed(0)}k`} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={150} />
+                  <XAxis type="number" tick={{ fontSize: 9 }} tickFormatter={v => v >= 1000000 ? `$${(v / 1000000).toFixed(1)}M` : `$${(v / 1000).toFixed(0)}k`} />
+                   <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
                   <Tooltip formatter={(val: number) => fmt(val)} />
                   <Bar
                     dataKey="total"
@@ -158,9 +157,9 @@ export default function Dashboard() {
             <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Projected Project Budget</CardTitle>
             <p className="text-xl font-bold tabular-nums text-muted-foreground text-center">{fmt(budgetChartData.reduce((s, d) => s + d.total, 0))}</p>
           </CardHeader>
-          <CardContent className="px-4 pb-3">
+          <CardContent className="px-2 md:px-4 pb-3">
             <div className="flex flex-col">
-              <div className="h-80">
+              <div className="h-56 md:h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     {/* 3D depth layers */}

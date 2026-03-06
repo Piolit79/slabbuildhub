@@ -95,8 +95,8 @@ export default function PaymentsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={v => { setActiveTab(v as PaymentCategory); setSortKey('date'); setSortDir('asc'); setEditId(null); }}>
-        <TabsList className="h-8 bg-[rgba(195,126,135,0.12)]">
-          {tabs.map(t => <TabsTrigger key={t.value} value={t.value} className="text-xs px-3 py-1 data-[state=active]:bg-[#c37e87] data-[state=active]:text-white">{t.label}</TabsTrigger>)}
+        <TabsList className="h-auto flex-wrap bg-[rgba(195,126,135,0.12)]">
+          {tabs.map(t => <TabsTrigger key={t.value} value={t.value} className="text-[10px] md:text-xs px-2 md:px-3 py-1 data-[state=active]:bg-[#c37e87] data-[state=active]:text-white">{t.label}</TabsTrigger>)}
         </TabsList>
         {tabs.map(t => (
           <TabsContent key={t.value} value={t.value}>
