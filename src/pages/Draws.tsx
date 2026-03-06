@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { mockDraws } from '@/data/mock-data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,108 +7,119 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus } from 'lucide-react';
+import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Draw } from '@/types';
 import { format } from 'date-fns';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(n);
 
+function SortBtn({ label, active, dir, onClick, className }: { label: string; active: boolean; dir: string; onClick: () => void; className?: string }) {
+  return <button onClick={onClick} className={`inline-flex items-center gap-0.5 hover:text-foreground ${className || ''}`}>{label}{active ? (dir === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />) : <ChevronsUpDown size={11} className="opacity-30" />}</button>;
+}
+
 export default function DrawsPage() {
   const { selectedProject } = useProject();
   const [draws, setDraws] = useState<Draw[]>(mockDraws);
   const [open, setOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<Partial<Draw>>({});
+  const [sortKey, setSortKey] = useState('draw_number');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
-  const filtered = draws.filter(d => d.project_id === selectedProject.id).sort((a, b) => a.draw_number - b.draw_number);
+  const toggle = (k: string) => { if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortKey(k); setSortDir('asc'); } };
+
+  const filtered = draws.filter(d => d.project_id === selectedProject.id);
+  const sorted = useMemo(() => [...filtered].sort((a: any, b: any) => {
+    const av = a[sortKey], bv = b[sortKey];
+    if (typeof av === 'number') return sortDir === 'asc' ? av - bv : bv - av;
+    return sortDir === 'asc' ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+  }), [filtered, sortKey, sortDir]);
   const total = filtered.reduce((s, d) => s + d.amount, 0);
+
+  const startEdit = (d: Draw) => { setEditId(d.id); setEditData({ ...d }); };
+  const cancelEdit = () => { setEditId(null); setEditData({}); };
+  const saveEdit = () => { setDraws(prev => prev.map(d => d.id === editId ? { ...d, ...editData } as Draw : d)); cancelEdit(); };
 
   const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const newDraw: Draw = {
-      id: Date.now().toString(),
-      project_id: selectedProject.id,
-      date: fd.get('date') as string,
-      draw_number: parseInt(fd.get('draw_number') as string) || filtered.length + 1,
+    setDraws(prev => [...prev, {
+      id: Date.now().toString(), project_id: selectedProject.id,
+      date: fd.get('date') as string, draw_number: parseInt(fd.get('draw_number') as string) || filtered.length + 1,
       amount: parseFloat(fd.get('amount') as string) || 0,
-    };
-    setDraws(prev => [...prev, newDraw]);
+    }]);
     setOpen(false);
   };
 
   let runningTotal = 0;
+  const sh = (label: string, key: string, cls?: string) => <SortBtn label={label} active={sortKey === key} dir={sortDir} onClick={() => toggle(key)} className={cls} />;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Draws</h1>
-          <p className="text-muted-foreground text-sm mt-1">Bank draw requests</p>
+          <h1 className="text-xl font-bold tracking-tight">Draws</h1>
+          <p className="text-muted-foreground text-xs">Bank draw requests</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button><Plus size={16} /> Add Draw</Button>
-          </DialogTrigger>
+          <DialogTrigger asChild><Button size="sm"><Plus size={14} /> Add</Button></DialogTrigger>
           <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add Draw Request</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleAdd} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="date">Date</Label>
-                <Input id="date" name="date" type="date" required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="draw_number">Draw #</Label>
-                <Input id="draw_number" name="draw_number" type="number" defaultValue={filtered.length + 1} required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="amount">Amount</Label>
-                <Input id="amount" name="amount" type="number" step="0.01" placeholder="0.00" required />
-              </div>
-              <Button type="submit" className="w-full">Save</Button>
+            <DialogHeader><DialogTitle>Add Draw Request</DialogTitle></DialogHeader>
+            <form onSubmit={handleAdd} className="space-y-3">
+              <div className="space-y-1"><Label className="text-xs">Date</Label><Input name="date" type="date" required className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">Draw #</Label><Input name="draw_number" type="number" defaultValue={filtered.length + 1} required className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">Amount</Label><Input name="amount" type="number" step="0.01" required className="h-8 text-xs" /></div>
+              <Button type="submit" size="sm" className="w-full">Save</Button>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 max-w-md">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Total Drawn</p>
-            <p className="text-xl font-bold">{fmt(total)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Draw Count</p>
-            <p className="text-xl font-bold">{filtered.length}</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-2 max-w-sm">
+        <Card><CardContent className="p-3">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Total Drawn</p>
+          <p className="text-base font-bold tabular-nums">{fmt(total)}</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-3">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Draw Count</p>
+          <p className="text-base font-bold">{filtered.length}</p>
+        </CardContent></Card>
       </div>
 
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Draw Requests</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Draw #</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
+                <TableHead>{sh('Draw #', 'draw_number')}</TableHead>
+                <TableHead>{sh('Date', 'date')}</TableHead>
+                <TableHead className="text-right">{sh('Amount', 'amount', 'justify-end')}</TableHead>
                 <TableHead className="text-right">Running Total</TableHead>
+                <TableHead className="w-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map(d => {
+              {sorted.map(d => {
                 runningTotal += d.amount;
                 return (
                   <TableRow key={d.id}>
-                    <TableCell className="font-medium">Draw {d.draw_number}</TableCell>
-                    <TableCell>{format(new Date(d.date), 'MMM d, yyyy')}</TableCell>
-                    <TableCell className="text-right font-semibold">{fmt(d.amount)}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{fmt(runningTotal)}</TableCell>
+                    {editId === d.id ? (
+                      <>
+                        <TableCell><Input value={editData.draw_number || ''} onChange={e => setEditData(x => ({ ...x, draw_number: parseInt(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-16 px-1" /></TableCell>
+                        <TableCell><Input value={editData.date || ''} onChange={e => setEditData(x => ({ ...x, date: e.target.value }))} type="date" className="h-6 text-xs w-28 px-1" /></TableCell>
+                        <TableCell className="text-right"><Input value={editData.amount || ''} onChange={e => setEditData(x => ({ ...x, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-xs w-28 px-1 text-right" /></TableCell>
+                        <TableCell />
+                        <TableCell className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button><button onClick={cancelEdit} className="text-destructive"><X size={14} /></button></TableCell>
+                      </>
+                    ) : (
+                      <>
+                        <TableCell className="font-medium">Draw {d.draw_number.toString().padStart(3, '0')}</TableCell>
+                        <TableCell className="tabular-nums">{format(new Date(d.date), 'MM/dd/yy')}</TableCell>
+                        <TableCell className="text-right tabular-nums font-semibold">{fmt(d.amount)}</TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">{fmt(runningTotal)}</TableCell>
+                        <TableCell><button onClick={() => startEdit(d)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>
+                      </>
+                    )}
                   </TableRow>
                 );
               })}
@@ -116,8 +127,8 @@ export default function DrawsPage() {
             <TableFooter>
               <TableRow>
                 <TableCell colSpan={2} className="font-semibold">Total</TableCell>
-                <TableCell className="text-right font-semibold">{fmt(total)}</TableCell>
-                <TableCell />
+                <TableCell className="text-right font-semibold tabular-nums">{fmt(total)}</TableCell>
+                <TableCell colSpan={2} />
               </TableRow>
             </TableFooter>
           </Table>
