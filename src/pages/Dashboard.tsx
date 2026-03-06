@@ -133,24 +133,17 @@ export default function Dashboard() {
                   { name: 'Other Hard & Soft Costs', total: t.otherSoftHardCosts },
                   { name: 'Total Paid to Date', total: t.totalPaidToDate },
                   { name: 'Current Projected Total', total: t.projectedTotal },
-                ]} margin={{ top: 20, bottom: 60 }}>
+                ]} layout="vertical" margin={{ left: 10, right: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 8%, 88%)" />
-                  <XAxis type="category" dataKey="name" tick={(props: any) => {
-                    const { x, y, payload } = props;
-                    return (
-                      <text x={x} y={y + 10} textAnchor="end" fontSize={8} transform={`rotate(-35, ${x}, ${y})`} fill="currentColor">
-                        {payload.value}
-                      </text>
-                    );
-                  }} height={70} />
-                  <YAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => v >= 1000000 ? `$${(v / 1000000).toFixed(1)}M` : `$${(v / 1000).toFixed(0)}k`} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => v >= 1000000 ? `$${(v / 1000000).toFixed(1)}M` : `$${(v / 1000).toFixed(0)}k`} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} width={130} />
                   <Tooltip formatter={(val: number) => fmt(val)} />
                   <Bar
                     dataKey="total"
                     fill="#c37e87"
-                    radius={[3, 3, 0, 0]}
-                    label={({ x, y, width, value }: any) => (
-                      <text x={x + width / 2} y={y - 6} textAnchor="middle" fontSize={8} fill="hsl(var(--foreground))" fontWeight={600}>
+                    radius={[0, 3, 3, 0]}
+                    label={({ x, y, width, height, value }: any) => (
+                      <text x={x + width - 8} y={y + height / 2} dy={4} textAnchor="end" fontSize={9} fill="#fff" fontWeight={600}>
                         {fmt(value)}
                       </text>
                     )}
