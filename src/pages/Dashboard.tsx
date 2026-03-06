@@ -157,7 +157,7 @@ export default function Dashboard() {
                   <Tooltip formatter={(val: number) => fmt(val)} />
                   <Bar
                     dataKey="total"
-                    fill="#c24f5d"
+                    fill="#c37e87"
                     radius={[0, 3, 3, 0]}
                     label={({ x, y, width, height, value }: any) => (
                       <text x={x + width - 8} y={y + height / 2} dy={4} textAnchor="end" fontSize={9} fill="#fff" fontWeight={600}>
@@ -169,14 +169,14 @@ export default function Dashboard() {
                       const depth = 6;
                       return (
                         <g>
-                          <rect x={x} y={y} width={width} height={height} fill="#c24f5d" rx={2} />
+                          <rect x={x} y={y} width={width} height={height} fill="#c37e87" rx={2} />
                           <polygon
                             points={`${x + width},${y} ${x + width + depth},${y - depth} ${x + width + depth},${y + height - depth} ${x + width},${y + height}`}
-                            fill="#a3404c"
+                            fill="#a6636b"
                           />
                           <polygon
                             points={`${x},${y} ${x + depth},${y - depth} ${x + width + depth},${y - depth} ${x + width},${y}`}
-                            fill="#d4727e"
+                            fill="#d49aa1"
                           />
                         </g>
                       );
