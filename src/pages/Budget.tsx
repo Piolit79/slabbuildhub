@@ -35,28 +35,36 @@ export default function BudgetPage() {
   const [noteId, setNoteId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
   const [noteSub, setNoteSub] = useState('');
-  const [statusPadding, setStatusPadding] = useState(40);
+  const [statusPadding, setStatusPadding] = useState(() => {
+    const saved = localStorage.getItem('budget-status-padding');
+    return saved ? parseInt(saved, 10) : 40;
+  });
+
+  const statusPaddingRef = React.useRef(statusPadding);
 
   const handleStatusDragLeft = React.useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const startX = e.clientX;
-    const startPad = statusPadding;
+    const startPad = statusPaddingRef.current;
     const onMouseMove = (ev: MouseEvent) => {
       const delta = ev.clientX - startX;
-      setStatusPadding(Math.max(8, Math.min(300, startPad + delta)));
+      const newPad = Math.max(8, Math.min(300, startPad + delta));
+      statusPaddingRef.current = newPad;
+      setStatusPadding(newPad);
     };
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
+      localStorage.setItem('budget-status-padding', String(statusPaddingRef.current));
     };
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
-  }, [statusPadding]);
+  }, []);
 
   const toggle = (k: string) => { if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortKey(k); setSortDir('asc'); } };
 
@@ -173,9 +181,9 @@ export default function BudgetPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{sh('Description', 'description')}</TableHead>
-                {!isMobile && <TableHead className="text-right whitespace-nowrap px-4">{sh('Labor', 'labor', 'justify-end')}</TableHead>}
-                <TableHead className="text-right whitespace-nowrap px-4">{isMobile ? sh('Total', 'labor', 'justify-end') : sh('Material', 'material', 'justify-end')}</TableHead>
+                <TableHead persistKey="budget-desc">{sh('Description', 'description')}</TableHead>
+                {!isMobile && <TableHead persistKey="budget-labor" className="text-right whitespace-nowrap px-4">{sh('Labor', 'labor', 'justify-end')}</TableHead>}
+                <TableHead persistKey="budget-material" className="text-right whitespace-nowrap px-4">{isMobile ? sh('Total', 'labor', 'justify-end') : sh('Material', 'material', 'justify-end')}</TableHead>
                 <TableHead className="whitespace-nowrap pr-6 relative" style={{ paddingLeft: `${statusPadding}px` }}>
                   <div
                     onMouseDown={handleStatusDragLeft}
