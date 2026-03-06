@@ -148,18 +148,22 @@ export default function Dashboard() {
                       </text>
                     )}
                     shape={(props: any) => {
-                      const { x, y, width, height } = props;
+                      const { x, y, width, height, index } = props;
                       const depth = 6;
+                      const isBlue = index % 2 === 1;
+                      const face = isBlue ? '#4f81bd' : '#c37e87';
+                      const side = isBlue ? '#3d6594' : '#a6636b';
+                      const top = isBlue ? '#7aa3d4' : '#d49aa1';
                       return (
                         <g>
-                          <rect x={x} y={y} width={width} height={height} fill="#c37e87" rx={2} />
+                          <rect x={x} y={y} width={width} height={height} fill={face} rx={2} />
                           <polygon
                             points={`${x + width},${y} ${x + width + depth},${y - depth} ${x + width + depth},${y + height - depth} ${x + width},${y + height}`}
-                            fill="#a6636b"
+                            fill={side}
                           />
                           <polygon
                             points={`${x},${y} ${x + depth},${y - depth} ${x + width + depth},${y - depth} ${x + width},${y}`}
-                            fill="#d49aa1"
+                            fill={top}
                           />
                         </g>
                       );
