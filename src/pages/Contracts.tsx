@@ -29,6 +29,8 @@ export default function ContractsPage() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Contract>>({});
+  const [adding, setAdding] = useState(false);
+  const [newData, setNewData] = useState<Partial<Contract>>({ date: '', name: '', amount: 0, type: 'Contract' });
   const [sortKey, setSortKey] = useState('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
@@ -132,6 +134,28 @@ export default function ContractsPage() {
                   )}
                 </TableRow>
               ))}
+              {adding ? (
+                <TableRow className="bg-muted/30">
+                  <TableCell><Input value={newData.date || ''} onChange={e => setNewData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-32 px-1" autoFocus /></TableCell>
+                  <TableCell><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" placeholder="Name" /></TableCell>
+                  <TableCell>
+                    <select value={newData.type || 'Contract'} onChange={e => setNewData(d => ({ ...d, type: e.target.value as Contract['type'] }))} className="h-6 text-xs border rounded px-1 bg-background">
+                      <option>Contract</option><option>Change Order</option><option>Credit</option>
+                    </select>
+                  </TableCell>
+                  <TableCell className="text-right"><Input value={newData.amount || ''} onChange={e => setNewData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-xs w-28 px-1 text-right" placeholder="0.00" /></TableCell>
+                  <TableCell className="flex gap-1">
+                    <button onClick={() => { if (newData.date && newData.name) { setContracts(prev => [...prev, { id: Date.now().toString(), project_id: selectedProject.id, ...newData } as Contract]); setAdding(false); setNewData({ date: '', name: '', amount: 0, type: 'Contract' }); } }} className="text-[hsl(var(--success))] hover:opacity-70"><Check size={14} /></button>
+                    <button onClick={() => { setAdding(false); setNewData({ date: '', name: '', amount: 0, type: 'Contract' }); }} className="text-destructive hover:opacity-70"><X size={14} /></button>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5}>
+                    <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
