@@ -62,8 +62,7 @@ export default function ContractsPage() {
   const sh = (label: string, key: string, cls?: string) => <SortBtn label={label} active={sortKey === key} dir={sortDir} onClick={() => toggle(key)} className={cls} />;
 
   const typeBadge = (type: string) => {
-    const c: Record<string, string> = { 'Contract': 'bg-primary text-primary-foreground', 'Change Order': 'bg-secondary text-secondary-foreground', 'Credit': 'bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))]' };
-    return <Badge className={`text-[10px] px-1.5 py-0 ${c[type] || ''}`}>{type}</Badge>;
+    return <Badge className="text-[10px] px-1.5 py-0 text-white" style={{ backgroundColor: '#c37e87' }}>{type}</Badge>;
   };
 
   return (
