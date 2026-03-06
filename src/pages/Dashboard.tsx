@@ -115,7 +115,7 @@ export default function Dashboard() {
                 ]} layout="vertical" margin={{ left: 10, right: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 8%, 88%)" />
                   <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => v >= 1000000 ? `$${(v / 1000000).toFixed(1)}M` : `$${(v / 1000).toFixed(0)}k`} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} width={130} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={150} />
                   <Tooltip formatter={(val: number) => fmt(val)} />
                   <Bar
                     dataKey="total"
