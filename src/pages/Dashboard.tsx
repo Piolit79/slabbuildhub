@@ -136,7 +136,7 @@ export default function Dashboard() {
                     fill="#c37e87"
                     radius={[0, 3, 3, 0]}
                     label={({ x, y, width, height, value }: any) => (
-                      <text x={x + width - 8} y={y + height / 2} dy={4} textAnchor="end" fontSize={9} fill="#fff" fontWeight={600}>
+                      <text x={x + width - 8} y={y + height / 2} dy={4} textAnchor="end" fontSize={12} fill="#fff" fontWeight={600}>
                         {fmt(value)}
                       </text>
                     )}
@@ -169,7 +169,10 @@ export default function Dashboard() {
         </Card>
         <Card>
           <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Projected Project Budget</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Projected Project Budget</CardTitle>
+              <p className="text-lg font-bold tabular-nums text-primary">{fmt(budgetChartData.reduce((s, d) => s + d.total, 0))}</p>
+            </div>
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <div className="flex flex-col">
