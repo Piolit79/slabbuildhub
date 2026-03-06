@@ -64,7 +64,7 @@ export default function Dashboard() {
     { name: 'Budget Hard Cost', total: hardCost },
     { name: 'Budget Fees', total: designFee + buildFee },
   ];
-  const COLORS = ['#c37e87', '#4f81bd'];
+  const COLORS = ['#4f81bd', '#c37e87'];
 
   const sh = (label: string, key: string, cls?: string) => (
     <SortBtn label={label} active={sortKey === key} dir={sortDir} onClick={() => toggle(key)} className={cls} />
@@ -175,7 +175,7 @@ export default function Dashboard() {
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={budgetChartData} cx="50%" cy="50%" innerRadius="40%" outerRadius="85%" paddingAngle={2} dataKey="total" label={({ cx, cy, midAngle, innerRadius, outerRadius, name, value }: any) => {
+                  <Pie data={budgetChartData} cx="50%" cy="50%" innerRadius="25%" outerRadius="90%" paddingAngle={2} dataKey="total" label={({ cx, cy, midAngle, innerRadius, outerRadius, name, value }: any) => {
                     const RADIAN = Math.PI / 180;
                     const radius = (innerRadius + outerRadius) / 2;
                     const x = cx + radius * Math.cos(-midAngle * RADIAN);
