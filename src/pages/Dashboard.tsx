@@ -155,7 +155,7 @@ export default function Dashboard() {
                   <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} width={130} />
                   <Tooltip formatter={(val: number) => fmt(val)} />
-                  <Bar dataKey="total" fill="hsl(353, 49%, 54%)" radius={[0, 3, 3, 0]} />
+                  <Bar dataKey="total" fill="hsl(353, 49%, 54%)" radius={[0, 3, 3, 0]} label={{ position: 'right', fontSize: 9, formatter: (v: number) => fmt(v) }} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
