@@ -162,7 +162,7 @@ export default function Dashboard() {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={budgetChartData} cx="50%" cy="50%" innerRadius="28%" outerRadius="85%" paddingAngle={3} dataKey="total" label={({ cx, cy, midAngle, innerRadius, outerRadius, value }: any) => {
+                    <Pie data={budgetChartData} cx="50%" cy="50%" innerRadius="45%" outerRadius="85%" paddingAngle={0} dataKey="total" stroke="hsl(var(--background))" strokeWidth={2} label={({ cx, cy, midAngle, innerRadius, outerRadius, value }: any) => {
                       const RADIAN = Math.PI / 180;
                       const radius = (innerRadius + outerRadius) / 2;
                       const x = cx + radius * Math.cos(-midAngle * RADIAN);
