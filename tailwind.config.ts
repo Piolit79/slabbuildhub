@@ -63,6 +63,14 @@ export default {
           DEFAULT: "hsl(var(--highlight))",
           foreground: "hsl(var(--highlight-foreground))",
         },
+        status: {
+          valid: "hsl(var(--status-valid))",
+          "valid-bg": "hsl(var(--status-valid-bg))",
+          warning: "hsl(var(--status-warning))",
+          "warning-bg": "hsl(var(--status-warning-bg))",
+          expired: "hsl(var(--status-expired))",
+          "expired-bg": "hsl(var(--status-expired-bg))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

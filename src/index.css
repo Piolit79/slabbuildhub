@@ -46,6 +46,14 @@
 
     --radius: 0.375rem;
 
+    /* Status colors for COI */
+    --status-valid: 142 50% 38%;
+    --status-valid-bg: 142 30% 92%;
+    --status-warning: 32 90% 45%;
+    --status-warning-bg: 32 60% 93%;
+    --status-expired: 0 65% 50%;
+    --status-expired-bg: 0 40% 93%;
+
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 220 20% 20%;
     --sidebar-primary: 353 49% 54%;
@@ -104,6 +112,13 @@
     --sidebar-border: 220 15% 14%;
     --sidebar-ring: 353 49% 54%;
     --sidebar-muted: 220 10% 55%;
+
+    --status-valid: 142 50% 45%;
+    --status-valid-bg: 142 30% 15%;
+    --status-warning: 32 90% 50%;
+    --status-warning-bg: 32 40% 15%;
+    --status-expired: 0 65% 55%;
+    --status-expired-bg: 0 40% 15%;
   }
 }
 

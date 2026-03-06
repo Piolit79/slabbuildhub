@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -12,6 +12,10 @@ const navItems = [
   { to: '/payments', label: 'Payments', icon: CreditCard },
   { to: '/vendors', label: 'Vendors', icon: Users },
   { to: '/draws', label: 'Draws', icon: Landmark },
+];
+
+const insuranceItems = [
+  { to: '/insurance', label: 'COI Tracker', icon: Shield },
 ];
 
 export default function AppSidebar() {
@@ -45,6 +49,34 @@ export default function AppSidebar() {
         )}
         {navItems.map(({ to, label, icon: Icon }) => {
           const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              onClick={() => isMobile && setMobileOpen(false)}
+              className={cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
+                collapsed && !isMobile && 'justify-center px-0'
+              )}
+            >
+              <Icon className="h-[18px] w-[18px] shrink-0" />
+              {(isMobile || !collapsed) && <span>{label}</span>}
+            </NavLink>
+          );
+        })}
+
+        {/* Insurance Hub Section */}
+        {!(collapsed && !isMobile) && (
+          <span className="block text-base font-semibold uppercase tracking-widest text-muted-foreground px-3 pb-2 pt-4">
+            Insurance Hub
+          </span>
+        )}
+        {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
+        {insuranceItems.map(({ to, label, icon: Icon }) => {
+          const isActive = location.pathname.startsWith(to);
           return (
             <NavLink
               key={to}
