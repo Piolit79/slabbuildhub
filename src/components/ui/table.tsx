@@ -41,10 +41,16 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
 );
 TableRow.displayName = "TableRow";
 
-const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<HTMLTableCellElement>>(
-  ({ className, style, children, ...props }, ref) => {
+const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<HTMLTableCellElement> & { persistKey?: string }>(
+  ({ className, style, children, persistKey, ...props }, ref) => {
     const thRef = React.useRef<HTMLTableCellElement | null>(null);
-    const [width, setWidth] = React.useState<number | undefined>(undefined);
+    const [width, setWidth] = React.useState<number | undefined>(() => {
+      if (persistKey) {
+        const saved = localStorage.getItem(`col-w-${persistKey}`);
+        return saved ? parseInt(saved, 10) : undefined;
+      }
+      return undefined;
+    });
 
     const handleMouseDown = React.useCallback((e: React.MouseEvent) => {
       e.preventDefault();
@@ -63,12 +69,15 @@ const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<
         document.removeEventListener('mouseup', onMouseUp);
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
+        if (persistKey && thRef.current) {
+          localStorage.setItem(`col-w-${persistKey}`, String(thRef.current.offsetWidth));
+        }
       };
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
-    }, []);
+    }, [persistKey]);
 
     return (
       <th
