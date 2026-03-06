@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useProject } from '@/contexts/ProjectContext';
-import { mockContracts, mockPayments, mockDraws, mockBudgetItems, dashboardTotals, mockVendors } from '@/data/mock-data';
+import { mockContracts, mockPayments, mockDraws, mockBudgetItems, mockVendors } from '@/data/mock-data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DollarSign, TrendingDown, Landmark, Calculator, FileText, Wallet, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
@@ -22,23 +22,41 @@ export default function Dashboard() {
   const isMobile = useIsMobile();
   const { selectedProject } = useProject();
   const pid = selectedProject.id;
-  const t = dashboardTotals;
 
   const contracts = mockContracts.filter(c => c.project_id === pid);
   const payments = mockPayments.filter(p => p.project_id === pid);
   const budget = mockBudgetItems.filter(b => b.project_id === pid);
+  const draws = mockDraws.filter(d => d.project_id === pid);
+
+  // Compute totals from actual project data
+  const contractOwed = contracts.reduce((s, c) => s + c.amount, 0);
+  const contractPaid = payments.filter(p => p.category === 'subcontractor').reduce((s, p) => s + p.amount, 0);
+  const contractBalance = contractOwed - contractPaid;
+  const drawRequested = draws.reduce((s, d) => s + d.amount, 0);
+  const softCostStudioLAB = payments.filter(p => p.name === 'StudioLAB' && p.category === 'soft_costs').reduce((s, p) => s + p.amount, 0);
+  const softCostSLAB = payments.filter(p => p.name === 'SLAB Builders' && p.category === 'soft_costs').reduce((s, p) => s + p.amount, 0);
+  const materialsVendorsTotal = payments.filter(p => p.category === 'materials').reduce((s, p) => s + p.amount, 0);
+  const fixturesFittingsTotal = payments.filter(p => p.name === 'Fixtures & Fittings' || (p.category === 'materials' && mockVendors.find(v => v.name === p.name)?.detail?.toLowerCase().includes('fixture'))).reduce((s, p) => s + p.amount, 0) - materialsVendorsTotal;
+  const fieldLaborTotal = payments.filter(p => p.category === 'field_labor').reduce((s, p) => s + p.amount, 0);
+  const otherSoftHardCosts = softCostStudioLAB + softCostSLAB + materialsVendorsTotal + Math.abs(fixturesFittingsTotal) + fieldLaborTotal;
+  const totalPaidToDate = contractPaid + otherSoftHardCosts;
+  const hardCostBudget = budget.reduce((s, b) => s + b.labor + b.material, 0);
+  const budgetFees = Math.round(hardCostBudget * 0.25);
+  const budgetTotal = hardCostBudget + budgetFees;
+  const drawBalance = drawRequested - totalPaidToDate;
+  const projectedTotal = totalPaidToDate + contractBalance;
 
   const [sortKey, setSortKey] = useState('balance');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const toggle = (k: string) => { if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortKey(k); setSortDir('asc'); } };
 
   const summaryCards = [
-    { label: 'Contract Owed', value: t.contractOwed, icon: FileText },
-    { label: 'Contract Paid', value: t.contractPaid, icon: Wallet },
-    { label: 'Contract Balance', value: t.contractBalance, icon: TrendingDown },
-    { label: 'Draw Requested', value: t.drawRequested, icon: Landmark },
-    { label: 'Draw Balance', value: t.drawBalance, icon: DollarSign },
-    { label: 'Budget Total', value: t.budgetTotal, icon: Calculator },
+    { label: 'Contract Owed', value: contractOwed, icon: FileText },
+    { label: 'Contract Paid', value: contractPaid, icon: Wallet },
+    { label: 'Contract Balance', value: contractBalance, icon: TrendingDown },
+    { label: 'Draw Requested', value: drawRequested, icon: Landmark },
+    { label: 'Draw Balance', value: drawBalance, icon: DollarSign },
+    { label: 'Budget Total', value: budgetTotal, icon: Calculator },
   ];
 
   const subNames = [...new Set(contracts.map(c => c.name))];
@@ -93,14 +111,14 @@ export default function Dashboard() {
             <div className="h-64 md:h-96">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={[
-                  { name: 'Contract Owed', total: t.contractOwed },
-                  { name: 'Contract Paid', total: t.contractPaid },
-                  { name: 'Contract Balance', total: t.contractBalance },
-                  { name: 'Draw Requested', total: t.drawRequested },
-                  { name: 'Draw Balance', total: t.drawBalance },
-                  { name: 'Other Hard & Soft Costs', total: t.otherSoftHardCosts },
-                  { name: 'Total Paid to Date', total: t.totalPaidToDate },
-                  { name: 'Current Projected Total', total: t.projectedTotal },
+                  { name: 'Contract Owed', total: contractOwed },
+                  { name: 'Contract Paid', total: contractPaid },
+                  { name: 'Contract Balance', total: contractBalance },
+                  { name: 'Draw Requested', total: drawRequested },
+                  { name: 'Draw Balance', total: drawBalance },
+                  { name: 'Other Hard & Soft Costs', total: otherSoftHardCosts },
+                  { name: 'Total Paid to Date', total: totalPaidToDate },
+                  { name: 'Current Projected Total', total: projectedTotal },
                 ]} layout="vertical" margin={{ left: 10, right: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 8%, 88%)" />
                   <XAxis type="number" tick={{ fontSize: 9 }} tickFormatter={v => v >= 1000000 ? `$${(v / 1000000).toFixed(1)}M` : `$${(v / 1000).toFixed(0)}k`} />
@@ -249,8 +267,8 @@ export default function Dashboard() {
             <Table>
               <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Detail</TableHead><TableHead className="text-right">Payments</TableHead></TableRow></TableHeader>
               <TableBody>
-                <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}><TableCell className="font-medium">StudioLAB</TableCell><TableCell>Designer</TableCell><TableCell className="text-right tabular-nums">{fmt(t.softCostStudioLAB)}</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">SLAB Builders</TableCell><TableCell>Builder</TableCell><TableCell className="text-right tabular-nums">{fmt(t.softCostSLAB)}</TableCell></TableRow>
+                <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}><TableCell className="font-medium">StudioLAB</TableCell><TableCell>Designer</TableCell><TableCell className="text-right tabular-nums">{fmt(softCostStudioLAB)}</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">SLAB Builders</TableCell><TableCell>Builder</TableCell><TableCell className="text-right tabular-nums">{fmt(softCostSLAB)}</TableCell></TableRow>
               </TableBody>
             </Table>
           </CardContent>
@@ -261,9 +279,9 @@ export default function Dashboard() {
             <Table>
               <TableHeader><TableRow><TableHead>Type</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
               <TableBody>
-                <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}><TableCell className="font-medium">Materials & Vendors</TableCell><TableCell className="text-right tabular-nums">{fmt(t.materialsVendorsTotal)}</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">Fixtures & Fittings</TableCell><TableCell className="text-right tabular-nums">{fmt(t.fixturesFittingsTotal)}</TableCell></TableRow>
-                <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}><TableCell className="font-medium">Field Labor</TableCell><TableCell className="text-right tabular-nums">{fmt(t.fieldLaborTotal)}</TableCell></TableRow>
+                <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}><TableCell className="font-medium">Materials & Vendors</TableCell><TableCell className="text-right tabular-nums">{fmt(materialsVendorsTotal)}</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">Fixtures & Fittings</TableCell><TableCell className="text-right tabular-nums">{fmt(Math.abs(fixturesFittingsTotal))}</TableCell></TableRow>
+                <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}><TableCell className="font-medium">Field Labor</TableCell><TableCell className="text-right tabular-nums">{fmt(fieldLaborTotal)}</TableCell></TableRow>
               </TableBody>
             </Table>
           </CardContent>
