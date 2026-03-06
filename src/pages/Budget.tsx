@@ -26,6 +26,8 @@ export default function BudgetPage() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<BudgetItem>>({});
+  const [adding, setAdding] = useState(false);
+  const [newData, setNewData] = useState<Partial<BudgetItem>>({ category: 'Site', description: '', labor: 0, material: 0, status: 'estimated' });
   const [sortKey, setSortKey] = useState('description');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [noteId, setNoteId] = useState<string | null>(null);
@@ -204,6 +206,35 @@ export default function BudgetPage() {
                   </TableRow>
                 );
               })}
+              {adding ? (
+                <TableRow className="bg-muted/30">
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <select value={newData.category || 'Site'} onChange={e => setNewData(d => ({ ...d, category: e.target.value }))} className="h-6 text-[10px] border rounded px-1 bg-background w-24">
+                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                      <Input value={newData.description || ''} onChange={e => setNewData(d => ({ ...d, description: e.target.value }))} className="h-6 text-xs px-1" placeholder="Description" autoFocus />
+                    </div>
+                  </TableCell>
+                  <TableCell><Input value={newData.labor || ''} onChange={e => setNewData(d => ({ ...d, labor: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" placeholder="0" /></TableCell>
+                  <TableCell><Input value={newData.material || ''} onChange={e => setNewData(d => ({ ...d, material: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" placeholder="0" /></TableCell>
+                  <TableCell>
+                    <select value={newData.status || 'estimated'} onChange={e => setNewData(d => ({ ...d, status: e.target.value as BudgetItem['status'] }))} className="h-6 text-[10px] border rounded px-1 bg-background">
+                      <option value="estimated">estimated</option><option value="proposed">proposed</option><option value="contracted">contracted</option><option value="complete">complete</option>
+                    </select>
+                  </TableCell>
+                  <TableCell className="flex gap-1">
+                    <button onClick={() => { if (newData.description) { setItems(prev => [...prev, { id: Date.now().toString(), project_id: selectedProject.id, optional: 0, subcontractor: '', notes: '', ...newData } as BudgetItem]); setAdding(false); setNewData({ category: 'Site', description: '', labor: 0, material: 0, status: 'estimated' }); } }} className="text-[hsl(var(--success))]"><Check size={14} /></button>
+                    <button onClick={() => { setAdding(false); setNewData({ category: 'Site', description: '', labor: 0, material: 0, status: 'estimated' }); }} className="text-destructive"><X size={14} /></button>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5}>
+                    <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
             <TableFooter>
               <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>

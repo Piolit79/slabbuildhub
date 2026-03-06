@@ -21,6 +21,8 @@ export default function VendorsPage() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Vendor>>({});
+  const [adding, setAdding] = useState(false);
+  const [newData, setNewData] = useState<Partial<Vendor>>({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' });
   const [sortKey, setSortKey] = useState('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
@@ -132,6 +134,30 @@ export default function VendorsPage() {
                   )}
                 </TableRow>
               ))}
+              {adding ? (
+                <TableRow className="bg-muted/30">
+                  <TableCell><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" placeholder="Name" autoFocus /></TableCell>
+                  <TableCell><Input value={newData.detail || ''} onChange={e => setNewData(d => ({ ...d, detail: e.target.value }))} className="h-6 text-xs px-1" placeholder="Detail / Trade" /></TableCell>
+                  <TableCell>
+                    <select value={newData.type || 'Subcontractor'} onChange={e => setNewData(d => ({ ...d, type: e.target.value as Vendor['type'] }))} className="h-6 text-[10px] border rounded px-1 bg-background">
+                      <option>Subcontractor</option><option>Vendor</option><option>Consultant</option>
+                    </select>
+                  </TableCell>
+                  <TableCell><Input value={newData.contact || ''} onChange={e => setNewData(d => ({ ...d, contact: e.target.value }))} className="h-6 text-xs px-1" placeholder="Contact" /></TableCell>
+                  <TableCell><Input value={newData.email || ''} onChange={e => setNewData(d => ({ ...d, email: e.target.value }))} className="h-6 text-xs px-1" placeholder="Email" /></TableCell>
+                  <TableCell><Input value={newData.phone || ''} onChange={e => setNewData(d => ({ ...d, phone: e.target.value }))} className="h-6 text-xs px-1" placeholder="Phone" /></TableCell>
+                  <TableCell className="flex gap-1">
+                    <button onClick={() => { if (newData.name) { setVendors(prev => [...prev, { id: Date.now().toString(), ...newData } as Vendor]); setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); } }} className="text-[hsl(var(--success))]"><Check size={14} /></button>
+                    <button onClick={() => { setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); }} className="text-destructive"><X size={14} /></button>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7}>
+                    <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

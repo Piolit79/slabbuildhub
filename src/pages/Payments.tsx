@@ -33,6 +33,8 @@ export default function PaymentsPage() {
   const [activeTab, setActiveTab] = useState<PaymentCategory>('subcontractor');
   const [editId, setEditId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Payment>>({});
+  const [adding, setAdding] = useState(false);
+  const [newData, setNewData] = useState<Partial<Payment>>({ date: '', name: '', amount: 0, form: '', check_number: '' });
   const [sortKey, setSortKey] = useState('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
@@ -139,6 +141,25 @@ export default function PaymentsPage() {
                         )}
                       </TableRow>
                     ))}
+                    {adding ? (
+                      <TableRow className="bg-muted/30">
+                        <TableCell><Input value={newData.date || ''} onChange={e => setNewData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-28 px-1" autoFocus /></TableCell>
+                        <TableCell><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" placeholder="Name" /></TableCell>
+                        <TableCell className="text-right"><Input value={newData.amount || ''} onChange={e => setNewData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-xs w-24 px-1 text-right" placeholder="0.00" /></TableCell>
+                        <TableCell><Input value={newData.form || ''} onChange={e => setNewData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs w-20 px-1" placeholder="Form" /></TableCell>
+                        <TableCell><Input value={newData.check_number || ''} onChange={e => setNewData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" placeholder="Check #" /></TableCell>
+                        <TableCell className="flex gap-1">
+                          <button onClick={() => { if (newData.date && newData.name) { setPayments(prev => [...prev, { id: Date.now().toString(), project_id: selectedProject.id, category: activeTab, ...newData } as Payment]); setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); } }} className="text-[hsl(var(--success))]"><Check size={14} /></button>
+                          <button onClick={() => { setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); }} className="text-destructive"><X size={14} /></button>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6}>
+                          <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>

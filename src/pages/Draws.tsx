@@ -23,6 +23,8 @@ export default function DrawsPage() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Draw>>({});
+  const [adding, setAdding] = useState(false);
+  const [newData, setNewData] = useState<Partial<Draw>>({ date: '', draw_number: 0, amount: 0 });
   const [sortKey, setSortKey] = useState('draw_number');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
@@ -123,6 +125,24 @@ export default function DrawsPage() {
                   </TableRow>
                 );
               })}
+              {adding ? (
+                <TableRow className="bg-muted/30">
+                  <TableCell><Input value={newData.draw_number || ''} onChange={e => setNewData(x => ({ ...x, draw_number: parseInt(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-16 px-1" placeholder="#" autoFocus /></TableCell>
+                  <TableCell><Input value={newData.date || ''} onChange={e => setNewData(x => ({ ...x, date: e.target.value }))} type="date" className="h-6 text-xs w-28 px-1" /></TableCell>
+                  <TableCell className="text-right"><Input value={newData.amount || ''} onChange={e => setNewData(x => ({ ...x, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-xs w-28 px-1 text-right" placeholder="0.00" /></TableCell>
+                  <TableCell />
+                  <TableCell className="flex gap-1">
+                    <button onClick={() => { if (newData.date) { setDraws(prev => [...prev, { id: Date.now().toString(), project_id: selectedProject.id, draw_number: newData.draw_number || filtered.length + 1, date: newData.date!, amount: newData.amount || 0 }]); setAdding(false); setNewData({ date: '', draw_number: 0, amount: 0 }); } }} className="text-[hsl(var(--success))]"><Check size={14} /></button>
+                    <button onClick={() => { setAdding(false); setNewData({ date: '', draw_number: 0, amount: 0 }); }} className="text-destructive"><X size={14} /></button>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5}>
+                    <button onClick={() => { setNewData(d => ({ ...d, draw_number: filtered.length + 1 })); setAdding(true); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
             <TableFooter>
               <TableRow>
