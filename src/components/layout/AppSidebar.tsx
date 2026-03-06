@@ -2,6 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import slabLogo from '@/assets/slab-builders-logo.svg';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -19,30 +20,26 @@ export default function AppSidebar() {
   return (
     <aside
       className={cn(
-        'h-screen sticky top-0 flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300',
-        collapsed ? 'w-16' : 'w-56'
+        'h-screen sticky top-0 flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300',
+        collapsed ? 'w-[68px]' : 'w-[240px]'
       )}
     >
-      <div className="flex items-center justify-between px-4 h-14 border-b border-sidebar-border">
-        {!collapsed && (
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded bg-[hsl(var(--sidebar-primary))] flex items-center justify-center">
-              <span className="text-[hsl(var(--sidebar-primary-foreground))] text-xs font-bold">BL</span>
-            </div>
-            <span className="text-sm font-bold tracking-tight text-sidebar-accent-foreground">
-              BuildLedger
-            </span>
+      <div className={cn("flex items-center border-b border-sidebar-border", collapsed ? "h-16 justify-center px-2" : "px-4 py-5")}>
+        {collapsed ? (
+          <span className="text-xs font-bold text-foreground">SB</span>
+        ) : (
+          <div className="flex flex-col items-start w-full">
+            <a href="/"><img src={slabLogo} alt="SLAB Builders" className="w-full max-w-[200px]" /></a>
           </div>
         )}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="p-1 rounded hover:bg-sidebar-accent text-sidebar-foreground transition-colors"
-        >
-          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
-        </button>
       </div>
 
-      <nav className="flex-1 py-3 space-y-0.5 px-2">
+      <nav className="flex-1 space-y-1 px-3 py-4">
+        {!collapsed && (
+          <span className="block text-base font-semibold uppercase tracking-widest text-muted-foreground px-3 pb-2">
+            Project Hub
+          </span>
+        )}
         {navItems.map(({ to, label, icon: Icon }) => {
           const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
           return (
@@ -50,24 +47,26 @@ export default function AppSidebar() {
               key={to}
               to={to}
               className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-md text-[13px] font-medium transition-all',
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-[hsl(var(--sidebar-primary))] text-[hsl(var(--sidebar-primary-foreground))]'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
+                collapsed && 'justify-center px-0'
               )}
             >
-              <Icon size={18} />
+              <Icon className="h-[18px] w-[18px] shrink-0" />
               {!collapsed && <span>{label}</span>}
             </NavLink>
           );
         })}
       </nav>
 
-      <div className="p-3 border-t border-sidebar-border">
-        {!collapsed && (
-          <p className="text-[10px] text-sidebar-foreground/40 uppercase tracking-wider">Master Ledger v1.0</p>
-        )}
-      </div>
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="flex h-12 items-center justify-center border-t border-sidebar-border text-muted-foreground hover:text-sidebar-foreground transition-colors"
+      >
+        {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+      </button>
     </aside>
   );
 }
