@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Draw } from '@/types';
 import { format } from 'date-fns';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(n);
 
@@ -19,6 +20,7 @@ function SortBtn({ label, active, dir, onClick, className }: { label: string; ac
 
 export default function DrawsPage() {
   const { selectedProject } = useProject();
+  const isMobile = useIsMobile();
   const [draws, setDraws] = useState<Draw[]>(mockDraws);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -60,7 +62,7 @@ export default function DrawsPage() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Draws</h1>
+          <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Draws</h1>
           <p className="text-muted-foreground text-xs">Bank draw requests</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -80,11 +82,11 @@ export default function DrawsPage() {
       <div className="grid grid-cols-2 gap-2 max-w-sm">
         <Card><CardContent className="p-3">
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Total Drawn</p>
-          <p className="text-base font-bold tabular-nums">{fmt(total)}</p>
+          <p className="text-sm md:text-base font-bold tabular-nums">{fmt(total)}</p>
         </CardContent></Card>
         <Card><CardContent className="p-3">
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Draw Count</p>
-          <p className="text-base font-bold">{filtered.length}</p>
+          <p className="text-sm md:text-base font-bold">{filtered.length}</p>
         </CardContent></Card>
       </div>
 
@@ -95,9 +97,9 @@ export default function DrawsPage() {
               <TableRow>
                 <TableHead>{sh('Draw #', 'draw_number')}</TableHead>
                 <TableHead>{sh('Date', 'date')}</TableHead>
-                <TableHead className="text-right">{sh('Amount', 'amount', 'justify-end')}</TableHead>
-                <TableHead className="text-right">Running Total</TableHead>
-                <TableHead className="w-10"></TableHead>
+                <TableHead className="text-right">{sh('Amt', 'amount', 'justify-end')}</TableHead>
+                {!isMobile && <TableHead className="text-right">Running Total</TableHead>}
+                {!isMobile && <TableHead className="w-10"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -105,7 +107,7 @@ export default function DrawsPage() {
                 runningTotal += d.amount;
                 return (
                   <TableRow key={d.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
-                    {editId === d.id ? (
+                    {!isMobile && editId === d.id ? (
                       <>
                         <TableCell><Input value={editData.draw_number || ''} onChange={e => setEditData(x => ({ ...x, draw_number: parseInt(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-16 px-1" /></TableCell>
                         <TableCell><Input value={editData.date || ''} onChange={e => setEditData(x => ({ ...x, date: e.target.value }))} type="date" className="h-6 text-xs w-28 px-1" /></TableCell>
@@ -115,17 +117,17 @@ export default function DrawsPage() {
                       </>
                     ) : (
                       <>
-                        <TableCell className="font-medium">Draw {d.draw_number.toString().padStart(3, '0')}</TableCell>
-                        <TableCell className="tabular-nums">{format(new Date(d.date), 'MM.dd.yy')}</TableCell>
-                        <TableCell className="text-right tabular-nums font-semibold">{fmt(d.amount)}</TableCell>
-                        <TableCell className="text-right tabular-nums text-muted-foreground">{fmt(runningTotal)}</TableCell>
-                        <TableCell><button onClick={() => startEdit(d)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>
+                        <TableCell className="font-medium text-[11px]">Draw {d.draw_number.toString().padStart(3, '0')}</TableCell>
+                        <TableCell className="tabular-nums text-[11px]">{format(new Date(d.date), 'MM.dd.yy')}</TableCell>
+                        <TableCell className="text-right tabular-nums font-semibold text-[11px]">{fmt(d.amount)}</TableCell>
+                        {!isMobile && <TableCell className="text-right tabular-nums text-muted-foreground">{fmt(runningTotal)}</TableCell>}
+                        {!isMobile && <TableCell><button onClick={() => startEdit(d)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>}
                       </>
                     )}
                   </TableRow>
                 );
               })}
-              {adding ? (
+              {!isMobile && (adding ? (
                 <TableRow className="bg-muted/30">
                   <TableCell><Input value={newData.draw_number || ''} onChange={e => setNewData(x => ({ ...x, draw_number: parseInt(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-16 px-1" placeholder="#" autoFocus /></TableCell>
                   <TableCell><Input value={newData.date || ''} onChange={e => setNewData(x => ({ ...x, date: e.target.value }))} type="date" className="h-6 text-xs w-28 px-1" /></TableCell>
@@ -142,13 +144,13 @@ export default function DrawsPage() {
                     <button onClick={() => { setNewData(d => ({ ...d, draw_number: filtered.length + 1 })); setAdding(true); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
                   </TableCell>
                 </TableRow>
-              )}
+              ))}
             </TableBody>
             <TableFooter>
               <TableRow>
-                <TableCell colSpan={2} className="font-semibold">Total</TableCell>
+                <TableCell colSpan={2} className="font-semibold text-[11px]">Total</TableCell>
                 <TableCell className="text-right font-semibold tabular-nums">{fmt(total)}</TableCell>
-                <TableCell colSpan={2} />
+                {!isMobile && <TableCell colSpan={2} />}
               </TableRow>
             </TableFooter>
           </Table>

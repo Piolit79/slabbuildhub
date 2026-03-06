@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Payment, PaymentCategory } from '@/types';
 import { format } from 'date-fns';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
 
@@ -21,13 +22,14 @@ function SortBtn({ label, active, dir, onClick, className }: { label: string; ac
 
 const tabs: { value: PaymentCategory; label: string }[] = [
   { value: 'subcontractor', label: 'Subcontractor' },
-  { value: 'materials', label: 'Materials & Vendors' },
+  { value: 'materials', label: 'Materials' },
   { value: 'soft_costs', label: 'Soft Costs' },
   { value: 'field_labor', label: 'Field Labor' },
 ];
 
 export default function PaymentsPage() {
   const { selectedProject } = useProject();
+  const isMobile = useIsMobile();
   const [payments, setPayments] = useState<Payment[]>(mockPayments);
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<PaymentCategory>('subcontractor');
@@ -70,7 +72,7 @@ export default function PaymentsPage() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Payments</h1>
+          <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Payments</h1>
           <p className="text-muted-foreground text-xs">Payment logs by category</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -111,16 +113,16 @@ export default function PaymentsPage() {
                     <TableRow>
                       <TableHead>{sh('Date', 'date')}</TableHead>
                       <TableHead>{sh('Name', 'name')}</TableHead>
-                      <TableHead className="text-right">{sh('Amount', 'amount', 'justify-end')}</TableHead>
-                      <TableHead>{sh('Form', 'form')}</TableHead>
-                      <TableHead>{sh('Check #', 'check_number')}</TableHead>
-                      <TableHead className="w-12"></TableHead>
+                      <TableHead className="text-right">{sh('Amt', 'amount', 'justify-end')}</TableHead>
+                      {!isMobile && <TableHead>{sh('Form', 'form')}</TableHead>}
+                      {!isMobile && <TableHead>{sh('Check #', 'check_number')}</TableHead>}
+                      {!isMobile && <TableHead className="w-12"></TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {sorted.map((p, idx) => (
                       <TableRow key={p.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
-                        {editId === p.id ? (
+                        {!isMobile && editId === p.id ? (
                           <>
                             <TableCell><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-28 px-1" /></TableCell>
                             <TableCell><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
@@ -131,17 +133,17 @@ export default function PaymentsPage() {
                           </>
                         ) : (
                           <>
-                            <TableCell className="tabular-nums">{format(new Date(p.date), 'MM.dd.yy')}</TableCell>
-                            <TableCell className="font-medium">{p.name}</TableCell>
-                            <TableCell className="text-right tabular-nums font-medium">{fmt(p.amount)}</TableCell>
-                            <TableCell>{p.form}</TableCell>
-                            <TableCell className="tabular-nums">{p.check_number || '—'}</TableCell>
-                            <TableCell><button onClick={() => startEdit(p)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>
+                            <TableCell className="tabular-nums text-[11px]">{format(new Date(p.date), 'MM.dd.yy')}</TableCell>
+                            <TableCell className="font-medium text-[11px] truncate max-w-[120px] md:max-w-none">{p.name}</TableCell>
+                            <TableCell className="text-right tabular-nums font-medium text-[11px]">{fmt(p.amount)}</TableCell>
+                            {!isMobile && <TableCell>{p.form}</TableCell>}
+                            {!isMobile && <TableCell className="tabular-nums">{p.check_number || '—'}</TableCell>}
+                            {!isMobile && <TableCell><button onClick={() => startEdit(p)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>}
                           </>
                         )}
                       </TableRow>
                     ))}
-                    {adding ? (
+                    {!isMobile && (adding ? (
                       <TableRow className="bg-muted/30">
                         <TableCell><Input value={newData.date || ''} onChange={e => setNewData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-28 px-1" autoFocus /></TableCell>
                         <TableCell><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" placeholder="Name" /></TableCell>
@@ -159,7 +161,7 @@ export default function PaymentsPage() {
                           <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
                         </TableCell>
                       </TableRow>
-                    )}
+                    ))}
                   </TableBody>
                 </Table>
               </CardContent>

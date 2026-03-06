@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown, MessageSquare } from 'lucide-react';
 import { BudgetItem } from '@/types';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const fmt = (n: number) => n ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(n) : '—';
 
@@ -22,6 +23,7 @@ function SortBtn({ label, active, dir, onClick, className }: { label: string; ac
 
 export default function BudgetPage() {
   const { selectedProject } = useProject();
+  const isMobile = useIsMobile();
   const [items, setItems] = useState<BudgetItem[]>(mockBudgetItems);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -97,7 +99,7 @@ export default function BudgetPage() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Budget</h1>
+          <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Budget</h1>
           <p className="text-muted-foreground text-xs">Line-item budget</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -131,7 +133,7 @@ export default function BudgetPage() {
         {[['Hard Cost Total', hardCostTotal], ['Design Fee (10%)', designFee], ['Build Fee (15%)', buildFee], ['Projected Grand Total', projectedGrandTotal]].map(([l, v]) => (
           <Card key={l as string}><CardContent className="p-3">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">{l as string}</p>
-            <p className="text-base font-bold tabular-nums">{fmtN(v as number)}</p>
+            <p className="text-sm md:text-base font-bold tabular-nums">{fmtN(v as number)}</p>
           </CardContent></Card>
         ))}
       </div>
@@ -153,10 +155,10 @@ export default function BudgetPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>{sh('Description', 'description')}</TableHead>
-                <TableHead className="text-right">{sh('Labor', 'labor', 'justify-end')}</TableHead>
-                <TableHead className="text-right">{sh('Material', 'material', 'justify-end')}</TableHead>
+                {!isMobile && <TableHead className="text-right">{sh('Labor', 'labor', 'justify-end')}</TableHead>}
+                <TableHead className="text-right">{isMobile ? sh('Total', 'labor', 'justify-end') : sh('Material', 'material', 'justify-end')}</TableHead>
                 <TableHead>{sh('Status', 'status')}</TableHead>
-                <TableHead className="w-12"></TableHead>
+                {!isMobile && <TableHead className="w-12"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -164,7 +166,7 @@ export default function BudgetPage() {
                 if ('_header' in item) {
                   return (
                     <TableRow key={`header-${item._header}`} className="bg-accent/60">
-                      <TableCell colSpan={5} className="font-bold text-xs uppercase tracking-wider text-accent-foreground py-1.5">{item._header}</TableCell>
+                      <TableCell colSpan={isMobile ? 3 : 5} className="font-bold text-xs uppercase tracking-wider text-accent-foreground py-1.5">{item._header}</TableCell>
                     </TableRow>
                   );
                 }
@@ -172,7 +174,7 @@ export default function BudgetPage() {
                 const hasDetails = b.notes || b.subcontractor;
                 return (
                   <TableRow key={b.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
-                    {editId === b.id ? (
+                    {!isMobile && editId === b.id ? (
                       <>
                         <TableCell><Input value={editData.description || ''} onChange={e => setEditData(d => ({ ...d, description: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
                         <TableCell><Input value={editData.labor || 0} onChange={e => setEditData(d => ({ ...d, labor: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" /></TableCell>
@@ -189,24 +191,26 @@ export default function BudgetPage() {
                       </>
                     ) : (
                       <>
-                        <TableCell className="font-medium">{b.description}</TableCell>
-                        <TableCell className="text-right tabular-nums">{fmt(b.labor)}</TableCell>
-                        <TableCell className="text-right tabular-nums">{fmt(b.material)}</TableCell>
+                        <TableCell className="font-medium text-[11px] truncate max-w-[120px] md:max-w-none">{b.description}</TableCell>
+                        {!isMobile && <TableCell className="text-right tabular-nums text-[11px]">{fmt(b.labor)}</TableCell>}
+                        <TableCell className="text-right tabular-nums text-[11px]">{isMobile ? fmt(b.labor + b.material) : fmt(b.material)}</TableCell>
                         <TableCell>{statusBadge(b.status)}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1.5">
-                            <button onClick={() => openNote(b)} className={`hover:text-foreground ${hasDetails ? 'text-primary' : 'text-muted-foreground/40'}`} title={hasDetails ? `${b.subcontractor || ''}${b.subcontractor && b.notes ? ' | ' : ''}${b.notes || ''}` : 'Add details'}>
-                              <MessageSquare size={12} />
-                            </button>
-                            <button onClick={() => startEdit(b)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button>
-                          </div>
-                        </TableCell>
+                        {!isMobile && (
+                          <TableCell>
+                            <div className="flex gap-1.5">
+                              <button onClick={() => openNote(b)} className={`hover:text-foreground ${hasDetails ? 'text-primary' : 'text-muted-foreground/40'}`} title={hasDetails ? `${b.subcontractor || ''}${b.subcontractor && b.notes ? ' | ' : ''}${b.notes || ''}` : 'Add details'}>
+                                <MessageSquare size={12} />
+                              </button>
+                              <button onClick={() => startEdit(b)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button>
+                            </div>
+                          </TableCell>
+                        )}
                       </>
                     )}
                   </TableRow>
                 );
               })}
-              {adding ? (
+              {!isMobile && (adding ? (
                 <TableRow className="bg-muted/30">
                   <TableCell>
                     <div className="flex gap-1">
@@ -234,34 +238,34 @@ export default function BudgetPage() {
                     <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
                   </TableCell>
                 </TableRow>
-              )}
+              ))}
             </TableBody>
             <TableFooter>
               <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
-                <TableCell className="font-semibold">Labor / Material Totals</TableCell>
-                <TableCell className="text-right font-semibold tabular-nums">{fmtN(grandLabor)}</TableCell>
-                <TableCell className="text-right font-semibold tabular-nums">{fmtN(grandMaterial)}</TableCell>
-                <TableCell colSpan={2} />
+                <TableCell className="font-semibold text-[11px]">{isMobile ? 'Labor / Material' : 'Labor / Material Totals'}</TableCell>
+                {!isMobile && <TableCell className="text-right font-semibold tabular-nums">{fmtN(grandLabor)}</TableCell>}
+                <TableCell className="text-right font-semibold tabular-nums">{isMobile ? fmtN(hardCostTotal) : fmtN(grandMaterial)}</TableCell>
+                <TableCell colSpan={isMobile ? 1 : 2} />
               </TableRow>
               <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
-                <TableCell className="font-semibold">Hard Cost Total</TableCell>
-                <TableCell colSpan={2} className="text-right font-semibold tabular-nums">{fmtN(hardCostTotal)}</TableCell>
-                <TableCell colSpan={2} />
+                <TableCell className="font-semibold text-[11px]">Hard Cost Total</TableCell>
+                <TableCell colSpan={isMobile ? 1 : 2} className="text-right font-semibold tabular-nums">{fmtN(hardCostTotal)}</TableCell>
+                <TableCell colSpan={isMobile ? 1 : 2} />
               </TableRow>
               <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
-                <TableCell className="font-semibold">Design Fee (10%)</TableCell>
-                <TableCell colSpan={2} className="text-right font-semibold tabular-nums">{fmtN(designFee)}</TableCell>
-                <TableCell colSpan={2} />
+                <TableCell className="font-semibold text-[11px]">Design Fee (10%)</TableCell>
+                <TableCell colSpan={isMobile ? 1 : 2} className="text-right font-semibold tabular-nums">{fmtN(designFee)}</TableCell>
+                <TableCell colSpan={isMobile ? 1 : 2} />
               </TableRow>
               <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
-                <TableCell className="font-semibold">Build Fee (15%)</TableCell>
-                <TableCell colSpan={2} className="text-right font-semibold tabular-nums">{fmtN(buildFee)}</TableCell>
-                <TableCell colSpan={2} />
+                <TableCell className="font-semibold text-[11px]">Build Fee (15%)</TableCell>
+                <TableCell colSpan={isMobile ? 1 : 2} className="text-right font-semibold tabular-nums">{fmtN(buildFee)}</TableCell>
+                <TableCell colSpan={isMobile ? 1 : 2} />
               </TableRow>
               <TableRow className="bg-accent/40">
-                <TableCell className="font-bold">Projected Grand Total</TableCell>
-                <TableCell colSpan={2} className="text-right font-bold tabular-nums text-base">{fmtN(projectedGrandTotal)}</TableCell>
-                <TableCell colSpan={2} />
+                <TableCell className="font-bold text-[11px]">Projected Grand Total</TableCell>
+                <TableCell colSpan={isMobile ? 1 : 2} className="text-right font-bold tabular-nums text-sm md:text-base">{fmtN(projectedGrandTotal)}</TableCell>
+                <TableCell colSpan={isMobile ? 1 : 2} />
               </TableRow>
             </TableFooter>
           </Table>

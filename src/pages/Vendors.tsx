@@ -10,12 +10,14 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Vendor } from '@/types';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 function SortBtn({ label, active, dir, onClick, className }: { label: string; active: boolean; dir: string; onClick: () => void; className?: string }) {
   return <button onClick={onClick} className={`inline-flex items-center gap-0.5 hover:text-foreground ${className || ''}`}>{label}{active ? (dir === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />) : <ChevronsUpDown size={11} className="opacity-30" />}</button>;
 }
 
 export default function VendorsPage() {
+  const isMobile = useIsMobile();
   const [vendors, setVendors] = useState<Vendor[]>(mockVendors);
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -61,7 +63,7 @@ export default function VendorsPage() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Vendors</h1>
+          <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Vendors</h1>
           <p className="text-muted-foreground text-xs">{filtered.length} vendors & subcontractors</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
@@ -97,17 +99,17 @@ export default function VendorsPage() {
               <TableRow>
                 <TableHead>{sh('Name', 'name')}</TableHead>
                 <TableHead>{sh('Detail', 'detail')}</TableHead>
-                <TableHead>{sh('Type', 'type')}</TableHead>
-                <TableHead>{sh('Contact', 'contact')}</TableHead>
-                <TableHead>{sh('Email', 'email')}</TableHead>
-                <TableHead>{sh('Phone', 'phone')}</TableHead>
-                <TableHead className="w-10"></TableHead>
+                {!isMobile && <TableHead>{sh('Type', 'type')}</TableHead>}
+                {!isMobile && <TableHead>{sh('Contact', 'contact')}</TableHead>}
+                {!isMobile && <TableHead>{sh('Email', 'email')}</TableHead>}
+                {!isMobile && <TableHead>{sh('Phone', 'phone')}</TableHead>}
+                {!isMobile && <TableHead className="w-10"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map((v, idx) => (
                 <TableRow key={v.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
-                  {editId === v.id ? (
+                  {!isMobile && editId === v.id ? (
                     <>
                       <TableCell><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
                       <TableCell><Input value={editData.detail || ''} onChange={e => setEditData(d => ({ ...d, detail: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
@@ -123,18 +125,18 @@ export default function VendorsPage() {
                     </>
                   ) : (
                     <>
-                      <TableCell className="font-medium">{v.name}</TableCell>
-                      <TableCell>{v.detail}</TableCell>
-                      <TableCell>{typeBadge(v.type)}</TableCell>
-                      <TableCell>{v.contact || '—'}</TableCell>
-                      <TableCell className="text-primary">{v.email || '—'}</TableCell>
-                      <TableCell>{v.phone || '—'}</TableCell>
-                      <TableCell><button onClick={() => startEdit(v)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>
+                      <TableCell className="font-medium text-[11px] truncate max-w-[120px] md:max-w-none">{v.name}</TableCell>
+                      <TableCell className="text-[11px] truncate max-w-[100px] md:max-w-none">{v.detail}</TableCell>
+                      {!isMobile && <TableCell>{typeBadge(v.type)}</TableCell>}
+                      {!isMobile && <TableCell>{v.contact || '—'}</TableCell>}
+                      {!isMobile && <TableCell className="text-primary">{v.email || '—'}</TableCell>}
+                      {!isMobile && <TableCell>{v.phone || '—'}</TableCell>}
+                      {!isMobile && <TableCell><button onClick={() => startEdit(v)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>}
                     </>
                   )}
                 </TableRow>
               ))}
-              {adding ? (
+              {!isMobile && (adding ? (
                 <TableRow className="bg-muted/30">
                   <TableCell><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" placeholder="Name" autoFocus /></TableCell>
                   <TableCell><Input value={newData.detail || ''} onChange={e => setNewData(d => ({ ...d, detail: e.target.value }))} className="h-6 text-xs px-1" placeholder="Detail / Trade" /></TableCell>
@@ -157,7 +159,7 @@ export default function VendorsPage() {
                     <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
                   </TableCell>
                 </TableRow>
-              )}
+              ))}
             </TableBody>
           </Table>
         </CardContent>
