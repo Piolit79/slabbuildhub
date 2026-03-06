@@ -44,7 +44,7 @@ export default function BudgetPage() {
     const startPad = statusPadding;
     const onMouseMove = (ev: MouseEvent) => {
       const delta = ev.clientX - startX;
-      setStatusPadding(Math.max(8, Math.min(120, startPad + delta)));
+      setStatusPadding(Math.max(8, Math.min(300, startPad + delta)));
     };
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
