@@ -78,8 +78,7 @@ export default function Dashboard() {
           <p className="text-muted-foreground text-xs mt-0.5">{selectedProject.name}</p>
         </div>
         <div className="text-right">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Projected Budget</p>
-          <p className="text-xl font-bold text-primary">{fmt(t.budgetTotal)}</p>
+          <p className="text-xl font-bold">{selectedProject.name}</p>
         </div>
       </div>
 
@@ -135,11 +134,23 @@ export default function Dashboard() {
                     dataKey="total"
                     fill="#c37e87"
                     radius={[0, 3, 3, 0]}
-                    label={({ x, y, width, height, value }: any) => (
-                      <text x={x + width - 8} y={y + height / 2} dy={4} textAnchor="end" fontSize={12} fill="#fff" fontWeight={600}>
-                        {fmt(value)}
-                      </text>
-                    )}
+                    label={({ x, y, width, height, value }: any) => {
+                      const textWidth = fmt(value).length * 7;
+                      const inside = width > textWidth + 16;
+                      return (
+                        <text
+                          x={inside ? x + width - 8 : x + width + 8}
+                          y={y + height / 2}
+                          dy={4}
+                          textAnchor={inside ? 'end' : 'start'}
+                          fontSize={12}
+                          fill={inside ? '#fff' : 'hsl(var(--foreground))'}
+                          fontWeight={600}
+                        >
+                          {fmt(value)}
+                        </text>
+                      );
+                    }}
                     shape={(props: any) => {
                       const { x, y, width, height, index } = props;
                       const depth = 6;
@@ -168,11 +179,9 @@ export default function Dashboard() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader className="pb-1 pt-3 px-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Projected Project Budget</CardTitle>
-              <p className="text-lg font-bold tabular-nums text-primary">{fmt(budgetChartData.reduce((s, d) => s + d.total, 0))}</p>
-            </div>
+          <CardHeader className="pb-0 pt-3 px-4">
+            <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Projected Project Budget</CardTitle>
+            <p className="text-xl font-bold tabular-nums text-muted-foreground text-center">{fmt(budgetChartData.reduce((s, d) => s + d.total, 0))}</p>
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <div className="flex flex-col">
