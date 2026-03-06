@@ -10,10 +10,10 @@ import { MergeCOIDialog } from '@/coi-tracker/components/MergeCOIDialog';
 import { useGCSettings } from '@/coi-tracker/hooks/useGCSettings';
 import { COIDetailContent, COIDetailHeader } from '@/coi-tracker/components/COIDetailContent';
 import { ProjectEmailTemplate } from '@/coi-tracker/components/ProjectEmailTemplate';
-import { Card } from '@/coi-tracker/components/ui/card';
-import { Button } from '@/coi-tracker/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { ArrowLeft, MapPin, Loader2, Trash2, PowerOff, Merge } from 'lucide-react';
-import { Switch } from '@/coi-tracker/components/ui/switch';
+import { Switch } from '@/components/ui/switch';
 import { COI } from '@/coi-tracker/types';
 import { useState } from 'react';
 import {
@@ -21,7 +21,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/coi-tracker/components/ui/dialog';
+} from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,7 +31,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/coi-tracker/components/ui/alert-dialog';
+} from '@/components/ui/alert-dialog';
 import { EditCOIDialog } from '@/coi-tracker/components/EditCOIDialog';
 import { Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';

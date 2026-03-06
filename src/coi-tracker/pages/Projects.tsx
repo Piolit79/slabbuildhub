@@ -1,5 +1,5 @@
 import { AppLayout } from '@/coi-tracker/components/AppLayout';
-import { Card } from '@/coi-tracker/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { useProjects } from '@/coi-tracker/hooks/useProjects';
 import { CreateProjectDialog } from '@/coi-tracker/components/CreateProjectDialog';
 import { Link } from 'react-router-dom';

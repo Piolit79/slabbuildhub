@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Button } from '@/coi-tracker/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Upload, FileText, Loader2 } from 'lucide-react';
 import { supabase } from '@/coi-tracker/integrations/supabase/client';
 import { toast } from 'sonner';
