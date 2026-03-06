@@ -2,7 +2,7 @@ export interface Project {
   id: string;
   name: string;
   address?: string;
-  status: 'active' | 'completed' | 'on-hold';
+  status: 'active' | 'completed' | 'on-hold' | 'archived';
   created_at: string;
 }
 

@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -65,14 +65,48 @@ export default function AppSidebar() {
         })}
       </nav>
 
-      {!isMobile && (
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="flex h-12 items-center justify-center border-t border-sidebar-border text-muted-foreground hover:text-sidebar-foreground transition-colors"
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </button>
-      )}
+      <div className="mt-auto border-t border-sidebar-border">
+        <nav className="px-3 py-2 space-y-1">
+          {[{ to: '/settings', label: 'Settings', icon: Settings }].map(({ to, label, icon: Icon }) => {
+            const isActive = location.pathname === to;
+            return (
+              <NavLink
+                key={to}
+                to={to}
+                onClick={() => isMobile && setMobileOpen(false)}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
+                  collapsed && !isMobile && 'justify-center px-0'
+                )}
+              >
+                <Icon className="h-[18px] w-[18px] shrink-0" />
+                {(isMobile || !collapsed) && <span>{label}</span>}
+              </NavLink>
+            );
+          })}
+          <button
+            className={cn(
+              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors w-full text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
+              collapsed && !isMobile && 'justify-center px-0'
+            )}
+            onClick={() => { /* logout placeholder */ }}
+          >
+            <LogOut className="h-[18px] w-[18px] shrink-0" />
+            {(isMobile || !collapsed) && <span>Log Out</span>}
+          </button>
+        </nav>
+        {!isMobile && (
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="flex h-12 items-center justify-center border-t border-sidebar-border text-muted-foreground hover:text-sidebar-foreground transition-colors w-full"
+          >
+            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          </button>
+        )}
+      </div>
     </>
   );
 

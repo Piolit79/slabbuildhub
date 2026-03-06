@@ -83,7 +83,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
+        <Card className="order-2 lg:order-1">
           <CardHeader className="pb-1 pt-3 px-4">
             <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Project Balances</CardTitle>
           </CardHeader>
@@ -152,7 +152,7 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="order-1 lg:order-2">
           <CardHeader className="pb-0 pt-3 px-4">
             <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Projected Project Budget</CardTitle>
             <p className="text-xl font-bold tabular-nums text-muted-foreground text-center">{fmt(budgetChartData.reduce((s, d) => s + d.total, 0))}</p>
