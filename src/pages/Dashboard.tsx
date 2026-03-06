@@ -38,8 +38,8 @@ export default function Dashboard() {
   const materialsVendorsTotal = payments.filter(p => p.category === 'materials').reduce((s, p) => s + p.amount, 0);
   const fixturesFittingsTotal = payments.filter(p => p.name === 'Fixtures & Fittings' || (p.category === 'materials' && mockVendors.find(v => v.name === p.name)?.detail?.toLowerCase().includes('fixture'))).reduce((s, p) => s + p.amount, 0) - materialsVendorsTotal;
   const fieldLaborTotal = payments.filter(p => p.category === 'field_labor').reduce((s, p) => s + p.amount, 0);
-  const otherSoftHardCosts = softCostStudioLAB + softCostSLAB + materialsVendorsTotal + Math.abs(fixturesFittingsTotal) + fieldLaborTotal;
-  const totalPaidToDate = contractPaid + otherSoftHardCosts;
+  const totalPaidToDate = payments.reduce((s, p) => s + p.amount, 0);
+  const otherSoftHardCosts = totalPaidToDate - contractPaid;
   const hardCostBudget = budget.reduce((s, b) => s + b.labor + b.material, 0);
   const budgetFees = Math.round(hardCostBudget * 0.25);
   const budgetTotal = hardCostBudget + budgetFees;
