@@ -26,20 +26,32 @@ export default function BudgetPage() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<BudgetItem>>({});
-  const [sortKey, setSortKey] = useState('category');
+  const [sortKey, setSortKey] = useState('description');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [noteId, setNoteId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
+  const [noteSub, setNoteSub] = useState('');
 
   const toggle = (k: string) => { if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortKey(k); setSortDir('asc'); } };
 
   const filtered = items.filter(b => b.project_id === selectedProject.id);
+  const categories = ['Site', 'Exterior', 'Interior', 'Owner Purchased', 'Landscape', 'Extras'];
 
-  const sorted = useMemo(() => [...filtered].sort((a: any, b: any) => {
-    const av = a[sortKey], bv = b[sortKey];
-    if (typeof av === 'number') return sortDir === 'asc' ? av - bv : bv - av;
-    return sortDir === 'asc' ? String(av ?? '').localeCompare(String(bv ?? '')) : String(bv ?? '').localeCompare(String(av ?? ''));
-  }), [filtered, sortKey, sortDir]);
+  const sortedByCategory = useMemo(() => {
+    const result: (BudgetItem | { _header: string })[] = [];
+    categories.forEach(cat => {
+      const catItems = filtered.filter(b => b.category === cat);
+      if (catItems.length === 0) return;
+      result.push({ _header: cat });
+      const sorted = [...catItems].sort((a: any, b: any) => {
+        const av = a[sortKey], bv = b[sortKey];
+        if (typeof av === 'number') return sortDir === 'asc' ? av - bv : bv - av;
+        return sortDir === 'asc' ? String(av ?? '').localeCompare(String(bv ?? '')) : String(bv ?? '').localeCompare(String(av ?? ''));
+      });
+      result.push(...sorted);
+    });
+    return result;
+  }, [filtered, sortKey, sortDir]);
 
   const grandLabor = filtered.reduce((s, b) => s + b.labor, 0);
   const grandMaterial = filtered.reduce((s, b) => s + b.material, 0);
@@ -52,10 +64,10 @@ export default function BudgetPage() {
   const cancelEdit = () => { setEditId(null); setEditData({}); };
   const saveEdit = () => { setItems(prev => prev.map(b => b.id === editId ? { ...b, ...editData } as BudgetItem : b)); cancelEdit(); };
 
-  const openNote = (b: BudgetItem) => { setNoteId(b.id); setNoteText(b.notes || ''); };
+  const openNote = (b: BudgetItem) => { setNoteId(b.id); setNoteText(b.notes || ''); setNoteSub(b.subcontractor || ''); };
   const saveNote = () => {
-    if (noteId) setItems(prev => prev.map(b => b.id === noteId ? { ...b, notes: noteText } : b));
-    setNoteId(null); setNoteText('');
+    if (noteId) setItems(prev => prev.map(b => b.id === noteId ? { ...b, notes: noteText, subcontractor: noteSub } : b));
+    setNoteId(null); setNoteText(''); setNoteSub('');
   };
 
   const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
@@ -122,12 +134,14 @@ export default function BudgetPage() {
         ))}
       </div>
 
-      {/* Note popover */}
-      <Dialog open={noteId !== null} onOpenChange={(o) => { if (!o) { setNoteId(null); setNoteText(''); } }}>
+      <Dialog open={noteId !== null} onOpenChange={(o) => { if (!o) { setNoteId(null); setNoteText(''); setNoteSub(''); } }}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle className="text-sm">Edit Note</DialogTitle></DialogHeader>
-          <Textarea value={noteText} onChange={e => setNoteText(e.target.value)} className="text-xs min-h-[80px]" placeholder="Add a note..." />
-          <Button size="sm" onClick={saveNote} className="w-full">Save Note</Button>
+          <DialogHeader><DialogTitle className="text-sm">Edit Details</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            <div className="space-y-1"><Label className="text-xs">Subcontractor</Label><Input value={noteSub} onChange={e => setNoteSub(e.target.value)} className="h-8 text-xs" placeholder="Subcontractor name..." /></div>
+            <div className="space-y-1"><Label className="text-xs">Notes</Label><Textarea value={noteText} onChange={e => setNoteText(e.target.value)} className="text-xs min-h-[80px]" placeholder="Add a note..." /></div>
+          </div>
+          <Button size="sm" onClick={saveNote} className="w-full">Save</Button>
         </DialogContent>
       </Dialog>
 
@@ -136,66 +150,67 @@ export default function BudgetPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{sh('Category', 'category')}</TableHead>
                 <TableHead>{sh('Description', 'description')}</TableHead>
                 <TableHead className="text-right">{sh('Labor', 'labor', 'justify-end')}</TableHead>
                 <TableHead className="text-right">{sh('Material', 'material', 'justify-end')}</TableHead>
-                <TableHead>{sh('Sub', 'subcontractor')}</TableHead>
                 <TableHead>{sh('Status', 'status')}</TableHead>
-                <TableHead className="w-16"></TableHead>
+                <TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.map(b => (
-                <TableRow key={b.id}>
-                  {editId === b.id ? (
-                    <>
-                      <TableCell>
-                        <select value={editData.category || ''} onChange={e => setEditData(d => ({ ...d, category: e.target.value }))} className="h-6 text-[10px] border rounded px-1 bg-background">
-                          {['Site','Exterior','Interior','Owner Purchased','Landscape','Extras'].map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                      </TableCell>
-                      <TableCell><Input value={editData.description || ''} onChange={e => setEditData(d => ({ ...d, description: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
-                      <TableCell><Input value={editData.labor || 0} onChange={e => setEditData(d => ({ ...d, labor: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" /></TableCell>
-                      <TableCell><Input value={editData.material || 0} onChange={e => setEditData(d => ({ ...d, material: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" /></TableCell>
-                      <TableCell><Input value={editData.subcontractor || ''} onChange={e => setEditData(d => ({ ...d, subcontractor: e.target.value }))} className="h-6 text-xs px-1 w-24" /></TableCell>
-                      <TableCell>
-                        <select value={editData.status} onChange={e => setEditData(d => ({ ...d, status: e.target.value as BudgetItem['status'] }))} className="h-6 text-[10px] border rounded px-1 bg-background">
-                          <option value="pending">pending</option><option value="in-progress">in-progress</option><option value="complete">complete</option>
-                        </select>
-                      </TableCell>
-                      <TableCell className="flex gap-1">
-                        <button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button>
-                        <button onClick={cancelEdit} className="text-destructive"><X size={14} /></button>
-                      </TableCell>
-                    </>
-                  ) : (
-                    <>
-                      <TableCell className="text-muted-foreground text-[11px]">{b.category}</TableCell>
-                      <TableCell className="font-medium">{b.description}</TableCell>
-                      <TableCell className="text-right tabular-nums">{fmt(b.labor)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{fmt(b.material)}</TableCell>
-                      <TableCell className="text-muted-foreground">{b.subcontractor || '—'}</TableCell>
-                      <TableCell>{statusBadge(b.status)}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1.5">
-                          <button onClick={() => openNote(b)} className={`hover:text-foreground ${b.notes ? 'text-primary' : 'text-muted-foreground/40'}`} title={b.notes || 'Add note'}>
-                            <MessageSquare size={12} />
-                          </button>
-                          <button onClick={() => startEdit(b)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button>
-                        </div>
-                      </TableCell>
-                    </>
-                  )}
-                </TableRow>
-              ))}
+              {sortedByCategory.map((item, idx) => {
+                if ('_header' in item) {
+                  return (
+                    <TableRow key={`header-${item._header}`} className="bg-accent/60">
+                      <TableCell colSpan={5} className="font-bold text-xs uppercase tracking-wider text-accent-foreground py-1.5">{item._header}</TableCell>
+                    </TableRow>
+                  );
+                }
+                const b = item as BudgetItem;
+                const hasDetails = b.notes || b.subcontractor;
+                return (
+                  <TableRow key={b.id}>
+                    {editId === b.id ? (
+                      <>
+                        <TableCell><Input value={editData.description || ''} onChange={e => setEditData(d => ({ ...d, description: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
+                        <TableCell><Input value={editData.labor || 0} onChange={e => setEditData(d => ({ ...d, labor: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" /></TableCell>
+                        <TableCell><Input value={editData.material || 0} onChange={e => setEditData(d => ({ ...d, material: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" /></TableCell>
+                        <TableCell>
+                          <select value={editData.status} onChange={e => setEditData(d => ({ ...d, status: e.target.value as BudgetItem['status'] }))} className="h-6 text-[10px] border rounded px-1 bg-background">
+                            <option value="pending">pending</option><option value="in-progress">in-progress</option><option value="complete">complete</option>
+                          </select>
+                        </TableCell>
+                        <TableCell className="flex gap-1">
+                          <button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button>
+                          <button onClick={cancelEdit} className="text-destructive"><X size={14} /></button>
+                        </TableCell>
+                      </>
+                    ) : (
+                      <>
+                        <TableCell className="font-medium">{b.description}</TableCell>
+                        <TableCell className="text-right tabular-nums">{fmt(b.labor)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{fmt(b.material)}</TableCell>
+                        <TableCell>{statusBadge(b.status)}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1.5">
+                            <button onClick={() => openNote(b)} className={`hover:text-foreground ${hasDetails ? 'text-primary' : 'text-muted-foreground/40'}`} title={hasDetails ? `${b.subcontractor || ''}${b.subcontractor && b.notes ? ' | ' : ''}${b.notes || ''}` : 'Add details'}>
+                              <MessageSquare size={12} />
+                            </button>
+                            <button onClick={() => startEdit(b)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button>
+                          </div>
+                        </TableCell>
+                      </>
+                    )}
+                  </TableRow>
+                );
+              })}
             </TableBody>
             <TableFooter>
               <TableRow>
-                <TableCell colSpan={2} className="font-semibold">Total</TableCell>
+                <TableCell className="font-semibold">Total</TableCell>
                 <TableCell className="text-right font-semibold tabular-nums">{fmtN(grandLabor)}</TableCell>
                 <TableCell className="text-right font-semibold tabular-nums">{fmtN(grandMaterial)}</TableCell>
-                <TableCell colSpan={3} />
+                <TableCell colSpan={2} />
               </TableRow>
             </TableFooter>
           </Table>
