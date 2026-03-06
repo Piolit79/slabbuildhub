@@ -222,8 +222,8 @@ export default function Dashboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {subSummary.map(row => (
-                <TableRow key={row.name} className={row.balance === 0 ? 'text-muted-foreground/50' : ''}>
+              {subSummary.map((row, idx) => (
+                <TableRow key={row.name} className={`${row.balance === 0 ? 'text-muted-foreground/50' : ''} ${idx % 2 === 0 ? 'bg-[#c37e87]/8' : ''}`}>
                   <TableCell className="font-medium">{row.name}</TableCell>
                   <TableCell className="text-muted-foreground">{row.detail || '—'}</TableCell>
                   <TableCell className="text-right tabular-nums">{fmt(row.contract)}</TableCell>
