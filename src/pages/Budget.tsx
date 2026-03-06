@@ -151,14 +151,14 @@ export default function BudgetPage() {
 
       <Card>
         <CardContent className="p-0">
-          <Table>
+          <Table className="table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[40%]">{sh('Description', 'description')}</TableHead>
-                {!isMobile && <TableHead className="text-right whitespace-nowrap">{sh('Labor', 'labor', 'justify-end')}</TableHead>}
-                <TableHead className="text-right whitespace-nowrap">{isMobile ? sh('Total', 'labor', 'justify-end') : sh('Material', 'material', 'justify-end')}</TableHead>
-                <TableHead className="whitespace-nowrap">{sh('Status', 'status')}</TableHead>
-                <TableHead className="text-right"></TableHead>
+                <TableHead style={{ width: '40%' }}>{sh('Description', 'description')}</TableHead>
+                {!isMobile && <TableHead className="text-right whitespace-nowrap" style={{ width: '12%' }}>{sh('Labor', 'labor', 'justify-end')}</TableHead>}
+                <TableHead className="text-right whitespace-nowrap" style={{ width: '12%' }}>{isMobile ? sh('Total', 'labor', 'justify-end') : sh('Material', 'material', 'justify-end')}</TableHead>
+                <TableHead className="whitespace-nowrap" style={{ width: '12%' }}>{sh('Status', 'status')}</TableHead>
+                <TableHead className="text-right" style={{ width: '24%' }}></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
