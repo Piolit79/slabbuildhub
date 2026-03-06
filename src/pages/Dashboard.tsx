@@ -56,22 +56,15 @@ export default function Dashboard() {
     });
   }, [contracts, payments, sortKey, sortDir]);
 
-  // Budget categories from Excel: Site, Exterior, Interior, Fixtures & Fittings, Landscape, Extras
-  const budgetCategories = ['Site', 'Exterior', 'Interior', 'Fixtures & Fittings', 'Landscape', 'Extras'];
-  const budgetChartData = budgetCategories.map(cat => ({
-    name: cat,
-    total: budget.filter(b => b.category === cat).reduce((s, b) => s + b.labor + b.material, 0),
-  })).filter(d => d.total > 0);
-
-  // Pie chart uses same budget categories
-  const COLORS = [
-    'hsl(353, 49%, 54%)', // primary rose
-    'hsl(32, 90%, 45%)',  // warning orange
-    'hsl(142, 50%, 38%)', // success green
-    'hsl(210, 60%, 55%)', // blue
-    'hsl(280, 50%, 55%)', // purple
-    'hsl(353, 30%, 70%)', // secondary rose
+  // Pie chart: Hard Cost vs Fees
+  const hardCost = budget.reduce((s, b) => s + b.labor + b.material, 0);
+  const designFee = Math.round(hardCost * 0.10);
+  const buildFee = Math.round(hardCost * 0.15);
+  const budgetChartData = [
+    { name: 'Budget Hard Cost', total: hardCost },
+    { name: 'Budget Fees', total: designFee + buildFee },
   ];
+  const COLORS = ['#c37e87', '#4f81bd'];
 
   const sh = (label: string, key: string, cls?: string) => (
     <SortBtn label={label} active={sortKey === key} dir={sortDir} onClick={() => toggle(key)} className={cls} />
