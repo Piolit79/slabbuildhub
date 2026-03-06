@@ -150,29 +150,33 @@ export default function Dashboard() {
                   { name: 'Other Hard & Soft Costs', total: t.otherSoftHardCosts },
                   { name: 'Total Paid to Date', total: t.totalPaidToDate },
                   { name: 'Current Projected Total', total: t.projectedTotal },
-                ]} layout="vertical" margin={{ left: 10, right: 90 }}>
+                ]} layout="vertical" margin={{ left: 10, right: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 8%, 88%)" />
-                  <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => v >= 1000000 ? `$${(v / 1000000).toFixed(1)}M` : `$${(v / 1000).toFixed(0)}k`} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} width={130} />
                   <Tooltip formatter={(val: number) => fmt(val)} />
                   <Bar
                     dataKey="total"
-                    fill="hsl(353, 49%, 54%)"
+                    fill="#c24f5d"
                     radius={[0, 3, 3, 0]}
-                    label={{ position: 'right', fontSize: 9, formatter: (v: number) => fmt(v) }}
+                    label={({ x, y, width, height, value }: any) => (
+                      <text x={x + width - 8} y={y + height / 2} dy={4} textAnchor="end" fontSize={9} fill="#fff" fontWeight={600}>
+                        {fmt(value)}
+                      </text>
+                    )}
                     shape={(props: any) => {
-                      const { x, y, width, height, fill } = props;
+                      const { x, y, width, height } = props;
                       const depth = 6;
                       return (
                         <g>
-                          <rect x={x} y={y} width={width} height={height} fill={fill} rx={2} />
+                          <rect x={x} y={y} width={width} height={height} fill="#c24f5d" rx={2} />
                           <polygon
                             points={`${x + width},${y} ${x + width + depth},${y - depth} ${x + width + depth},${y + height - depth} ${x + width},${y + height}`}
-                            fill="hsl(353, 49%, 44%)"
+                            fill="#a3404c"
                           />
                           <polygon
                             points={`${x},${y} ${x + depth},${y - depth} ${x + width + depth},${y - depth} ${x + width},${y}`}
-                            fill="hsl(353, 49%, 62%)"
+                            fill="#d4727e"
                           />
                         </g>
                       );
