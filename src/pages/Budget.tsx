@@ -206,7 +206,7 @@ export default function BudgetPage() {
               })}
             </TableBody>
             <TableFooter>
-              <TableRow>
+              <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
                 <TableCell className="font-semibold">Labor / Material Totals</TableCell>
                 <TableCell className="text-right font-semibold tabular-nums">{fmtN(grandLabor)}</TableCell>
                 <TableCell className="text-right font-semibold tabular-nums">{fmtN(grandMaterial)}</TableCell>
@@ -217,7 +217,7 @@ export default function BudgetPage() {
                 <TableCell colSpan={2} className="text-right font-semibold tabular-nums">{fmtN(hardCostTotal)}</TableCell>
                 <TableCell colSpan={2} />
               </TableRow>
-              <TableRow>
+              <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
                 <TableCell className="font-semibold">Design Fee (10%)</TableCell>
                 <TableCell colSpan={2} className="text-right font-semibold tabular-nums">{fmtN(designFee)}</TableCell>
                 <TableCell colSpan={2} />
