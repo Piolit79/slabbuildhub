@@ -35,7 +35,7 @@ export default function BudgetPage() {
   const toggle = (k: string) => { if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortKey(k); setSortDir('asc'); } };
 
   const filtered = items.filter(b => b.project_id === selectedProject.id);
-  const categories = ['Site', 'Exterior', 'Interior', 'Owner Purchased', 'Landscape', 'Extras'];
+  const categories = ['Site', 'Exterior', 'Interior', 'Fixtures & Fittings', 'Landscape', 'Extras'];
 
   const sortedByCategory = useMemo(() => {
     const result: (BudgetItem | { _header: string })[] = [];
@@ -84,8 +84,8 @@ export default function BudgetPage() {
   };
 
   const statusBadge = (s: string) => {
-    const c: Record<string, string> = { complete: 'bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))]', 'in-progress': 'bg-primary text-primary-foreground', pending: 'bg-secondary text-secondary-foreground' };
-    return <Badge className={`text-[9px] px-1 py-0 ${c[s] || ''}`}>{s}</Badge>;
+    const c: Record<string, string> = { complete: 'bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))]', contracted: 'bg-primary text-primary-foreground', proposed: 'bg-secondary text-secondary-foreground', estimated: 'bg-[hsl(var(--warning))] text-[hsl(var(--warning-foreground))]' };
+    return <Badge className={`text-[9px] px-1 py-0 capitalize ${c[s] || ''}`}>{s}</Badge>;
   };
 
   const sh = (label: string, key: string, cls?: string) => <SortBtn label={label} active={sortKey === key} dir={sortDir} onClick={() => toggle(key)} className={cls} />;
@@ -105,7 +105,7 @@ export default function BudgetPage() {
             <form onSubmit={handleAdd} className="space-y-3">
               <div className="space-y-1"><Label className="text-xs">Category</Label>
                 <Select name="category" defaultValue="Site"><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>{['Site','Exterior','Interior','Owner Purchased','Landscape','Extras'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  <SelectContent>{['Site','Exterior','Interior','Fixtures & Fittings','Landscape','Extras'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1"><Label className="text-xs">Description</Label><Input name="description" required className="h-8 text-xs" /></div>
@@ -115,8 +115,8 @@ export default function BudgetPage() {
               </div>
               <div className="space-y-1"><Label className="text-xs">Subcontractor</Label><Input name="subcontractor" className="h-8 text-xs" /></div>
               <div className="space-y-1"><Label className="text-xs">Status</Label>
-                <Select name="status" defaultValue="pending"><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="pending">Pending</SelectItem><SelectItem value="in-progress">In Progress</SelectItem><SelectItem value="complete">Complete</SelectItem></SelectContent>
+                <Select name="status" defaultValue="estimated"><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="estimated">Estimated</SelectItem><SelectItem value="proposed">Proposed</SelectItem><SelectItem value="contracted">Contracted</SelectItem><SelectItem value="complete">Complete</SelectItem></SelectContent>
                 </Select>
               </div>
               <Button type="submit" size="sm" className="w-full">Save</Button>
@@ -177,7 +177,7 @@ export default function BudgetPage() {
                         <TableCell><Input value={editData.material || 0} onChange={e => setEditData(d => ({ ...d, material: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" /></TableCell>
                         <TableCell>
                           <select value={editData.status} onChange={e => setEditData(d => ({ ...d, status: e.target.value as BudgetItem['status'] }))} className="h-6 text-[10px] border rounded px-1 bg-background">
-                            <option value="pending">pending</option><option value="in-progress">in-progress</option><option value="complete">complete</option>
+                            <option value="estimated">estimated</option><option value="proposed">proposed</option><option value="contracted">contracted</option><option value="complete">complete</option>
                           </select>
                         </TableCell>
                         <TableCell className="flex gap-1">

@@ -50,7 +50,7 @@ export interface BudgetItem {
   optional: number;
   subcontractor: string;
   notes: string;
-  status: 'pending' | 'in-progress' | 'complete';
+  status: 'complete' | 'contracted' | 'proposed' | 'estimated';
 }
 
 export interface Draw {
