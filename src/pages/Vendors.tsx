@@ -50,8 +50,7 @@ export default function VendorsPage() {
   };
 
   const typeBadge = (type: string) => {
-    const c: Record<string, string> = { Subcontractor: 'bg-primary text-primary-foreground', Vendor: 'bg-secondary text-secondary-foreground', Consultant: 'bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))]' };
-    return <Badge className={`text-[9px] px-1 py-0 ${c[type] || ''}`}>{type}</Badge>;
+    return <Badge className="text-[9px] px-1 py-0 text-white" style={{ backgroundColor: '#c37e87' }}>{type}</Badge>;
   };
 
   const sh = (label: string, key: string) => <SortBtn label={label} active={sortKey === key} dir={sortDir} onClick={() => toggle(key)} />;
