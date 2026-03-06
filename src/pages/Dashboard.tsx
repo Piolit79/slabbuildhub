@@ -119,27 +119,10 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Budget by Category</CardTitle>
+            <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Project Balances</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
-            <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={budgetChartData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={3} dataKey="total" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-                    {budgetChartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip formatter={(val: number) => fmt(val)} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Financial Summary</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-3">
-            <div className="h-72">
+            <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={[
                   { name: 'Contract Owed', total: t.contractOwed },
@@ -150,17 +133,24 @@ export default function Dashboard() {
                   { name: 'Other Hard & Soft Costs', total: t.otherSoftHardCosts },
                   { name: 'Total Paid to Date', total: t.totalPaidToDate },
                   { name: 'Current Projected Total', total: t.projectedTotal },
-                ]} layout="vertical" margin={{ left: 10, right: 10 }}>
+                ]} margin={{ top: 20, bottom: 60 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 8%, 88%)" />
-                  <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => v >= 1000000 ? `$${(v / 1000000).toFixed(1)}M` : `$${(v / 1000).toFixed(0)}k`} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} width={130} />
+                  <XAxis type="category" dataKey="name" tick={(props: any) => {
+                    const { x, y, payload } = props;
+                    return (
+                      <text x={x} y={y + 10} textAnchor="end" fontSize={8} transform={`rotate(-35, ${x}, ${y})`} fill="currentColor">
+                        {payload.value}
+                      </text>
+                    );
+                  }} height={70} />
+                  <YAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => v >= 1000000 ? `$${(v / 1000000).toFixed(1)}M` : `$${(v / 1000).toFixed(0)}k`} />
                   <Tooltip formatter={(val: number) => fmt(val)} />
                   <Bar
                     dataKey="total"
                     fill="#c37e87"
-                    radius={[0, 3, 3, 0]}
-                    label={({ x, y, width, height, value }: any) => (
-                      <text x={x + width - 8} y={y + height / 2} dy={4} textAnchor="end" fontSize={9} fill="#fff" fontWeight={600}>
+                    radius={[3, 3, 0, 0]}
+                    label={({ x, y, width, value }: any) => (
+                      <text x={x + width / 2} y={y - 6} textAnchor="middle" fontSize={8} fill="hsl(var(--foreground))" fontWeight={600}>
                         {fmt(value)}
                       </text>
                     )}
@@ -183,6 +173,23 @@ export default function Dashboard() {
                     }}
                   />
                 </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-1 pt-3 px-4">
+            <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Projected Project Budget</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-3">
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={budgetChartData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={3} dataKey="total" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                    {budgetChartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(val: number) => fmt(val)} />
+                </PieChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
