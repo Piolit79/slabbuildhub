@@ -172,26 +172,35 @@ export default function Dashboard() {
             <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Projected Project Budget</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={budgetChartData} cx="50%" cy="50%" innerRadius="25%" outerRadius="90%" paddingAngle={2} dataKey="total" label={({ cx, cy, midAngle, innerRadius, outerRadius, name, value }: any) => {
-                    const RADIAN = Math.PI / 180;
-                    const radius = (innerRadius + outerRadius) / 2;
-                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                    return (
-                      <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize={11} fill="#fff" fontWeight={600}>
-                        <tspan x={x} dy="-0.6em">{name}</tspan>
-                        <tspan x={x} dy="1.4em">{fmt(value)}</tspan>
-                      </text>
-                    );
-                  }} labelLine={false}>
-                    {budgetChartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Pie>
-                  <Tooltip formatter={(val: number) => fmt(val)} />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="h-72 flex items-center">
+              <div className="flex-1 h-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={budgetChartData} cx="50%" cy="50%" innerRadius="40%" outerRadius="80%" paddingAngle={3} dataKey="total" label={({ cx, cy, midAngle, innerRadius, outerRadius, value }: any) => {
+                      const RADIAN = Math.PI / 180;
+                      const radius = (innerRadius + outerRadius) / 2;
+                      const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                      const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                      return (
+                        <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize={11} fill="#fff" fontWeight={600}>
+                          {fmt(value)}
+                        </text>
+                      );
+                    }} labelLine={false}>
+                      {budgetChartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip formatter={(val: number) => fmt(val)} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex flex-col gap-3 pl-4 pr-2">
+                {budgetChartData.map((d, i) => (
+                  <div key={d.name} className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: COLORS[i] }} />
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{d.name}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>
