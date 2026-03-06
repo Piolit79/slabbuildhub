@@ -15,7 +15,7 @@ const navItems = [
 ];
 
 const insuranceItems = [
-  { to: '/insurance', label: 'Dashboard', icon: Shield, exact: true },
+  { to: '/insurance', label: 'COI Tracker', icon: Shield, exact: true },
   { to: '/insurance/projects', label: 'Projects', icon: FolderKanban, exact: false },
   { to: '/insurance/files', label: 'Files', icon: FolderOpen, exact: false },
   { to: '/insurance/settings', label: 'COI Settings', icon: Settings, exact: false },
@@ -71,10 +71,10 @@ export default function AppSidebar() {
           );
         })}
 
-        {/* COI Tracker Section */}
+        {/* Insurance Hub Section */}
         {!(collapsed && !isMobile) && (
           <span className="block text-base font-semibold uppercase tracking-widest text-muted-foreground px-3 pb-2 pt-4">
-            COI Tracker
+            Insurance Hub
           </span>
         )}
         {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
