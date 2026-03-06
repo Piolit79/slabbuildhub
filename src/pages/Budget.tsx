@@ -84,8 +84,8 @@ export default function BudgetPage() {
   };
 
   const statusBadge = (s: string) => {
-    const c: Record<string, string> = { complete: 'bg-[hsl(var(--success))] text-[hsl(var(--success-foreground))]', contracted: 'bg-primary text-primary-foreground', proposed: 'bg-secondary text-secondary-foreground', estimated: 'bg-[hsl(var(--warning))] text-[hsl(var(--warning-foreground))]' };
-    return <Badge className={`text-[9px] px-1 py-0 capitalize ${c[s] || ''}`}>{s}</Badge>;
+    const c: Record<string, string> = { contracted: '#c37e87', complete: '#7ba889', proposed: '#7b9ec3', estimated: '#c3a87b' };
+    return <Badge className="text-[9px] px-1 py-0 capitalize text-white" style={{ backgroundColor: c[s] || '#c37e87' }}>{s}</Badge>;
   };
 
   const sh = (label: string, key: string, cls?: string) => <SortBtn label={label} active={sortKey === key} dir={sortDir} onClick={() => toggle(key)} className={cls} />;
