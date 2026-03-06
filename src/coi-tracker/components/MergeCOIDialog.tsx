@@ -8,15 +8,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/coi-tracker/components/ui/dialog';
-import { Button } from '@/coi-tracker/components/ui/button';
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/coi-tracker/components/ui/select';
+} from '@/components/ui/select';
 import { Loader2, Merge, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';

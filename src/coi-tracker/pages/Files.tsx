@@ -1,6 +1,6 @@
 import { AppLayout } from '@/coi-tracker/components/AppLayout';
-import { Card } from '@/coi-tracker/components/ui/card';
-import { Button } from '@/coi-tracker/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { supabase } from '@/coi-tracker/integrations/supabase/client';
 import { downloadStorageFileBlob, createSignedFileUrl } from '@/coi-tracker/lib/storageFile';
 import { useState } from 'react';

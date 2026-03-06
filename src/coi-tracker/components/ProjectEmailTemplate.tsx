@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Card } from '@/coi-tracker/components/ui/card';
-import { Input } from '@/coi-tracker/components/ui/input';
-import { Label } from '@/coi-tracker/components/ui/label';
-import { Button } from '@/coi-tracker/components/ui/button';
-import { Textarea } from '@/coi-tracker/components/ui/textarea';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUpdateProject } from '@/coi-tracker/hooks/useProjects';

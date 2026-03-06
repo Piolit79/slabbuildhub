@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/coi-tracker/components/ui/dialog';
-import { Button } from '@/coi-tracker/components/ui/button';
-import { Input } from '@/coi-tracker/components/ui/input';
-import { Label } from '@/coi-tracker/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/coi-tracker/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus } from 'lucide-react';
 import { useCreateProject } from '@/coi-tracker/hooks/useProjects';
 import { useToast } from '@/hooks/use-toast';

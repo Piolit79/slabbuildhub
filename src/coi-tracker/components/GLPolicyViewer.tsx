@@ -1,5 +1,5 @@
 import { GLPolicy } from '@/coi-tracker/types';
-import { Card } from '@/coi-tracker/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Shield, CheckCircle2, XCircle, HelpCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

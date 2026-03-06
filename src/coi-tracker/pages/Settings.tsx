@@ -1,10 +1,10 @@
 import { AppLayout } from '@/coi-tracker/components/AppLayout';
 import { useGCSettings, useUpdateGCSettings } from '@/coi-tracker/hooks/useGCSettings';
-import { Card } from '@/coi-tracker/components/ui/card';
-import { Input } from '@/coi-tracker/components/ui/input';
-import { Label } from '@/coi-tracker/components/ui/label';
-import { Switch } from '@/coi-tracker/components/ui/switch';
-import { Button } from '@/coi-tracker/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
 import { Upload, FileText, Loader2, CheckCircle, Send } from 'lucide-react';
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';

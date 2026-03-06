@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Button } from '@/coi-tracker/components/ui/button';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/coi-tracker/components/ui/dialog';
+} from '@/components/ui/dialog';
 import { Search, Loader2, AlertTriangle, CheckCircle2, Info, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';

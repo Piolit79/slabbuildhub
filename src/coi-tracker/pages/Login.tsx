@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/coi-tracker/context/AuthContext';
-import { Button } from '@/coi-tracker/components/ui/button';
-import { Input } from '@/coi-tracker/components/ui/input';
-import { Label } from '@/coi-tracker/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Shield, AlertCircle } from 'lucide-react';
 import slabLogo from '@/assets/slab-builders-logo.svg';
 

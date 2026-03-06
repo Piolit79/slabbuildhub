@@ -1,7 +1,7 @@
 import { COI } from '@/coi-tracker/types';
 import { StatusBadge } from './StatusBadge';
 import { ComplianceBadge } from './ComplianceBadge';
-import { Card } from '@/coi-tracker/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Building2, Calendar, FileText, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

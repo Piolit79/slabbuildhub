@@ -1,15 +1,15 @@
 import { AppLayout } from '@/coi-tracker/components/AppLayout';
-import { Card } from '@/coi-tracker/components/ui/card';
-import { Button } from '@/coi-tracker/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useProjects } from '@/coi-tracker/hooks/useProjects';
 import { useAllCOIs } from '@/coi-tracker/hooks/useCOIs';
 import { useGCSettings } from '@/coi-tracker/hooks/useGCSettings';
 import { useInactiveCOIs } from '@/coi-tracker/hooks/useInactiveCOIs';
-import { Switch } from '@/coi-tracker/components/ui/switch';
+import { Switch } from '@/components/ui/switch';
 import { StatusBadge } from '@/coi-tracker/components/StatusBadge';
 import { COIDetailContent, COIDetailHeader } from '@/coi-tracker/components/COIDetailContent';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/coi-tracker/components/ui/hover-card';
-import { ScrollArea } from '@/coi-tracker/components/ui/scroll-area';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 import {
   ChevronDown,
