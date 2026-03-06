@@ -129,7 +129,7 @@ export default function PaymentsPage() {
                           </>
                         ) : (
                           <>
-                            <TableCell className="tabular-nums">{format(new Date(p.date), 'MM/dd/yy')}</TableCell>
+                            <TableCell className="tabular-nums">{format(new Date(p.date), 'MM.dd.yy')}</TableCell>
                             <TableCell className="font-medium">{p.name}</TableCell>
                             <TableCell className="text-right tabular-nums font-medium">{fmt(p.amount)}</TableCell>
                             <TableCell>{p.form}</TableCell>
