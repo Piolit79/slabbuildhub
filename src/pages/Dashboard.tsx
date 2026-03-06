@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useProject } from '@/contexts/ProjectContext';
-import { mockContracts, mockPayments, mockDraws, mockBudgetItems, mockVendors } from '@/data/mock-data';
+import { mockContracts, mockPayments, mockDraws, mockBudgetItems, dashboardTotals, mockVendors } from '@/data/mock-data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DollarSign, TrendingDown, Landmark, Calculator, FileText, Wallet, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
@@ -33,17 +33,18 @@ export default function Dashboard() {
   const contractPaid = payments.filter(p => p.category === 'subcontractor').reduce((s, p) => s + p.amount, 0);
   const contractBalance = contractOwed - contractPaid;
   const drawRequested = draws.reduce((s, d) => s + d.amount, 0);
+  const allPaymentsTotal = payments.reduce((s, p) => s + p.amount, 0);
+  const drawBalance = drawRequested - allPaymentsTotal;
   const softCostStudioLAB = payments.filter(p => p.name === 'StudioLAB' && p.category === 'soft_costs').reduce((s, p) => s + p.amount, 0);
   const softCostSLAB = payments.filter(p => p.name === 'SLAB Builders' && p.category === 'soft_costs').reduce((s, p) => s + p.amount, 0);
   const materialsVendorsTotal = payments.filter(p => p.category === 'materials').reduce((s, p) => s + p.amount, 0);
-  const fixturesFittingsTotal = payments.filter(p => p.name === 'Fixtures & Fittings' || (p.category === 'materials' && mockVendors.find(v => v.name === p.name)?.detail?.toLowerCase().includes('fixture'))).reduce((s, p) => s + p.amount, 0) - materialsVendorsTotal;
+  const fixturesFittingsTotal = payments.filter(p => p.category === 'materials' && mockVendors.find(v => v.name === p.name)?.detail?.toLowerCase().includes('fixture')).reduce((s, p) => s + p.amount, 0);
   const fieldLaborTotal = payments.filter(p => p.category === 'field_labor').reduce((s, p) => s + p.amount, 0);
-  const totalPaidToDate = payments.reduce((s, p) => s + p.amount, 0);
-  const otherSoftHardCosts = totalPaidToDate - contractPaid;
+  const otherSoftHardCosts = allPaymentsTotal - contractPaid;
+  const totalPaidToDate = allPaymentsTotal;
   const hardCostBudget = budget.reduce((s, b) => s + b.labor + b.material, 0);
   const budgetFees = Math.round(hardCostBudget * 0.25);
   const budgetTotal = hardCostBudget + budgetFees;
-  const drawBalance = drawRequested - totalPaidToDate;
   const projectedTotal = totalPaidToDate + contractBalance;
 
   const [sortKey, setSortKey] = useState('balance');
