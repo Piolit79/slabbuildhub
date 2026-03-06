@@ -15,28 +15,30 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <ProjectProvider>
-          <Routes>
-            <Route element={<AppLayout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/contracts" element={<ContractsPage />} />
-              <Route path="/payments" element={<PaymentsPage />} />
-              <Route path="/budget" element={<BudgetPage />} />
-              <Route path="/vendors" element={<VendorsPage />} />
-              <Route path="/draws" element={<DrawsPage />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </ProjectProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <ProjectProvider>
+            <Routes>
+              <Route element={<AppLayout />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/contracts" element={<ContractsPage />} />
+                <Route path="/payments" element={<PaymentsPage />} />
+                <Route path="/budget" element={<BudgetPage />} />
+                <Route path="/vendors" element={<VendorsPage />} />
+                <Route path="/draws" element={<DrawsPage />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ProjectProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
