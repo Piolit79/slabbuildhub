@@ -223,7 +223,7 @@ export default function Dashboard() {
             </TableHeader>
             <TableBody>
               {subSummary.map((row, idx) => (
-                <TableRow key={row.name} className={`${row.balance === 0 ? 'text-muted-foreground/50' : ''} ${idx % 2 === 0 ? 'bg-[#c37e87]/8' : ''}`}>
+                <TableRow key={row.name} className={`${row.balance === 0 ? 'text-muted-foreground/50' : ''}`} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
                   <TableCell className="font-medium">{row.name}</TableCell>
                   <TableCell className="text-muted-foreground">{row.detail || '—'}</TableCell>
                   <TableCell className="text-right tabular-nums">{fmt(row.contract)}</TableCell>
