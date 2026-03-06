@@ -216,7 +216,7 @@ export default function Dashboard() {
                 {!isMobile && <TableHead>{sh('Detail', 'detail')}</TableHead>}
                 <TableHead className="text-right">{sh('Contract', 'contract', 'justify-end')}</TableHead>
                 {!isMobile && <TableHead className="text-right">{sh('Change Order', 'changeOrders', 'justify-end')}</TableHead>}
-                <TableHead className="text-right">{sh('Credit', 'credits', 'justify-end')}</TableHead>
+                {!isMobile && <TableHead className="text-right">{sh('Credit', 'credits', 'justify-end')}</TableHead>}
                 {!isMobile && <TableHead className="text-right">{sh('Total Owed', 'owed', 'justify-end')}</TableHead>}
                 <TableHead className="text-right">{sh('Payments', 'paid', 'justify-end')}</TableHead>
                 <TableHead className="text-right">{sh('Balance', 'balance', 'justify-end')}</TableHead>
@@ -229,7 +229,7 @@ export default function Dashboard() {
                   {!isMobile && <TableCell>{row.detail || '—'}</TableCell>}
                   <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(row.contract)}</TableCell>
                   {!isMobile && <TableCell className="text-right tabular-nums">{row.changeOrders ? fmt(row.changeOrders) : '—'}</TableCell>}
-                  <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{row.credits ? fmt(row.credits) : '—'}</TableCell>
+                  {!isMobile && <TableCell className="text-right tabular-nums">{row.credits ? fmt(row.credits) : '—'}</TableCell>}
                   {!isMobile && <TableCell className="text-right tabular-nums">{fmt(row.owed)}</TableCell>}
                   <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(row.paid)}</TableCell>
                   <TableCell className={`text-right tabular-nums font-semibold text-[11px] md:text-sm ${row.balance === 0 ? '' : 'text-[#c37e87]'}`}>
