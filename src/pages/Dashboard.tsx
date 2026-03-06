@@ -56,8 +56,8 @@ export default function Dashboard() {
     });
   }, [contracts, payments, sortKey, sortDir]);
 
-  // Budget categories from Excel: Site, Exterior, Interior, Owner Purchased, Landscape, Extras
-  const budgetCategories = ['Site', 'Exterior', 'Interior', 'Owner Purchased', 'Landscape', 'Extras'];
+  // Budget categories from Excel: Site, Exterior, Interior, Fixtures & Fittings, Landscape, Extras
+  const budgetCategories = ['Site', 'Exterior', 'Interior', 'Fixtures & Fittings', 'Landscape', 'Extras'];
   const budgetChartData = budgetCategories.map(cat => ({
     name: cat,
     total: budget.filter(b => b.category === cat).reduce((s, b) => s + b.labor + b.material, 0),
