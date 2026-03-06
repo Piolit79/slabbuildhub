@@ -6,9 +6,9 @@ import slabLogo from '@/assets/slab-builders-logo.svg';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/budget', label: 'Budget', icon: Calculator },
   { to: '/contracts', label: 'Contracts', icon: FileText },
   { to: '/payments', label: 'Payments', icon: CreditCard },
-  { to: '/budget', label: 'Budget', icon: Calculator },
   { to: '/vendors', label: 'Vendors', icon: Users },
   { to: '/draws', label: 'Draws', icon: Landmark },
 ];
