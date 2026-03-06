@@ -55,7 +55,6 @@ export default function DrawsPage() {
     setOpen(false);
   };
 
-  let runningTotal = 0;
   const sh = (label: string, key: string, cls?: string) => <SortBtn label={label} active={sortKey === key} dir={sortDir} onClick={() => toggle(key)} className={cls} />;
 
   return (
@@ -98,13 +97,11 @@ export default function DrawsPage() {
                 <TableHead>{sh('Draw #', 'draw_number')}</TableHead>
                 <TableHead>{sh('Date', 'date')}</TableHead>
                 <TableHead className="text-right">{sh('Amt', 'amount', 'justify-end')}</TableHead>
-                {!isMobile && <TableHead className="text-right">Running Total</TableHead>}
                 <TableHead className={isMobile ? 'w-8' : 'w-10'}></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sorted.map((d, idx) => {
-                runningTotal += d.amount;
                 return (
                   <TableRow key={d.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
                     {editId === d.id ? (
@@ -120,7 +117,6 @@ export default function DrawsPage() {
                           <TableCell><Input value={editData.draw_number || ''} onChange={e => setEditData(x => ({ ...x, draw_number: parseInt(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-16 px-1" /></TableCell>
                           <TableCell><Input value={editData.date || ''} onChange={e => setEditData(x => ({ ...x, date: e.target.value }))} type="date" className="h-6 text-xs w-28 px-1" /></TableCell>
                           <TableCell className="text-right"><Input value={editData.amount || ''} onChange={e => setEditData(x => ({ ...x, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-xs w-28 px-1 text-right" /></TableCell>
-                          <TableCell />
                           <TableCell className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button><button onClick={cancelEdit} className="text-destructive"><X size={14} /></button></TableCell>
                         </>
                       )
@@ -129,7 +125,6 @@ export default function DrawsPage() {
                         <TableCell className="font-medium text-[11px]">Draw {d.draw_number.toString().padStart(3, '0')}</TableCell>
                         <TableCell className="tabular-nums text-[11px]">{format(new Date(d.date), 'MM.dd.yy')}</TableCell>
                         <TableCell className="text-right tabular-nums font-semibold text-[11px]">{fmt(d.amount)}</TableCell>
-                        {!isMobile && <TableCell className="text-right tabular-nums text-muted-foreground">{fmt(runningTotal)}</TableCell>}
                         <TableCell><button onClick={() => startEdit(d)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>
                       </>
                     )}
@@ -141,7 +136,6 @@ export default function DrawsPage() {
                   <TableCell><Input value={newData.draw_number || ''} onChange={e => setNewData(x => ({ ...x, draw_number: parseInt(e.target.value) || 0 }))} type="number" className="h-6 text-[10px] w-full md:w-16 px-1" placeholder="#" autoFocus /></TableCell>
                   <TableCell><Input value={newData.date || ''} onChange={e => setNewData(x => ({ ...x, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full md:w-28 px-1" /></TableCell>
                   <TableCell className="text-right"><Input value={newData.amount || ''} onChange={e => setNewData(x => ({ ...x, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-[10px] w-full md:w-28 px-1 text-right" placeholder="0.00" /></TableCell>
-                  {!isMobile && <TableCell />}
                   <TableCell><div className="flex gap-1">
                     <button onClick={() => { if (newData.date) { setDraws(prev => [...prev, { id: Date.now().toString(), project_id: selectedProject.id, draw_number: newData.draw_number || filtered.length + 1, date: newData.date!, amount: newData.amount || 0 }]); setAdding(false); setNewData({ date: '', draw_number: 0, amount: 0 }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
                     <button onClick={() => { setAdding(false); setNewData({ date: '', draw_number: 0, amount: 0 }); }} className="text-destructive"><X size={13} /></button>
@@ -149,7 +143,7 @@ export default function DrawsPage() {
                 </TableRow>
               ) : (
                 <TableRow>
-                  <TableCell colSpan={isMobile ? 4 : 5}>
+                  <TableCell colSpan={4}>
                     <button onClick={() => { setNewData(d => ({ ...d, draw_number: filtered.length + 1 })); setAdding(true); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
                   </TableCell>
                 </TableRow>
@@ -159,7 +153,7 @@ export default function DrawsPage() {
               <TableRow>
                 <TableCell colSpan={2} className="font-semibold text-[11px]">Total</TableCell>
                 <TableCell className="text-right font-semibold tabular-nums">{fmt(total)}</TableCell>
-                <TableCell colSpan={isMobile ? 1 : 2} />
+                <TableCell colSpan={1} />
               </TableRow>
             </TableFooter>
           </Table>
