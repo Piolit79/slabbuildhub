@@ -115,7 +115,7 @@ export default function Dashboard() {
             <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Project Balances</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
-            <div className="h-80">
+            <div className="h-96">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={[
                   { name: 'Contract Owed', total: t.contractOwed },
@@ -173,7 +173,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <div className="flex flex-col">
-              <div className="h-64">
+              <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={budgetChartData} cx="50%" cy="50%" innerRadius="28%" outerRadius="85%" paddingAngle={3} dataKey="total" label={({ cx, cy, midAngle, innerRadius, outerRadius, value }: any) => {
