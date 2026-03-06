@@ -42,16 +42,56 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
 TableRow.displayName = "TableRow";
 
 const TableHead = React.forwardRef<HTMLTableCellElement, React.ThHTMLAttributes<HTMLTableCellElement>>(
-  ({ className, ...props }, ref) => (
-    <th
-      ref={ref}
-      className={cn(
-        "h-7 px-2 text-left align-middle text-[11px] font-semibold uppercase tracking-wider text-accent-foreground [&:has([role=checkbox])]:pr-0",
-        className,
-      )}
-      {...props}
-    />
-  ),
+  ({ className, style, children, ...props }, ref) => {
+    const thRef = React.useRef<HTMLTableCellElement | null>(null);
+    const [width, setWidth] = React.useState<number | undefined>(undefined);
+
+    const handleMouseDown = React.useCallback((e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const th = thRef.current;
+      if (!th) return;
+      const startX = e.clientX;
+      const startWidth = th.offsetWidth;
+
+      const onMouseMove = (ev: MouseEvent) => {
+        const newWidth = Math.max(40, startWidth + (ev.clientX - startX));
+        setWidth(newWidth);
+      };
+      const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    }, []);
+
+    return (
+      <th
+        ref={(node) => {
+          thRef.current = node;
+          if (typeof ref === 'function') ref(node);
+          else if (ref) (ref as React.MutableRefObject<HTMLTableCellElement | null>).current = node;
+        }}
+        className={cn(
+          "relative h-7 px-2 text-left align-middle text-[11px] font-semibold uppercase tracking-wider text-accent-foreground [&:has([role=checkbox])]:pr-0",
+          className,
+        )}
+        style={{ ...style, width: width ? `${width}px` : style?.width }}
+        {...props}
+      >
+        {children}
+        <div
+          onMouseDown={handleMouseDown}
+          className="absolute right-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/30 active:bg-primary/50"
+        />
+      </th>
+    );
+  },
 );
 TableHead.displayName = "TableHead";
 
