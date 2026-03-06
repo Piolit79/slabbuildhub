@@ -154,11 +154,11 @@ export default function BudgetPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>{sh('Description', 'description')}</TableHead>
-                {!isMobile && <TableHead className="text-right">{sh('Labor', 'labor', 'justify-end')}</TableHead>}
-                <TableHead className="text-right">{isMobile ? sh('Total', 'labor', 'justify-end') : sh('Material', 'material', 'justify-end')}</TableHead>
-                <TableHead>{sh('Status', 'status')}</TableHead>
-                <TableHead className={isMobile ? 'w-8' : 'w-12'}></TableHead>
+                <TableHead className="w-[45%]">{sh('Description', 'description')}</TableHead>
+                {!isMobile && <TableHead className="text-right w-[100px]">{sh('Labor', 'labor', 'justify-end')}</TableHead>}
+                <TableHead className="text-right w-[100px]">{isMobile ? sh('Total', 'labor', 'justify-end') : sh('Material', 'material', 'justify-end')}</TableHead>
+                <TableHead className="w-[90px]">{sh('Status', 'status')}</TableHead>
+                <TableHead className="w-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
