@@ -157,7 +157,7 @@ export default function BudgetPage() {
                 <TableHead>{sh('Description', 'description')}</TableHead>
                 {!isMobile && <TableHead className="text-right whitespace-nowrap px-4">{sh('Labor', 'labor', 'justify-end')}</TableHead>}
                 <TableHead className="text-right whitespace-nowrap px-4">{isMobile ? sh('Total', 'labor', 'justify-end') : sh('Material', 'material', 'justify-end')}</TableHead>
-                <TableHead className="whitespace-nowrap px-6">{sh('Status', 'status')}</TableHead>
+                <TableHead className="whitespace-nowrap pl-10 pr-6">{sh('Status', 'status')}</TableHead>
                 <TableHead className="text-right"></TableHead>
               </TableRow>
             </TableHeader>
@@ -207,7 +207,7 @@ export default function BudgetPage() {
                         <TableCell className="font-medium text-[11px] truncate max-w-[120px] md:max-w-none">{b.description}</TableCell>
                         {!isMobile && <TableCell className="text-right tabular-nums text-[11px] px-4">{fmt(b.labor)}</TableCell>}
                         <TableCell className="text-right tabular-nums text-[11px] px-4">{isMobile ? fmt(b.labor + b.material) : fmt(b.material)}</TableCell>
-                        <TableCell className="px-6">{statusBadge(b.status)}</TableCell>
+                        <TableCell className="pl-10 pr-6">{statusBadge(b.status)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-1.5 justify-end">
                             {!isMobile && (
