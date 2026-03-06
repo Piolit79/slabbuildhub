@@ -152,20 +152,13 @@ export default function BudgetPage() {
       <Card>
         <CardContent className="p-0">
           <Table>
-            <colgroup>
-              <col style={{ width: 'auto' }} />
-              {!isMobile && <col style={{ width: '90px' }} />}
-              <col style={{ width: '90px' }} />
-              <col style={{ width: '85px' }} />
-              <col style={{ width: '100%' }} />
-            </colgroup>
             <TableHeader>
               <TableRow>
-                <TableHead>{sh('Description', 'description')}</TableHead>
+                <TableHead className="w-[40%]">{sh('Description', 'description')}</TableHead>
                 {!isMobile && <TableHead className="text-right whitespace-nowrap">{sh('Labor', 'labor', 'justify-end')}</TableHead>}
                 <TableHead className="text-right whitespace-nowrap">{isMobile ? sh('Total', 'labor', 'justify-end') : sh('Material', 'material', 'justify-end')}</TableHead>
                 <TableHead className="whitespace-nowrap">{sh('Status', 'status')}</TableHead>
-                <TableHead></TableHead>
+                <TableHead className="text-right"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -215,8 +208,8 @@ export default function BudgetPage() {
                         {!isMobile && <TableCell className="text-right tabular-nums text-[11px]">{fmt(b.labor)}</TableCell>}
                         <TableCell className="text-right tabular-nums text-[11px]">{isMobile ? fmt(b.labor + b.material) : fmt(b.material)}</TableCell>
                         <TableCell>{statusBadge(b.status)}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1.5">
+                        <TableCell className="text-right">
+                          <div className="flex gap-1.5 justify-end">
                             {!isMobile && (
                               <button onClick={() => openNote(b)} className={`hover:text-foreground ${hasDetails ? 'text-primary' : 'text-muted-foreground/40'}`} title={hasDetails ? `${b.subcontractor || ''}${b.subcontractor && b.notes ? ' | ' : ''}${b.notes || ''}` : 'Add details'}>
                                 <MessageSquare size={12} />
