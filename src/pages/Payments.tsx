@@ -71,10 +71,7 @@ export default function PaymentsPage() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Payments</h1>
-          <p className="text-muted-foreground text-xs">Payment logs by category</p>
-        </div>
+        <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Payments</h1>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button size="sm"><Plus size={14} /> Add</Button></DialogTrigger>
           <DialogContent>

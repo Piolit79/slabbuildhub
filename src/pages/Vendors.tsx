@@ -62,10 +62,7 @@ export default function VendorsPage() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Vendors</h1>
-          <p className="text-muted-foreground text-xs">{filtered.length} vendors & subcontractors</p>
-        </div>
+        <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Vendors</h1>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button size="sm"><Plus size={14} /> Add</Button></DialogTrigger>
           <DialogContent>
