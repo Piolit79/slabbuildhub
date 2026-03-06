@@ -75,26 +75,13 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold tracking-tight">Project Dashboard</h1>
-          <p className="text-muted-foreground text-xs mt-0.5">{selectedProject.name}</p>
+          
         </div>
         <div className="text-right">
           <p className="text-xl font-bold">{selectedProject.name}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-3 xl:grid-cols-6 gap-2">
-        {summaryCards.map(({ label, value, icon: Icon }) => (
-          <Card key={label}>
-            <CardContent className="p-3">
-              <div className="flex items-center gap-1.5 mb-1">
-                <Icon size={12} className="text-primary" />
-                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
-              </div>
-              <p className="text-base font-bold tabular-nums">{fmt(value)}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
 
       <div className="grid grid-cols-2 gap-2">
         {[
@@ -218,33 +205,6 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader className="pb-1 pt-3 px-4"><CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Soft Costs</CardTitle></CardHeader>
-          <CardContent className="px-4 pb-3">
-            <Table>
-              <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Detail</TableHead><TableHead className="text-right">Payments</TableHead></TableRow></TableHeader>
-              <TableBody>
-                <TableRow><TableCell className="font-medium">StudioLAB</TableCell><TableCell>Designer</TableCell><TableCell className="text-right font-semibold tabular-nums">{fmt(t.softCostStudioLAB)}</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">SLAB Builders</TableCell><TableCell>Builder</TableCell><TableCell className="text-right font-semibold tabular-nums">{fmt(t.softCostSLAB)}</TableCell></TableRow>
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-1 pt-3 px-4"><CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Other Hard Costs</CardTitle></CardHeader>
-          <CardContent className="px-4 pb-3">
-            <Table>
-              <TableHeader><TableRow><TableHead>Type</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
-              <TableBody>
-                <TableRow><TableCell className="font-medium">Materials & Vendors</TableCell><TableCell className="text-right font-semibold tabular-nums">{fmt(t.materialsVendorsTotal)}</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">Fixtures & Fittings</TableCell><TableCell className="text-right font-semibold tabular-nums">{fmt(t.fixturesFittingsTotal)}</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">Field Labor</TableCell><TableCell className="text-right font-semibold tabular-nums">{fmt(t.fieldLaborTotal)}</TableCell></TableRow>
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
 
       <Card>
         <CardHeader className="pb-1 pt-3 px-4">
@@ -281,6 +241,34 @@ export default function Dashboard() {
           </Table>
         </CardContent>
       </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader className="pb-1 pt-3 px-4"><CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Soft Costs</CardTitle></CardHeader>
+          <CardContent className="px-4 pb-3">
+            <Table>
+              <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Detail</TableHead><TableHead className="text-right">Payments</TableHead></TableRow></TableHeader>
+              <TableBody>
+                <TableRow><TableCell className="font-medium">StudioLAB</TableCell><TableCell>Designer</TableCell><TableCell className="text-right font-semibold tabular-nums">{fmt(t.softCostStudioLAB)}</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">SLAB Builders</TableCell><TableCell>Builder</TableCell><TableCell className="text-right font-semibold tabular-nums">{fmt(t.softCostSLAB)}</TableCell></TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-1 pt-3 px-4"><CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Other Hard Costs</CardTitle></CardHeader>
+          <CardContent className="px-4 pb-3">
+            <Table>
+              <TableHeader><TableRow><TableHead>Type</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
+              <TableBody>
+                <TableRow><TableCell className="font-medium">Materials & Vendors</TableCell><TableCell className="text-right font-semibold tabular-nums">{fmt(t.materialsVendorsTotal)}</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">Fixtures & Fittings</TableCell><TableCell className="text-right font-semibold tabular-nums">{fmt(t.fixturesFittingsTotal)}</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">Field Labor</TableCell><TableCell className="text-right font-semibold tabular-nums">{fmt(t.fieldLaborTotal)}</TableCell></TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
