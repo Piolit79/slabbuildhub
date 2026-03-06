@@ -149,13 +149,6 @@ export default function DrawsPage() {
                 </TableRow>
               )}
             </TableBody>
-            <TableFooter>
-              <TableRow>
-                <TableCell colSpan={2} className="font-semibold text-[11px]">Total</TableCell>
-                <TableCell className="text-right font-semibold tabular-nums">{fmt(total)}</TableCell>
-                <TableCell colSpan={1} />
-              </TableRow>
-            </TableFooter>
           </Table>
         </CardContent>
       </Card>
