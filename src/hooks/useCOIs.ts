@@ -4,7 +4,7 @@ import { COI, getStatusFromDays } from '@/types';
 import { Tables } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
 
-type COIRow = Tables<'cois'>['Row'];
+type COIRow = Tables<'cois'>;
 
 function computeDays(dateStr: string): number {
   const exp = new Date(dateStr);

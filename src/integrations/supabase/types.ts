@@ -14,7 +14,134 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      coi_files: {
+        Row: {
+          coi_id: string | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          project_id: string
+          uploaded_at: string | null
+        }
+        Insert: {
+          coi_id?: string | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          project_id: string
+          uploaded_at?: string | null
+        }
+        Update: {
+          coi_id?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          project_id?: string
+          uploaded_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coi_files_coi_id_fkey"
+            columns: ["coi_id"]
+            isOneToOne: false
+            referencedRelation: "cois"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cois: {
+        Row: {
+          additional_insured: string | null
+          carrier: string | null
+          certificate_holder: string | null
+          company: string | null
+          contact_email1: string | null
+          contact_email2: string | null
+          created_at: string | null
+          effective_date: string | null
+          expiration_date: string
+          gl_aggregate_limit: string | null
+          gl_carrier: string | null
+          gl_coverage_limit: string | null
+          gl_effective_date: string | null
+          gl_expiration_date: string | null
+          gl_per_occurrence_limit: string | null
+          gl_policy_number: string | null
+          gl_provisions: Json | null
+          id: string
+          insured_name: string
+          is_active: boolean | null
+          policy_number: string | null
+          project_id: string
+          vendor_id: string | null
+          wc_carrier: string | null
+          wc_effective_date: string | null
+          wc_expiration_date: string | null
+          wc_policy_number: string | null
+        }
+        Insert: {
+          additional_insured?: string | null
+          carrier?: string | null
+          certificate_holder?: string | null
+          company?: string | null
+          contact_email1?: string | null
+          contact_email2?: string | null
+          created_at?: string | null
+          effective_date?: string | null
+          expiration_date: string
+          gl_aggregate_limit?: string | null
+          gl_carrier?: string | null
+          gl_coverage_limit?: string | null
+          gl_effective_date?: string | null
+          gl_expiration_date?: string | null
+          gl_per_occurrence_limit?: string | null
+          gl_policy_number?: string | null
+          gl_provisions?: Json | null
+          id?: string
+          insured_name: string
+          is_active?: boolean | null
+          policy_number?: string | null
+          project_id: string
+          vendor_id?: string | null
+          wc_carrier?: string | null
+          wc_effective_date?: string | null
+          wc_expiration_date?: string | null
+          wc_policy_number?: string | null
+        }
+        Update: {
+          additional_insured?: string | null
+          carrier?: string | null
+          certificate_holder?: string | null
+          company?: string | null
+          contact_email1?: string | null
+          contact_email2?: string | null
+          created_at?: string | null
+          effective_date?: string | null
+          expiration_date?: string
+          gl_aggregate_limit?: string | null
+          gl_carrier?: string | null
+          gl_coverage_limit?: string | null
+          gl_effective_date?: string | null
+          gl_expiration_date?: string | null
+          gl_per_occurrence_limit?: string | null
+          gl_policy_number?: string | null
+          gl_provisions?: Json | null
+          id?: string
+          insured_name?: string
+          is_active?: boolean | null
+          policy_number?: string | null
+          project_id?: string
+          vendor_id?: string | null
+          wc_carrier?: string | null
+          wc_effective_date?: string | null
+          wc_expiration_date?: string | null
+          wc_policy_number?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

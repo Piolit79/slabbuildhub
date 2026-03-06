@@ -23,7 +23,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { Tables } from '@/integrations/supabase/types';
 
-type COIFile = Tables<'coi_files'>['Row'];
+type COIFile = Tables<'coi_files'>;
 type ProjectShape = { id: string; name: string; address?: string; status: string; created_at: string };
 
 // ─── Files Tab ────────────────────────────────────────────────────────────────
