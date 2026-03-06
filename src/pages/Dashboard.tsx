@@ -82,19 +82,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-
-      <div className="grid grid-cols-2 gap-2">
-        {[
-          ['Projected Project Total', t.projectedTotal],
-          ['Budget Hard Cost', t.budgetHardCost],
-        ].map(([l, v]) => (
-          <Card key={l as string}><CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">{l as string}</p>
-            <p className="text-base font-bold tabular-nums">{fmt(v as number)}</p>
-          </CardContent></Card>
-        ))}
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader className="pb-1 pt-3 px-4">
