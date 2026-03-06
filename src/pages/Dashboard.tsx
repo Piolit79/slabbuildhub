@@ -74,7 +74,7 @@ export default function Dashboard() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Project Dashboard</h1>
+          <h1 className="text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Dashboard</h1>
           
         </div>
         <div className="text-right">
