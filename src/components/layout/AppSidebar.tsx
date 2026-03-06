@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -15,7 +15,10 @@ const navItems = [
 ];
 
 const insuranceItems = [
-  { to: '/insurance', label: 'COI Tracker', icon: Shield },
+  { to: '/insurance', label: 'Dashboard', icon: Shield, exact: true },
+  { to: '/insurance/projects', label: 'Projects', icon: FolderKanban, exact: false },
+  { to: '/insurance/files', label: 'Files', icon: FolderOpen, exact: false },
+  { to: '/insurance/settings', label: 'COI Settings', icon: Settings, exact: false },
 ];
 
 export default function AppSidebar() {
@@ -41,7 +44,7 @@ export default function AppSidebar() {
         )}
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
         {!(collapsed && !isMobile) && (
           <span className="block text-base font-semibold uppercase tracking-widest text-muted-foreground px-3 pb-2">
             Project Hub
@@ -68,15 +71,17 @@ export default function AppSidebar() {
           );
         })}
 
-        {/* Insurance Hub Section */}
+        {/* COI Tracker Section */}
         {!(collapsed && !isMobile) && (
           <span className="block text-base font-semibold uppercase tracking-widest text-muted-foreground px-3 pb-2 pt-4">
-            Insurance Hub
+            COI Tracker
           </span>
         )}
         {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
-        {insuranceItems.map(({ to, label, icon: Icon }) => {
-          const isActive = location.pathname.startsWith(to);
+        {insuranceItems.map(({ to, label, icon: Icon, exact }) => {
+          const isActive = exact
+            ? location.pathname === to
+            : location.pathname.startsWith(to);
           return (
             <NavLink
               key={to}
@@ -142,7 +147,6 @@ export default function AppSidebar() {
     </>
   );
 
-  // Mobile: overlay drawer
   if (isMobile) {
     return (
       <>
@@ -166,7 +170,6 @@ export default function AppSidebar() {
     );
   }
 
-  // Desktop: sticky sidebar
   return (
     <aside
       className={cn(
