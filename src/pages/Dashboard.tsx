@@ -104,10 +104,8 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {[
-          ['Other Soft & Hard Costs', t.otherSoftHardCosts],
-          ['Total Paid to Date', t.totalPaidToDate],
           ['Projected Project Total', t.projectedTotal],
           ['Budget Hard Cost', t.budgetHardCost],
         ].map(([l, v]) => (
@@ -138,15 +136,24 @@ export default function Dashboard() {
         </Card>
         <Card>
           <CardHeader className="pb-1 pt-3 px-4">
-            <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Budget Breakdown</CardTitle>
+            <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Financial Summary</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
-            <div className="h-56">
+            <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={budgetChartData} layout="vertical" margin={{ left: 10 }}>
+                <BarChart data={[
+                  { name: 'Contract Owed', total: t.contractOwed },
+                  { name: 'Contract Paid', total: t.contractPaid },
+                  { name: 'Contract Balance', total: t.contractBalance },
+                  { name: 'Draw Requested', total: t.drawRequested },
+                  { name: 'Draw Balance', total: t.drawBalance },
+                  { name: 'Other Hard & Soft Costs', total: t.otherSoftHardCosts },
+                  { name: 'Total Paid to Date', total: t.totalPaidToDate },
+                  { name: 'Current Projected Total', total: t.projectedTotal },
+                ]} layout="vertical" margin={{ left: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 8%, 88%)" />
                   <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} width={130} />
                   <Tooltip formatter={(val: number) => fmt(val)} />
                   <Bar dataKey="total" fill="hsl(353, 49%, 54%)" radius={[0, 3, 3, 0]} />
                 </BarChart>
