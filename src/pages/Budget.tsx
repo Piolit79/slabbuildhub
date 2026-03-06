@@ -207,9 +207,29 @@ export default function BudgetPage() {
             </TableBody>
             <TableFooter>
               <TableRow>
-                <TableCell className="font-semibold">Total</TableCell>
+                <TableCell className="font-semibold">Labor / Material Totals</TableCell>
                 <TableCell className="text-right font-semibold tabular-nums">{fmtN(grandLabor)}</TableCell>
                 <TableCell className="text-right font-semibold tabular-nums">{fmtN(grandMaterial)}</TableCell>
+                <TableCell colSpan={2} />
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-semibold">Hard Cost Total</TableCell>
+                <TableCell colSpan={2} className="text-right font-semibold tabular-nums">{fmtN(hardCostTotal)}</TableCell>
+                <TableCell colSpan={2} />
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-semibold">Design Fee (10%)</TableCell>
+                <TableCell colSpan={2} className="text-right font-semibold tabular-nums">{fmtN(designFee)}</TableCell>
+                <TableCell colSpan={2} />
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-semibold">Build Fee (15%)</TableCell>
+                <TableCell colSpan={2} className="text-right font-semibold tabular-nums">{fmtN(buildFee)}</TableCell>
+                <TableCell colSpan={2} />
+              </TableRow>
+              <TableRow className="bg-accent/40">
+                <TableCell className="font-bold">Projected Grand Total</TableCell>
+                <TableCell colSpan={2} className="text-right font-bold tabular-nums text-base">{fmtN(projectedGrandTotal)}</TableCell>
                 <TableCell colSpan={2} />
               </TableRow>
             </TableFooter>
