@@ -70,7 +70,7 @@ export default function ContractsPage() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight">Contracts</h1>
+          <h1 className="text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Contracts</h1>
           <p className="text-muted-foreground text-xs">Contracts, change orders & credits • Total: {fmt(total)}</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
