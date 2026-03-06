@@ -1,7 +1,8 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import slabLogo from '@/assets/slab-builders-logo.svg';
 
 const navItems = [
@@ -15,27 +16,29 @@ const navItems = [
 
 export default function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const isMobile = useIsMobile();
 
-  return (
-    <aside
-      className={cn(
-        'h-screen sticky top-0 flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300',
-        collapsed ? 'w-[68px]' : 'w-[240px]'
-      )}
-    >
-      <div className={cn("flex items-center border-b border-sidebar-border", collapsed ? "h-16 justify-center px-2" : "px-4 py-5")}>
-        {collapsed ? (
+  const navContent = (
+    <>
+      <div className={cn("flex items-center border-b border-sidebar-border", collapsed && !isMobile ? "h-16 justify-center px-2" : "px-4 py-5")}>
+        {collapsed && !isMobile ? (
           <span className="text-xs font-bold text-foreground">SB</span>
         ) : (
-          <div className="flex flex-col items-start w-full">
+          <div className="flex items-center justify-between w-full">
             <a href="/"><img src={slabLogo} alt="SLAB Builders" className="w-full max-w-[200px]" /></a>
+            {isMobile && (
+              <button onClick={() => setMobileOpen(false)} className="text-muted-foreground hover:text-foreground p-1">
+                <X className="h-5 w-5" />
+              </button>
+            )}
           </div>
         )}
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {!collapsed && (
+        {!(collapsed && !isMobile) && (
           <span className="block text-base font-semibold uppercase tracking-widest text-muted-foreground px-3 pb-2">
             Project Hub
           </span>
@@ -46,27 +49,66 @@ export default function AppSidebar() {
             <NavLink
               key={to}
               to={to}
+              onClick={() => isMobile && setMobileOpen(false)}
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
                 isActive
                   ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                   : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
-                collapsed && 'justify-center px-0'
+                collapsed && !isMobile && 'justify-center px-0'
               )}
             >
               <Icon className="h-[18px] w-[18px] shrink-0" />
-              {!collapsed && <span>{label}</span>}
+              {(isMobile || !collapsed) && <span>{label}</span>}
             </NavLink>
           );
         })}
       </nav>
 
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="flex h-12 items-center justify-center border-t border-sidebar-border text-muted-foreground hover:text-sidebar-foreground transition-colors"
-      >
-        {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-      </button>
+      {!isMobile && (
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className="flex h-12 items-center justify-center border-t border-sidebar-border text-muted-foreground hover:text-sidebar-foreground transition-colors"
+        >
+          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </button>
+      )}
+    </>
+  );
+
+  // Mobile: overlay drawer
+  if (isMobile) {
+    return (
+      <>
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="fixed top-4 left-4 z-50 p-2 rounded-lg bg-card border border-border shadow-md text-foreground"
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+
+        {mobileOpen && (
+          <>
+            <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setMobileOpen(false)} />
+            <aside className="fixed inset-y-0 left-0 z-50 w-[260px] bg-sidebar border-r border-sidebar-border flex flex-col shadow-xl animate-in slide-in-from-left duration-200">
+              {navContent}
+            </aside>
+          </>
+        )}
+      </>
+    );
+  }
+
+  // Desktop: sticky sidebar
+  return (
+    <aside
+      className={cn(
+        'h-screen sticky top-0 flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300',
+        collapsed ? 'w-[68px]' : 'w-[240px]'
+      )}
+    >
+      {navContent}
     </aside>
   );
 }

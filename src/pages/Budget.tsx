@@ -127,7 +127,7 @@ export default function BudgetPage() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
         {[['Hard Cost Total', hardCostTotal], ['Design Fee (10%)', designFee], ['Build Fee (15%)', buildFee], ['Projected Grand Total', projectedGrandTotal]].map(([l, v]) => (
           <Card key={l as string}><CardContent className="p-3">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">{l as string}</p>
