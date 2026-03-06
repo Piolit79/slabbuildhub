@@ -175,7 +175,18 @@ export default function Dashboard() {
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={budgetChartData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} paddingAngle={3} dataKey="total" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                  <Pie data={budgetChartData} cx="50%" cy="50%" innerRadius={0} outerRadius="85%" paddingAngle={2} dataKey="total" label={({ cx, cy, midAngle, innerRadius, outerRadius, name, value }: any) => {
+                    const RADIAN = Math.PI / 180;
+                    const radius = (innerRadius + outerRadius) / 2;
+                    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                    return (
+                      <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize={11} fill="#fff" fontWeight={600}>
+                        <tspan x={x} dy="-0.6em">{name}</tspan>
+                        <tspan x={x} dy="1.4em">{fmt(value)}</tspan>
+                      </text>
+                    );
+                  }} labelLine={false}>
                     {budgetChartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
                   <Tooltip formatter={(val: number) => fmt(val)} />
