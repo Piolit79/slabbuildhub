@@ -60,3 +60,68 @@ export interface Draw {
   draw_number: number;
   amount: number;
 }
+
+// COI Types
+export type COIStatus = 'valid' | 'expiring' | 'expired';
+
+export interface CoverageProvision {
+  name: string;
+  status: 'included' | 'excluded' | 'unknown';
+  details?: string;
+}
+
+export interface GLPolicy {
+  policyNumber: string;
+  carrier: string;
+  effectiveDate: string;
+  expirationDate: string;
+  coverageLimit: string;
+  perOccurrenceLimit: string;
+  aggregateLimit: string;
+  provisions: CoverageProvision[];
+}
+
+export interface WCPolicy {
+  policyNumber: string;
+  carrier: string;
+  effectiveDate: string;
+  expirationDate: string;
+  status: COIStatus;
+  daysUntilExpiry: number;
+}
+
+export interface UmbrellaPolicy {
+  policyNumber: string;
+  carrier: string;
+  limit: string;
+  effectiveDate: string;
+  expirationDate: string;
+}
+
+export interface COI {
+  id: string;
+  project_id: string;
+  vendor_id?: string;
+  insured_name: string;
+  company: string;
+  policyNumber: string;
+  carrier: string;
+  effectiveDate: string;
+  expirationDate: string;
+  status: COIStatus;
+  daysUntilExpiry: number;
+  glPolicy?: GLPolicy;
+  wcPolicy?: WCPolicy;
+  umbrellaPolicy?: UmbrellaPolicy;
+  additional_insured?: string;
+  certificate_holder?: string;
+  is_active?: boolean;
+  contact_email1?: string;
+  contact_email2?: string;
+}
+
+export function getStatusFromDays(days: number): COIStatus {
+  if (days < 0) return 'expired';
+  if (days <= 30) return 'expiring';
+  return 'valid';
+}
