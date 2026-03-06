@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useProject } from '@/contexts/ProjectContext';
 import { mockContracts, mockPayments, mockDraws, mockBudgetItems, dashboardTotals, mockVendors } from '@/data/mock-data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,6 +19,7 @@ function SortBtn({ label, active, dir, onClick, className }: { label: string; ac
 }
 
 export default function Dashboard() {
+  const isMobile = useIsMobile();
   const { selectedProject } = useProject();
   const pid = selectedProject.id;
   const t = dashboardTotals;
@@ -211,11 +213,11 @@ export default function Dashboard() {
             <TableHeader>
               <TableRow>
                 <TableHead>{sh('Name', 'name')}</TableHead>
-                <TableHead>{sh('Detail', 'detail')}</TableHead>
+                {!isMobile && <TableHead>{sh('Detail', 'detail')}</TableHead>}
                 <TableHead className="text-right">{sh('Contract', 'contract', 'justify-end')}</TableHead>
-                <TableHead className="text-right">{sh('Change Order', 'changeOrders', 'justify-end')}</TableHead>
+                {!isMobile && <TableHead className="text-right">{sh('Change Order', 'changeOrders', 'justify-end')}</TableHead>}
                 <TableHead className="text-right">{sh('Credit', 'credits', 'justify-end')}</TableHead>
-                <TableHead className="text-right">{sh('Total Owed', 'owed', 'justify-end')}</TableHead>
+                {!isMobile && <TableHead className="text-right">{sh('Total Owed', 'owed', 'justify-end')}</TableHead>}
                 <TableHead className="text-right">{sh('Payments', 'paid', 'justify-end')}</TableHead>
                 <TableHead className="text-right">{sh('Balance', 'balance', 'justify-end')}</TableHead>
               </TableRow>
@@ -223,14 +225,14 @@ export default function Dashboard() {
             <TableBody>
               {subSummary.map((row, idx) => (
                 <TableRow key={row.name} className={`${row.balance === 0 ? 'text-muted-foreground/50' : ''}`} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
-                  <TableCell className="font-medium">{row.name}</TableCell>
-                  <TableCell>{row.detail || '—'}</TableCell>
-                  <TableCell className="text-right tabular-nums">{fmt(row.contract)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{row.changeOrders ? fmt(row.changeOrders) : '—'}</TableCell>
-                  <TableCell className="text-right tabular-nums">{row.credits ? fmt(row.credits) : '—'}</TableCell>
-                  <TableCell className="text-right tabular-nums">{fmt(row.owed)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{fmt(row.paid)}</TableCell>
-                  <TableCell className={`text-right tabular-nums font-semibold ${row.balance === 0 ? '' : 'text-[#c37e87]'}`}>
+                  <TableCell className="font-medium text-[11px] md:text-sm">{row.name}</TableCell>
+                  {!isMobile && <TableCell>{row.detail || '—'}</TableCell>}
+                  <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(row.contract)}</TableCell>
+                  {!isMobile && <TableCell className="text-right tabular-nums">{row.changeOrders ? fmt(row.changeOrders) : '—'}</TableCell>}
+                  <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{row.credits ? fmt(row.credits) : '—'}</TableCell>
+                  {!isMobile && <TableCell className="text-right tabular-nums">{fmt(row.owed)}</TableCell>}
+                  <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(row.paid)}</TableCell>
+                  <TableCell className={`text-right tabular-nums font-semibold text-[11px] md:text-sm ${row.balance === 0 ? '' : 'text-[#c37e87]'}`}>
                     {row.balance === 0 ? '$0' : fmt(row.balance)}
                   </TableCell>
                 </TableRow>
