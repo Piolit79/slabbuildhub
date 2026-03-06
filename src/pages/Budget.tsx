@@ -151,13 +151,13 @@ export default function BudgetPage() {
 
       <Card>
         <CardContent className="p-0">
-          <Table className="table-auto">
+          <Table>
             <colgroup>
-              <col />
+              <col className="w-auto" />
               {!isMobile && <col className="w-[1%]" />}
               <col className="w-[1%]" />
               <col className="w-[1%]" />
-              <col className="w-[1%]" />
+              <col style={{ width: '100%' }} />
             </colgroup>
             <TableHeader>
               <TableRow>
@@ -165,7 +165,7 @@ export default function BudgetPage() {
                 {!isMobile && <TableHead className="text-right whitespace-nowrap">{sh('Labor', 'labor', 'justify-end')}</TableHead>}
                 <TableHead className="text-right whitespace-nowrap">{isMobile ? sh('Total', 'labor', 'justify-end') : sh('Material', 'material', 'justify-end')}</TableHead>
                 <TableHead className="whitespace-nowrap">{sh('Status', 'status')}</TableHead>
-                <TableHead className="w-8"></TableHead>
+                <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
