@@ -1,5 +1,5 @@
-import { ReactNode, useState } from 'react';
-import { COI, getStatusFromDays } from '@/types';
+import { useState } from 'react';
+import { COI } from '@/types';
 import { COIStatusBadge } from './COIStatusBadge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -12,10 +12,12 @@ interface COIDetailDialogProps {
   coi: COI | null;
   projectName?: string;
   onClose: () => void;
+  onEmailsSaved?: () => void;
 }
 
-function ContactEmailsSection({ coi }: { coi: COI }) {
+function ContactEmailsSection({ coi, onSaved }: { coi: COI; onSaved?: () => void }) {
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState({ email1: coi.contact_email1 || '', email2: coi.contact_email2 || '' });
 
   const hasEmails = coi.contact_email1 || coi.contact_email2;
@@ -33,6 +35,20 @@ function ContactEmailsSection({ coi }: { coi: COI }) {
   }
 
   if (editing) {
+    const handleSave = async () => {
+      setSaving(true);
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { error } = await supabase
+        .from('cois')
+        .update({ contact_email1: draft.email1 || null, contact_email2: draft.email2 || null })
+        .eq('id', coi.id);
+      setSaving(false);
+      if (error) { toast.error('Error saving emails'); return; }
+      toast.success('Contact emails saved');
+      setEditing(false);
+      onSaved?.();
+    };
+
     return (
       <div className="rounded-lg border border-border p-4">
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Contact Emails</h4>
@@ -53,11 +69,9 @@ function ContactEmailsSection({ coi }: { coi: COI }) {
           />
         </div>
         <div className="flex gap-2 mt-3">
-          <Button size="sm" className="h-7 text-xs" onClick={() => {
-            // TODO: persist to database
-            toast.success('Contact emails saved');
-            setEditing(false);
-          }}>Save</Button>
+          <Button size="sm" className="h-7 text-xs" onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : 'Save'}
+          </Button>
           <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditing(false)}>Cancel</Button>
         </div>
       </div>
@@ -126,7 +140,7 @@ function SendReminderButton({ coi, projectName }: { coi: COI; projectName?: stri
   );
 }
 
-export function COIDetailDialog({ coi, projectName, onClose }: COIDetailDialogProps) {
+export function COIDetailDialog({ coi, projectName, onClose, onEmailsSaved }: COIDetailDialogProps) {
   if (!coi) return null;
 
   return (
@@ -140,7 +154,6 @@ export function COIDetailDialog({ coi, projectName, onClose }: COIDetailDialogPr
         </DialogHeader>
 
         <div className="space-y-4 mt-2">
-          {/* Insured & Carrier */}
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
               <span className="text-xs text-muted-foreground">Insured</span>
@@ -152,7 +165,6 @@ export function COIDetailDialog({ coi, projectName, onClose }: COIDetailDialogPr
             </div>
           </div>
 
-          {/* GL Details */}
           {coi.glPolicy && (
             <div className="rounded-lg border border-border p-4">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">General Liability</h4>
@@ -198,7 +210,6 @@ export function COIDetailDialog({ coi, projectName, onClose }: COIDetailDialogPr
                   </div>
                 )}
               </div>
-              {/* Provisions */}
               {coi.glPolicy.provisions.length > 0 && (
                 <div className="mt-3 space-y-2">
                   {coi.glPolicy.provisions.map((provision) => {
@@ -219,7 +230,6 @@ export function COIDetailDialog({ coi, projectName, onClose }: COIDetailDialogPr
             </div>
           )}
 
-          {/* Umbrella */}
           {coi.umbrellaPolicy && (
             <div className="rounded-lg border border-border p-4">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Umbrella / Excess Liability</h4>
@@ -235,7 +245,6 @@ export function COIDetailDialog({ coi, projectName, onClose }: COIDetailDialogPr
             </div>
           )}
 
-          {/* WC */}
           {coi.wcPolicy ? (
             <div className="rounded-lg border border-border p-4">
               <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Workers' Compensation</h4>
@@ -259,10 +268,7 @@ export function COIDetailDialog({ coi, projectName, onClose }: COIDetailDialogPr
             </div>
           )}
 
-          {/* Contact Emails */}
-          <ContactEmailsSection coi={coi} />
-
-          {/* Send Reminder */}
+          <ContactEmailsSection coi={coi} onSaved={onEmailsSaved} />
           <SendReminderButton coi={coi} projectName={projectName} />
         </div>
       </DialogContent>

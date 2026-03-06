@@ -9,28 +9,31 @@ import { useToast } from '@/hooks/use-toast';
 
 interface CreateCOIDialogProps {
   projectId: string;
+  onSuccess: () => void;
 }
 
-export function CreateCOIDialog({ projectId }: CreateCOIDialogProps) {
-  const [open, setOpen] = useState(false);
-  const { toast } = useToast();
+const defaultForm = {
+  subcontractor: '',
+  company: '',
+  gl_policy_number: '',
+  gl_carrier: '',
+  gl_effective_date: '',
+  gl_expiration_date: '',
+  gl_coverage_limit: '',
+  labor_law_coverage: 'unknown',
+  action_over: 'unknown',
+  hammer_clause: 'unknown',
+  wc_policy_number: '',
+  wc_carrier: '',
+  wc_effective_date: '',
+  wc_expiration_date: '',
+};
 
-  const [form, setForm] = useState({
-    subcontractor: '',
-    company: '',
-    gl_policy_number: '',
-    gl_carrier: '',
-    gl_effective_date: '',
-    gl_expiration_date: '',
-    gl_coverage_limit: '',
-    labor_law_coverage: 'unknown',
-    action_over: 'unknown',
-    hammer_clause: 'unknown',
-    wc_policy_number: '',
-    wc_carrier: '',
-    wc_effective_date: '',
-    wc_expiration_date: '',
-  });
+export function CreateCOIDialog({ projectId, onSuccess }: CreateCOIDialogProps) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+  const [form, setForm] = useState(defaultForm);
 
   const set = (key: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(prev => ({ ...prev, [key]: e.target.value }));
@@ -40,15 +43,45 @@ export function CreateCOIDialog({ projectId }: CreateCOIDialogProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Save to database when Cloud tables are set up
-    toast({ title: 'COI added', description: `${form.subcontractor} certificate saved (mock — database coming soon)` });
-    setOpen(false);
-    setForm({
-      subcontractor: '', company: '',
-      gl_policy_number: '', gl_carrier: '', gl_effective_date: '', gl_expiration_date: '', gl_coverage_limit: '',
-      labor_law_coverage: 'unknown', action_over: 'unknown', hammer_clause: 'unknown',
-      wc_policy_number: '', wc_carrier: '', wc_effective_date: '', wc_expiration_date: '',
+    if (!form.gl_expiration_date) {
+      toast({ title: 'GL expiration date is required', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { error } = await supabase.from('cois').insert({
+      project_id: projectId,
+      insured_name: form.subcontractor,
+      company: form.company,
+      carrier: form.gl_carrier,
+      policy_number: form.gl_policy_number,
+      effective_date: form.gl_effective_date || null,
+      expiration_date: form.gl_expiration_date,
+      gl_policy_number: form.gl_policy_number,
+      gl_carrier: form.gl_carrier,
+      gl_effective_date: form.gl_effective_date || null,
+      gl_expiration_date: form.gl_expiration_date || null,
+      gl_coverage_limit: form.gl_coverage_limit,
+      gl_provisions: [
+        { name: 'Labor Law Coverage', status: form.labor_law_coverage },
+        { name: 'Action Over', status: form.action_over },
+        { name: 'Hammer Clause', status: form.hammer_clause },
+      ],
+      wc_policy_number: form.wc_policy_number || null,
+      wc_carrier: form.wc_carrier || null,
+      wc_effective_date: form.wc_effective_date || null,
+      wc_expiration_date: form.wc_expiration_date || null,
+      is_active: true,
     });
+    setSaving(false);
+    if (error) {
+      toast({ title: 'Error saving COI', description: error.message, variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'COI added', description: `${form.subcontractor} certificate saved.` });
+    setOpen(false);
+    setForm(defaultForm);
+    onSuccess();
   };
 
   const provisionSelect = (label: string, key: string) => (
@@ -145,8 +178,8 @@ export function CreateCOIDialog({ projectId }: CreateCOIDialogProps) {
             </div>
           </div>
 
-          <Button type="submit" className="w-full">
-            Add COI
+          <Button type="submit" className="w-full" disabled={saving}>
+            {saving ? 'Saving...' : 'Add COI'}
           </Button>
         </form>
       </DialogContent>
