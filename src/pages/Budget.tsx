@@ -35,6 +35,28 @@ export default function BudgetPage() {
   const [noteId, setNoteId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
   const [noteSub, setNoteSub] = useState('');
+  const [statusPadding, setStatusPadding] = useState(40);
+
+  const handleStatusDragLeft = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startPad = statusPadding;
+    const onMouseMove = (ev: MouseEvent) => {
+      const delta = ev.clientX - startX;
+      setStatusPadding(Math.max(8, Math.min(120, startPad + delta)));
+    };
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [statusPadding]);
 
   const toggle = (k: string) => { if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortKey(k); setSortDir('asc'); } };
 
@@ -157,7 +179,13 @@ export default function BudgetPage() {
                 <TableHead>{sh('Description', 'description')}</TableHead>
                 {!isMobile && <TableHead className="text-right whitespace-nowrap px-4">{sh('Labor', 'labor', 'justify-end')}</TableHead>}
                 <TableHead className="text-right whitespace-nowrap px-4">{isMobile ? sh('Total', 'labor', 'justify-end') : sh('Material', 'material', 'justify-end')}</TableHead>
-                <TableHead className="whitespace-nowrap pl-10 pr-6">{sh('Status', 'status')}</TableHead>
+                <TableHead className="whitespace-nowrap pr-6 relative" style={{ paddingLeft: `${statusPadding}px` }}>
+                  <div
+                    onMouseDown={handleStatusDragLeft}
+                    className="absolute left-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/30 active:bg-primary/50"
+                  />
+                  {sh('Status', 'status')}
+                </TableHead>
                 <TableHead className="text-right"></TableHead>
               </TableRow>
             </TableHeader>
@@ -207,7 +235,7 @@ export default function BudgetPage() {
                         <TableCell className="font-medium text-[11px] truncate max-w-[120px] md:max-w-none">{b.description}</TableCell>
                         {!isMobile && <TableCell className="text-right tabular-nums text-[11px] px-4">{fmt(b.labor)}</TableCell>}
                         <TableCell className="text-right tabular-nums text-[11px] px-4">{isMobile ? fmt(b.labor + b.material) : fmt(b.material)}</TableCell>
-                        <TableCell className="pl-10 pr-6">{statusBadge(b.status)}</TableCell>
+                        <TableCell className="pr-6" style={{ paddingLeft: `${statusPadding}px` }}>{statusBadge(b.status)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-1.5 justify-end">
                             {!isMobile && (
