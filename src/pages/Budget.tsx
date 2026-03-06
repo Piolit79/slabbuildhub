@@ -153,10 +153,10 @@ export default function BudgetPage() {
         <CardContent className="p-0">
           <Table>
             <colgroup>
-              <col className="w-auto" />
-              {!isMobile && <col className="w-[1%]" />}
-              <col className="w-[1%]" />
-              <col className="w-[1%]" />
+              <col style={{ width: 'auto' }} />
+              {!isMobile && <col style={{ width: '90px' }} />}
+              <col style={{ width: '90px' }} />
+              <col style={{ width: '85px' }} />
               <col style={{ width: '100%' }} />
             </colgroup>
             <TableHeader>
