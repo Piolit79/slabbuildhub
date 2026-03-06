@@ -221,14 +221,14 @@ export default function Dashboard() {
             </TableHeader>
             <TableBody>
               {subSummary.map(row => (
-                <TableRow key={row.name} className={row.balance === 0 ? 'bg-[hsl(var(--success))]/5' : row.balance > 20000 ? 'bg-[hsl(var(--highlight))]' : ''}>
+                <TableRow key={row.name} className={row.balance === 0 ? 'text-muted-foreground/50' : ''}>
                   <TableCell className="font-medium">{row.name}</TableCell>
                   <TableCell className="text-right tabular-nums">{fmt(row.contract)}</TableCell>
                   <TableCell className="text-right tabular-nums">{row.changeOrders ? fmt(row.changeOrders) : '—'}</TableCell>
                   <TableCell className="text-right tabular-nums">{row.credits ? fmt(row.credits) : '—'}</TableCell>
                   <TableCell className="text-right tabular-nums font-semibold">{fmt(row.owed)}</TableCell>
                   <TableCell className="text-right tabular-nums">{fmt(row.paid)}</TableCell>
-                  <TableCell className={`text-right tabular-nums font-semibold ${row.balance === 0 ? 'text-[hsl(var(--success))]' : row.balance > 0 ? 'text-[hsl(var(--warning))]' : ''}`}>
+                  <TableCell className={`text-right tabular-nums font-semibold ${row.balance === 0 ? '' : 'text-[#c37e87]'}`}>
                     {row.balance === 0 ? '$0' : fmt(row.balance)}
                   </TableCell>
                 </TableRow>
