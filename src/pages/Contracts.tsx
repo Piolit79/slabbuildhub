@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { mockContracts } from '@/data/mock-data';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Contract } from '@/types';
 import { format } from 'date-fns';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
 
@@ -25,6 +26,7 @@ function SortBtn({ label, active, dir, onClick, className }: { label: string; ac
 
 export default function ContractsPage() {
   const { selectedProject } = useProject();
+  const isMobile = useIsMobile();
   const [contracts, setContracts] = useState<Contract[]>(mockContracts);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -71,8 +73,8 @@ export default function ContractsPage() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Contracts</h1>
-          <p className="text-muted-foreground text-xs">Contracts, change orders & credits • Total: {fmt(total)}</p>
+          <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Contracts</h1>
+          <p className="text-muted-foreground text-xs">Total: {fmt(total)}</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button size="sm"><Plus size={14} /> Add</Button></DialogTrigger>
@@ -100,15 +102,15 @@ export default function ContractsPage() {
               <TableRow>
                 <TableHead>{sh('Date', 'date')}</TableHead>
                 <TableHead>{sh('Name', 'name')}</TableHead>
-                <TableHead>{sh('Type', 'type')}</TableHead>
-                <TableHead className="text-right">{sh('Amount', 'amount', 'justify-end')}</TableHead>
-                <TableHead className="w-16"></TableHead>
+                {!isMobile && <TableHead>{sh('Type', 'type')}</TableHead>}
+                <TableHead className="text-right">{sh('Amt', 'amount', 'justify-end')}</TableHead>
+                {!isMobile && <TableHead className="w-16"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {sorted.map((c, idx) => (
                 <TableRow key={c.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
-                  {editId === c.id ? (
+                  {!isMobile && editId === c.id ? (
                     <>
                       <TableCell><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-32 px-1" /></TableCell>
                       <TableCell><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
@@ -125,16 +127,16 @@ export default function ContractsPage() {
                     </>
                   ) : (
                     <>
-                      <TableCell className="tabular-nums">{format(new Date(c.date), 'MM.dd.yy')}</TableCell>
-                      <TableCell className="font-medium">{c.name}</TableCell>
-                      <TableCell>{typeBadge(c.type)}</TableCell>
-                      <TableCell className={`text-right tabular-nums font-medium ${c.amount < 0 ? 'text-[hsl(var(--success))]' : ''}`}>{fmt(c.amount)}</TableCell>
-                      <TableCell><button onClick={() => startEdit(c)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>
+                      <TableCell className="tabular-nums text-[11px]">{format(new Date(c.date), 'MM.dd.yy')}</TableCell>
+                      <TableCell className="font-medium text-[11px] truncate max-w-[120px] md:max-w-none">{c.name}</TableCell>
+                      {!isMobile && <TableCell>{typeBadge(c.type)}</TableCell>}
+                      <TableCell className={`text-right tabular-nums font-medium text-[11px] ${c.amount < 0 ? 'text-[hsl(var(--success))]' : ''}`}>{fmt(c.amount)}</TableCell>
+                      {!isMobile && <TableCell><button onClick={() => startEdit(c)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>}
                     </>
                   )}
                 </TableRow>
               ))}
-              {adding ? (
+              {!isMobile && (adding ? (
                 <TableRow className="bg-muted/30">
                   <TableCell><Input value={newData.date || ''} onChange={e => setNewData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-32 px-1" autoFocus /></TableCell>
                   <TableCell><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" placeholder="Name" /></TableCell>
@@ -155,7 +157,7 @@ export default function ContractsPage() {
                     <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
                   </TableCell>
                 </TableRow>
-              )}
+              ))}
             </TableBody>
           </Table>
         </CardContent>
