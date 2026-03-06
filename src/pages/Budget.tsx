@@ -169,7 +169,7 @@ export default function BudgetPage() {
                 const b = item as BudgetItem;
                 const hasDetails = b.notes || b.subcontractor;
                 return (
-                  <TableRow key={b.id}>
+                  <TableRow key={b.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
                     {editId === b.id ? (
                       <>
                         <TableCell><Input value={editData.description || ''} onChange={e => setEditData(d => ({ ...d, description: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>

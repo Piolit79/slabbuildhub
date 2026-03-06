@@ -105,8 +105,8 @@ export default function ContractsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.map(c => (
-                <TableRow key={c.id} className={c.type === 'Credit' ? 'bg-[hsl(var(--success))]/5' : c.type === 'Change Order' ? 'bg-[hsl(var(--highlight))]' : ''}>
+              {sorted.map((c, idx) => (
+                <TableRow key={c.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
                   {editId === c.id ? (
                     <>
                       <TableCell><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-32 px-1" /></TableCell>
