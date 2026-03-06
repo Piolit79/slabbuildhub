@@ -212,7 +212,7 @@ export default function BudgetPage() {
                 <TableCell className="text-right font-semibold tabular-nums">{fmtN(grandMaterial)}</TableCell>
                 <TableCell colSpan={2} />
               </TableRow>
-              <TableRow>
+              <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
                 <TableCell className="font-semibold">Hard Cost Total</TableCell>
                 <TableCell colSpan={2} className="text-right font-semibold tabular-nums">{fmtN(hardCostTotal)}</TableCell>
                 <TableCell colSpan={2} />
@@ -222,7 +222,7 @@ export default function BudgetPage() {
                 <TableCell colSpan={2} className="text-right font-semibold tabular-nums">{fmtN(designFee)}</TableCell>
                 <TableCell colSpan={2} />
               </TableRow>
-              <TableRow>
+              <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
                 <TableCell className="font-semibold">Build Fee (15%)</TableCell>
                 <TableCell colSpan={2} className="text-right font-semibold tabular-nums">{fmtN(buildFee)}</TableCell>
                 <TableCell colSpan={2} />
