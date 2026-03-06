@@ -99,10 +99,10 @@ export default function DrawsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sorted.map(d => {
+              {sorted.map((d, idx) => {
                 runningTotal += d.amount;
                 return (
-                  <TableRow key={d.id}>
+                  <TableRow key={d.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
                     {editId === d.id ? (
                       <>
                         <TableCell><Input value={editData.draw_number || ''} onChange={e => setEditData(x => ({ ...x, draw_number: parseInt(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-16 px-1" /></TableCell>

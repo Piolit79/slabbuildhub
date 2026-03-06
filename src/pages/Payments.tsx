@@ -116,8 +116,8 @@ export default function PaymentsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sorted.map(p => (
-                      <TableRow key={p.id}>
+                    {sorted.map((p, idx) => (
+                      <TableRow key={p.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
                         {editId === p.id ? (
                           <>
                             <TableCell><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-28 px-1" /></TableCell>

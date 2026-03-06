@@ -104,8 +104,8 @@ export default function VendorsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map(v => (
-                <TableRow key={v.id}>
+              {filtered.map((v, idx) => (
+                <TableRow key={v.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
                   {editId === v.id ? (
                     <>
                       <TableCell><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
