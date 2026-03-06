@@ -95,7 +95,7 @@ export default function VendorsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>{sh('Name', 'name')}</TableHead>
-                <TableHead>{sh('Trade', 'detail')}</TableHead>
+                <TableHead>{sh('Detail', 'detail')}</TableHead>
                 <TableHead>{sh('Type', 'type')}</TableHead>
                 <TableHead>{sh('Contact', 'contact')}</TableHead>
                 <TableHead>{sh('Email', 'email')}</TableHead>
@@ -122,11 +122,8 @@ export default function VendorsPage() {
                     </>
                   ) : (
                     <>
-                      <TableCell className="font-medium">
-                        <div>{v.name}</div>
-                        <div className="text-[10px] text-muted-foreground">{v.detail || '—'}</div>
-                      </TableCell>
-                      <TableCell>{v.detail || '—'}</TableCell>
+                      <TableCell className="font-medium">{v.name}</TableCell>
+                      <TableCell>{v.detail}</TableCell>
                       <TableCell>{typeBadge(v.type)}</TableCell>
                       <TableCell>{v.contact || '—'}</TableCell>
                       <TableCell className="text-primary">{v.email || '—'}</TableCell>

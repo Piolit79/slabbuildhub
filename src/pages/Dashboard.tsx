@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
-import { mockContracts, mockPayments, mockDraws, mockBudgetItems, dashboardTotals } from '@/data/mock-data';
+import { mockContracts, mockPayments, mockDraws, mockBudgetItems, dashboardTotals, mockVendors } from '@/data/mock-data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DollarSign, TrendingDown, Landmark, Calculator, FileText, Wallet, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
@@ -47,7 +47,8 @@ export default function Dashboard() {
       const sCr = contracts.filter(c => c.name === name && c.type === 'Credit').reduce((s, c) => s + c.amount, 0);
       const owed = sC + sCO + sCr;
       const paid = payments.filter(p => p.name === name && p.category === 'subcontractor').reduce((s, p) => s + p.amount, 0);
-      return { name, contract: sC, changeOrders: sCO, credits: sCr, owed, paid, balance: owed - paid };
+      const vendor = mockVendors.find(v => v.name === name);
+      return { name, detail: vendor?.detail || '', contract: sC, changeOrders: sCO, credits: sCr, owed, paid, balance: owed - paid };
     });
     return rows.sort((a: any, b: any) => {
       const av = a[sortKey], bv = b[sortKey];
@@ -211,6 +212,7 @@ export default function Dashboard() {
             <TableHeader>
               <TableRow>
                 <TableHead>{sh('Name', 'name')}</TableHead>
+                <TableHead>{sh('Detail', 'detail')}</TableHead>
                 <TableHead className="text-right">{sh('Contract', 'contract', 'justify-end')}</TableHead>
                 <TableHead className="text-right">{sh('Change Order', 'changeOrders', 'justify-end')}</TableHead>
                 <TableHead className="text-right">{sh('Credit', 'credits', 'justify-end')}</TableHead>
@@ -223,6 +225,7 @@ export default function Dashboard() {
               {subSummary.map(row => (
                 <TableRow key={row.name} className={row.balance === 0 ? 'text-muted-foreground/50' : ''}>
                   <TableCell className="font-medium">{row.name}</TableCell>
+                  <TableCell className="text-muted-foreground">{row.detail || '—'}</TableCell>
                   <TableCell className="text-right tabular-nums">{fmt(row.contract)}</TableCell>
                   <TableCell className="text-right tabular-nums">{row.changeOrders ? fmt(row.changeOrders) : '—'}</TableCell>
                   <TableCell className="text-right tabular-nums">{row.credits ? fmt(row.credits) : '—'}</TableCell>
