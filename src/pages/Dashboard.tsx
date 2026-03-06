@@ -33,13 +33,14 @@ export default function Dashboard() {
   const contractPaid = payments.filter(p => p.category === 'subcontractor').reduce((s, p) => s + p.amount, 0);
   const contractBalance = contractOwed - contractPaid;
   const drawRequested = draws.reduce((s, d) => s + d.amount, 0);
-  const allPaymentsTotal = payments.reduce((s, p) => s + p.amount, 0);
-  const drawBalance = drawRequested - allPaymentsTotal;
+  const allPaymentsExSoft = payments.filter(p => p.category !== 'soft_costs').reduce((s, p) => s + p.amount, 0);
+  const drawBalance = drawRequested - allPaymentsExSoft;
   const softCostStudioLAB = payments.filter(p => p.name === 'StudioLAB' && p.category === 'soft_costs').reduce((s, p) => s + p.amount, 0);
   const softCostSLAB = payments.filter(p => p.name === 'SLAB Builders' && p.category === 'soft_costs').reduce((s, p) => s + p.amount, 0);
   const materialsVendorsTotal = payments.filter(p => p.category === 'materials').reduce((s, p) => s + p.amount, 0);
   const fixturesFittingsTotal = payments.filter(p => p.category === 'materials' && mockVendors.find(v => v.name === p.name)?.detail?.toLowerCase().includes('fixture')).reduce((s, p) => s + p.amount, 0);
   const fieldLaborTotal = payments.filter(p => p.category === 'field_labor').reduce((s, p) => s + p.amount, 0);
+  const allPaymentsTotal = payments.reduce((s, p) => s + p.amount, 0);
   const otherSoftHardCosts = allPaymentsTotal - contractPaid;
   const totalPaidToDate = allPaymentsTotal;
   const hardCostBudget = budget.reduce((s, b) => s + b.labor + b.material, 0);
