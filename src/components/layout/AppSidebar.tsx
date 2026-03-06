@@ -20,24 +20,29 @@ export default function AppSidebar() {
     <aside
       className={cn(
         'h-screen sticky top-0 flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300',
-        collapsed ? 'w-16' : 'w-60'
+        collapsed ? 'w-16' : 'w-56'
       )}
     >
-      <div className="flex items-center justify-between px-4 h-16 border-b border-sidebar-border">
+      <div className="flex items-center justify-between px-4 h-14 border-b border-sidebar-border">
         {!collapsed && (
-          <h1 className="text-lg font-bold tracking-tight text-sidebar-primary-foreground font-display truncate">
-            BuildLedger
-          </h1>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded bg-[hsl(var(--sidebar-primary))] flex items-center justify-center">
+              <span className="text-[hsl(var(--sidebar-primary-foreground))] text-xs font-bold">BL</span>
+            </div>
+            <span className="text-sm font-bold tracking-tight text-sidebar-accent-foreground">
+              BuildLedger
+            </span>
+          </div>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="p-1.5 rounded-md hover:bg-sidebar-accent text-sidebar-foreground transition-colors"
+          className="p-1 rounded hover:bg-sidebar-accent text-sidebar-foreground transition-colors"
         >
-          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
       </div>
 
-      <nav className="flex-1 py-4 space-y-1 px-2">
+      <nav className="flex-1 py-3 space-y-0.5 px-2">
         {navItems.map(({ to, label, icon: Icon }) => {
           const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
           return (
@@ -45,22 +50,22 @@ export default function AppSidebar() {
               key={to}
               to={to}
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+                'flex items-center gap-3 px-3 py-2 rounded-md text-[13px] font-medium transition-all',
                 isActive
-                  ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-md'
+                  ? 'bg-[hsl(var(--sidebar-primary))] text-[hsl(var(--sidebar-primary-foreground))]'
                   : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
               )}
             >
-              <Icon size={20} />
+              <Icon size={18} />
               {!collapsed && <span>{label}</span>}
             </NavLink>
           );
         })}
       </nav>
 
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-3 border-t border-sidebar-border">
         {!collapsed && (
-          <p className="text-xs text-sidebar-foreground/50">© 2024 BuildLedger</p>
+          <p className="text-[10px] text-sidebar-foreground/40 uppercase tracking-wider">Master Ledger v1.0</p>
         )}
       </div>
     </aside>
