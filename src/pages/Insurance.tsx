@@ -461,7 +461,11 @@ export default function InsurancePage() {
         </TabsContent>
       </Tabs>
 
-      <COIDetailDialog coi={selectedCOI} onClose={() => setSelectedCOI(null)} />
+      <COIDetailDialog
+        coi={selectedCOI}
+        projectName={selectedCOI ? projects.find(p => p.id === selectedCOI.project_id)?.name : undefined}
+        onClose={() => setSelectedCOI(null)}
+      />
     </div>
   );
 }
