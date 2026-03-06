@@ -248,7 +248,7 @@ export default function Dashboard() {
             <Table>
               <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Detail</TableHead><TableHead className="text-right">Payments</TableHead></TableRow></TableHeader>
               <TableBody>
-                <TableRow><TableCell className="font-medium">StudioLAB</TableCell><TableCell>Designer</TableCell><TableCell className="text-right font-semibold tabular-nums">{fmt(t.softCostStudioLAB)}</TableCell></TableRow>
+                <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}><TableCell className="font-medium">StudioLAB</TableCell><TableCell>Designer</TableCell><TableCell className="text-right font-semibold tabular-nums">{fmt(t.softCostStudioLAB)}</TableCell></TableRow>
                 <TableRow><TableCell className="font-medium">SLAB Builders</TableCell><TableCell>Builder</TableCell><TableCell className="text-right font-semibold tabular-nums">{fmt(t.softCostSLAB)}</TableCell></TableRow>
               </TableBody>
             </Table>
@@ -260,9 +260,9 @@ export default function Dashboard() {
             <Table>
               <TableHeader><TableRow><TableHead>Type</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
               <TableBody>
-                <TableRow><TableCell className="font-medium">Materials & Vendors</TableCell><TableCell className="text-right font-semibold tabular-nums">{fmt(t.materialsVendorsTotal)}</TableCell></TableRow>
+                <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}><TableCell className="font-medium">Materials & Vendors</TableCell><TableCell className="text-right font-semibold tabular-nums">{fmt(t.materialsVendorsTotal)}</TableCell></TableRow>
                 <TableRow><TableCell className="font-medium">Fixtures & Fittings</TableCell><TableCell className="text-right font-semibold tabular-nums">{fmt(t.fixturesFittingsTotal)}</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">Field Labor</TableCell><TableCell className="text-right font-semibold tabular-nums">{fmt(t.fieldLaborTotal)}</TableCell></TableRow>
+                <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}><TableCell className="font-medium">Field Labor</TableCell><TableCell className="text-right font-semibold tabular-nums">{fmt(t.fieldLaborTotal)}</TableCell></TableRow>
               </TableBody>
             </Table>
           </CardContent>
