@@ -95,7 +95,7 @@ export default function BudgetPage() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold tracking-tight">Budget</h1>
+          <h1 className="text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Budget</h1>
           <p className="text-muted-foreground text-xs">Line-item budget</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
