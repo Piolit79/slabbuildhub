@@ -158,7 +158,7 @@ export default function BudgetPage() {
                 {!isMobile && <TableHead className="text-right">{sh('Labor', 'labor', 'justify-end')}</TableHead>}
                 <TableHead className="text-right">{isMobile ? sh('Total', 'labor', 'justify-end') : sh('Material', 'material', 'justify-end')}</TableHead>
                 <TableHead>{sh('Status', 'status')}</TableHead>
-                {!isMobile && <TableHead className="w-12"></TableHead>}
+                <TableHead className={isMobile ? 'w-8' : 'w-12'}></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -166,7 +166,7 @@ export default function BudgetPage() {
                 if ('_header' in item) {
                   return (
                     <TableRow key={`header-${item._header}`} className="bg-accent/60">
-                      <TableCell colSpan={isMobile ? 3 : 5} className="font-bold text-xs uppercase tracking-wider text-accent-foreground py-1.5">{item._header}</TableCell>
+                      <TableCell colSpan={isMobile ? 4 : 5} className="font-bold text-xs uppercase tracking-wider text-accent-foreground py-1.5">{item._header}</TableCell>
                     </TableRow>
                   );
                 }
@@ -174,71 +174,88 @@ export default function BudgetPage() {
                 const hasDetails = b.notes || b.subcontractor;
                 return (
                   <TableRow key={b.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
-                    {!isMobile && editId === b.id ? (
-                      <>
-                        <TableCell><Input value={editData.description || ''} onChange={e => setEditData(d => ({ ...d, description: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
-                        <TableCell><Input value={editData.labor || 0} onChange={e => setEditData(d => ({ ...d, labor: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" /></TableCell>
-                        <TableCell><Input value={editData.material || 0} onChange={e => setEditData(d => ({ ...d, material: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" /></TableCell>
-                        <TableCell>
-                          <select value={editData.status} onChange={e => setEditData(d => ({ ...d, status: e.target.value as BudgetItem['status'] }))} className="h-6 text-[10px] border rounded px-1 bg-background">
-                            <option value="estimated">estimated</option><option value="proposed">proposed</option><option value="contracted">contracted</option><option value="complete">complete</option>
-                          </select>
-                        </TableCell>
-                        <TableCell className="flex gap-1">
-                          <button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button>
-                          <button onClick={cancelEdit} className="text-destructive"><X size={14} /></button>
-                        </TableCell>
-                      </>
+                    {editId === b.id ? (
+                      isMobile ? (
+                        <>
+                          <TableCell><Input value={editData.description || ''} onChange={e => setEditData(d => ({ ...d, description: e.target.value }))} className="h-6 text-[10px] px-1" /></TableCell>
+                          <TableCell className="text-right"><Input value={(editData.labor || 0) + (editData.material || 0)} onChange={e => setEditData(d => ({ ...d, labor: parseFloat(e.target.value) || 0, material: 0 }))} type="number" className="h-6 text-[10px] w-full px-1 text-right" /></TableCell>
+                          <TableCell>
+                            <select value={editData.status} onChange={e => setEditData(d => ({ ...d, status: e.target.value as BudgetItem['status'] }))} className="h-5 text-[9px] border rounded px-0.5 bg-background">
+                              <option value="estimated">est</option><option value="proposed">prop</option><option value="contracted">cont</option><option value="complete">done</option>
+                            </select>
+                          </TableCell>
+                          <TableCell><div className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={13} /></button><button onClick={cancelEdit} className="text-destructive"><X size={13} /></button></div></TableCell>
+                        </>
+                      ) : (
+                        <>
+                          <TableCell><Input value={editData.description || ''} onChange={e => setEditData(d => ({ ...d, description: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
+                          <TableCell><Input value={editData.labor || 0} onChange={e => setEditData(d => ({ ...d, labor: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" /></TableCell>
+                          <TableCell><Input value={editData.material || 0} onChange={e => setEditData(d => ({ ...d, material: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" /></TableCell>
+                          <TableCell>
+                            <select value={editData.status} onChange={e => setEditData(d => ({ ...d, status: e.target.value as BudgetItem['status'] }))} className="h-6 text-[10px] border rounded px-1 bg-background">
+                              <option value="estimated">estimated</option><option value="proposed">proposed</option><option value="contracted">contracted</option><option value="complete">complete</option>
+                            </select>
+                          </TableCell>
+                          <TableCell className="flex gap-1">
+                            <button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button>
+                            <button onClick={cancelEdit} className="text-destructive"><X size={14} /></button>
+                          </TableCell>
+                        </>
+                      )
                     ) : (
                       <>
                         <TableCell className="font-medium text-[11px] truncate max-w-[120px] md:max-w-none">{b.description}</TableCell>
                         {!isMobile && <TableCell className="text-right tabular-nums text-[11px]">{fmt(b.labor)}</TableCell>}
                         <TableCell className="text-right tabular-nums text-[11px]">{isMobile ? fmt(b.labor + b.material) : fmt(b.material)}</TableCell>
                         <TableCell>{statusBadge(b.status)}</TableCell>
-                        {!isMobile && (
-                          <TableCell>
-                            <div className="flex gap-1.5">
+                        <TableCell>
+                          <div className="flex gap-1.5">
+                            {!isMobile && (
                               <button onClick={() => openNote(b)} className={`hover:text-foreground ${hasDetails ? 'text-primary' : 'text-muted-foreground/40'}`} title={hasDetails ? `${b.subcontractor || ''}${b.subcontractor && b.notes ? ' | ' : ''}${b.notes || ''}` : 'Add details'}>
                                 <MessageSquare size={12} />
                               </button>
-                              <button onClick={() => startEdit(b)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button>
-                            </div>
-                          </TableCell>
-                        )}
+                            )}
+                            <button onClick={() => startEdit(b)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button>
+                          </div>
+                        </TableCell>
                       </>
                     )}
                   </TableRow>
                 );
               })}
-              {!isMobile && (adding ? (
+              {adding ? (
                 <TableRow className="bg-muted/30">
                   <TableCell>
-                    <div className="flex gap-1">
-                      <select value={newData.category || 'Site'} onChange={e => setNewData(d => ({ ...d, category: e.target.value }))} className="h-6 text-[10px] border rounded px-1 bg-background w-24">
-                        {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                      <Input value={newData.description || ''} onChange={e => setNewData(d => ({ ...d, description: e.target.value }))} className="h-6 text-xs px-1" placeholder="Description" autoFocus />
-                    </div>
+                    {isMobile ? (
+                      <Input value={newData.description || ''} onChange={e => setNewData(d => ({ ...d, description: e.target.value }))} className="h-6 text-[10px] px-1" placeholder="Description" autoFocus />
+                    ) : (
+                      <div className="flex gap-1">
+                        <select value={newData.category || 'Site'} onChange={e => setNewData(d => ({ ...d, category: e.target.value }))} className="h-6 text-[10px] border rounded px-1 bg-background w-24">
+                          {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <Input value={newData.description || ''} onChange={e => setNewData(d => ({ ...d, description: e.target.value }))} className="h-6 text-xs px-1" placeholder="Description" autoFocus />
+                      </div>
+                    )}
                   </TableCell>
-                  <TableCell><Input value={newData.labor || ''} onChange={e => setNewData(d => ({ ...d, labor: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" placeholder="0" /></TableCell>
-                  <TableCell><Input value={newData.material || ''} onChange={e => setNewData(d => ({ ...d, material: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" placeholder="0" /></TableCell>
+                  {!isMobile && <TableCell><Input value={newData.labor || ''} onChange={e => setNewData(d => ({ ...d, labor: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" placeholder="0" /></TableCell>}
+                  <TableCell><Input value={isMobile ? (newData.labor || '') : (newData.material || '')} onChange={e => { const v = parseFloat(e.target.value) || 0; isMobile ? setNewData(d => ({ ...d, labor: v })) : setNewData(d => ({ ...d, material: v })); }} type="number" className="h-6 text-[10px] w-full md:w-20 px-1 text-right" placeholder="0" /></TableCell>
                   <TableCell>
-                    <select value={newData.status || 'estimated'} onChange={e => setNewData(d => ({ ...d, status: e.target.value as BudgetItem['status'] }))} className="h-6 text-[10px] border rounded px-1 bg-background">
-                      <option value="estimated">estimated</option><option value="proposed">proposed</option><option value="contracted">contracted</option><option value="complete">complete</option>
+                    <select value={newData.status || 'estimated'} onChange={e => setNewData(d => ({ ...d, status: e.target.value as BudgetItem['status'] }))} className={`h-5 md:h-6 text-[9px] md:text-[10px] border rounded px-0.5 md:px-1 bg-background`}>
+                      <option value="estimated">{isMobile ? 'est' : 'estimated'}</option><option value="proposed">{isMobile ? 'prop' : 'proposed'}</option><option value="contracted">{isMobile ? 'cont' : 'contracted'}</option><option value="complete">{isMobile ? 'done' : 'complete'}</option>
                     </select>
                   </TableCell>
-                  <TableCell className="flex gap-1">
-                    <button onClick={() => { if (newData.description) { setItems(prev => [...prev, { id: Date.now().toString(), project_id: selectedProject.id, optional: 0, subcontractor: '', notes: '', ...newData } as BudgetItem]); setAdding(false); setNewData({ category: 'Site', description: '', labor: 0, material: 0, status: 'estimated' }); } }} className="text-[hsl(var(--success))]"><Check size={14} /></button>
-                    <button onClick={() => { setAdding(false); setNewData({ category: 'Site', description: '', labor: 0, material: 0, status: 'estimated' }); }} className="text-destructive"><X size={14} /></button>
-                  </TableCell>
+                  <TableCell><div className="flex gap-1">
+                    <button onClick={() => { if (newData.description) { setItems(prev => [...prev, { id: Date.now().toString(), project_id: selectedProject.id, optional: 0, subcontractor: '', notes: '', ...newData } as BudgetItem]); setAdding(false); setNewData({ category: 'Site', description: '', labor: 0, material: 0, status: 'estimated' }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
+                    <button onClick={() => { setAdding(false); setNewData({ category: 'Site', description: '', labor: 0, material: 0, status: 'estimated' }); }} className="text-destructive"><X size={13} /></button>
+                  </div></TableCell>
                 </TableRow>
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5}>
+                  <TableCell colSpan={isMobile ? 4 : 5}>
                     <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
             <TableFooter>
               <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>

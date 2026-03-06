@@ -103,26 +103,34 @@ export default function VendorsPage() {
                 {!isMobile && <TableHead>{sh('Contact', 'contact')}</TableHead>}
                 {!isMobile && <TableHead>{sh('Email', 'email')}</TableHead>}
                 {!isMobile && <TableHead>{sh('Phone', 'phone')}</TableHead>}
-                {!isMobile && <TableHead className="w-10"></TableHead>}
+                <TableHead className={isMobile ? 'w-8' : 'w-10'}></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.map((v, idx) => (
                 <TableRow key={v.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
-                  {!isMobile && editId === v.id ? (
-                    <>
-                      <TableCell><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
-                      <TableCell><Input value={editData.detail || ''} onChange={e => setEditData(d => ({ ...d, detail: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
-                      <TableCell>
-                        <select value={editData.type} onChange={e => setEditData(d => ({ ...d, type: e.target.value as Vendor['type'] }))} className="h-6 text-[10px] border rounded px-1 bg-background">
-                          <option>Subcontractor</option><option>Vendor</option><option>Consultant</option>
-                        </select>
-                      </TableCell>
-                      <TableCell><Input value={editData.contact || ''} onChange={e => setEditData(d => ({ ...d, contact: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
-                      <TableCell><Input value={editData.email || ''} onChange={e => setEditData(d => ({ ...d, email: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
-                      <TableCell><Input value={editData.phone || ''} onChange={e => setEditData(d => ({ ...d, phone: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
-                      <TableCell className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button><button onClick={cancelEdit} className="text-destructive"><X size={14} /></button></TableCell>
-                    </>
+                  {editId === v.id ? (
+                    isMobile ? (
+                      <>
+                        <TableCell><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-[10px] px-1" /></TableCell>
+                        <TableCell><Input value={editData.detail || ''} onChange={e => setEditData(d => ({ ...d, detail: e.target.value }))} className="h-6 text-[10px] px-1" /></TableCell>
+                        <TableCell><div className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={13} /></button><button onClick={cancelEdit} className="text-destructive"><X size={13} /></button></div></TableCell>
+                      </>
+                    ) : (
+                      <>
+                        <TableCell><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
+                        <TableCell><Input value={editData.detail || ''} onChange={e => setEditData(d => ({ ...d, detail: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
+                        <TableCell>
+                          <select value={editData.type} onChange={e => setEditData(d => ({ ...d, type: e.target.value as Vendor['type'] }))} className="h-6 text-[10px] border rounded px-1 bg-background">
+                            <option>Subcontractor</option><option>Vendor</option><option>Consultant</option>
+                          </select>
+                        </TableCell>
+                        <TableCell><Input value={editData.contact || ''} onChange={e => setEditData(d => ({ ...d, contact: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
+                        <TableCell><Input value={editData.email || ''} onChange={e => setEditData(d => ({ ...d, email: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
+                        <TableCell><Input value={editData.phone || ''} onChange={e => setEditData(d => ({ ...d, phone: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
+                        <TableCell className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button><button onClick={cancelEdit} className="text-destructive"><X size={14} /></button></TableCell>
+                      </>
+                    )
                   ) : (
                     <>
                       <TableCell className="font-medium text-[11px] truncate max-w-[120px] md:max-w-none">{v.name}</TableCell>
@@ -131,35 +139,37 @@ export default function VendorsPage() {
                       {!isMobile && <TableCell>{v.contact || '—'}</TableCell>}
                       {!isMobile && <TableCell className="text-primary">{v.email || '—'}</TableCell>}
                       {!isMobile && <TableCell>{v.phone || '—'}</TableCell>}
-                      {!isMobile && <TableCell><button onClick={() => startEdit(v)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>}
+                      <TableCell><button onClick={() => startEdit(v)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>
                     </>
                   )}
                 </TableRow>
               ))}
-              {!isMobile && (adding ? (
+              {adding ? (
                 <TableRow className="bg-muted/30">
-                  <TableCell><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" placeholder="Name" autoFocus /></TableCell>
-                  <TableCell><Input value={newData.detail || ''} onChange={e => setNewData(d => ({ ...d, detail: e.target.value }))} className="h-6 text-xs px-1" placeholder="Detail / Trade" /></TableCell>
-                  <TableCell>
-                    <select value={newData.type || 'Subcontractor'} onChange={e => setNewData(d => ({ ...d, type: e.target.value as Vendor['type'] }))} className="h-6 text-[10px] border rounded px-1 bg-background">
-                      <option>Subcontractor</option><option>Vendor</option><option>Consultant</option>
-                    </select>
-                  </TableCell>
-                  <TableCell><Input value={newData.contact || ''} onChange={e => setNewData(d => ({ ...d, contact: e.target.value }))} className="h-6 text-xs px-1" placeholder="Contact" /></TableCell>
-                  <TableCell><Input value={newData.email || ''} onChange={e => setNewData(d => ({ ...d, email: e.target.value }))} className="h-6 text-xs px-1" placeholder="Email" /></TableCell>
-                  <TableCell><Input value={newData.phone || ''} onChange={e => setNewData(d => ({ ...d, phone: e.target.value }))} className="h-6 text-xs px-1" placeholder="Phone" /></TableCell>
-                  <TableCell className="flex gap-1">
-                    <button onClick={() => { if (newData.name) { setVendors(prev => [...prev, { id: Date.now().toString(), ...newData } as Vendor]); setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); } }} className="text-[hsl(var(--success))]"><Check size={14} /></button>
-                    <button onClick={() => { setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); }} className="text-destructive"><X size={14} /></button>
-                  </TableCell>
+                  <TableCell><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-[10px] px-1" placeholder="Name" autoFocus /></TableCell>
+                  <TableCell><Input value={newData.detail || ''} onChange={e => setNewData(d => ({ ...d, detail: e.target.value }))} className="h-6 text-[10px] px-1" placeholder="Detail" /></TableCell>
+                  {!isMobile && (
+                    <TableCell>
+                      <select value={newData.type || 'Subcontractor'} onChange={e => setNewData(d => ({ ...d, type: e.target.value as Vendor['type'] }))} className="h-6 text-[10px] border rounded px-1 bg-background">
+                        <option>Subcontractor</option><option>Vendor</option><option>Consultant</option>
+                      </select>
+                    </TableCell>
+                  )}
+                  {!isMobile && <TableCell><Input value={newData.contact || ''} onChange={e => setNewData(d => ({ ...d, contact: e.target.value }))} className="h-6 text-xs px-1" placeholder="Contact" /></TableCell>}
+                  {!isMobile && <TableCell><Input value={newData.email || ''} onChange={e => setNewData(d => ({ ...d, email: e.target.value }))} className="h-6 text-xs px-1" placeholder="Email" /></TableCell>}
+                  {!isMobile && <TableCell><Input value={newData.phone || ''} onChange={e => setNewData(d => ({ ...d, phone: e.target.value }))} className="h-6 text-xs px-1" placeholder="Phone" /></TableCell>}
+                  <TableCell><div className="flex gap-1">
+                    <button onClick={() => { if (newData.name) { setVendors(prev => [...prev, { id: Date.now().toString(), ...newData } as Vendor]); setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
+                    <button onClick={() => { setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); }} className="text-destructive"><X size={13} /></button>
+                  </div></TableCell>
                 </TableRow>
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={isMobile ? 3 : 7}>
                     <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </CardContent>

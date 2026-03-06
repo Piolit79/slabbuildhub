@@ -116,21 +116,30 @@ export default function PaymentsPage() {
                       <TableHead className="text-right">{sh('Amt', 'amount', 'justify-end')}</TableHead>
                       {!isMobile && <TableHead>{sh('Form', 'form')}</TableHead>}
                       {!isMobile && <TableHead>{sh('Check #', 'check_number')}</TableHead>}
-                      {!isMobile && <TableHead className="w-12"></TableHead>}
+                      <TableHead className={isMobile ? 'w-10' : 'w-12'}></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {sorted.map((p, idx) => (
                       <TableRow key={p.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
-                        {!isMobile && editId === p.id ? (
-                          <>
-                            <TableCell><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-28 px-1" /></TableCell>
-                            <TableCell><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
-                            <TableCell className="text-right"><Input value={editData.amount || ''} onChange={e => setEditData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-xs w-24 px-1 text-right" /></TableCell>
-                            <TableCell><Input value={editData.form || ''} onChange={e => setEditData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs w-20 px-1" /></TableCell>
-                            <TableCell><Input value={editData.check_number || ''} onChange={e => setEditData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" /></TableCell>
-                            <TableCell className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button><button onClick={cancelEdit} className="text-destructive"><X size={14} /></button></TableCell>
-                          </>
+                        {editId === p.id ? (
+                          isMobile ? (
+                            <>
+                              <TableCell><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full px-1" /></TableCell>
+                              <TableCell><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-[10px] px-1" /></TableCell>
+                              <TableCell className="text-right"><Input value={editData.amount || ''} onChange={e => setEditData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-[10px] w-full px-1 text-right" /></TableCell>
+                              <TableCell><div className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={13} /></button><button onClick={cancelEdit} className="text-destructive"><X size={13} /></button></div></TableCell>
+                            </>
+                          ) : (
+                            <>
+                              <TableCell><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-28 px-1" /></TableCell>
+                              <TableCell><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
+                              <TableCell className="text-right"><Input value={editData.amount || ''} onChange={e => setEditData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-xs w-24 px-1 text-right" /></TableCell>
+                              <TableCell><Input value={editData.form || ''} onChange={e => setEditData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs w-20 px-1" /></TableCell>
+                              <TableCell><Input value={editData.check_number || ''} onChange={e => setEditData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" /></TableCell>
+                              <TableCell className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button><button onClick={cancelEdit} className="text-destructive"><X size={14} /></button></TableCell>
+                            </>
+                          )
                         ) : (
                           <>
                             <TableCell className="tabular-nums text-[11px]">{format(new Date(p.date), 'MM.dd.yy')}</TableCell>
@@ -138,30 +147,30 @@ export default function PaymentsPage() {
                             <TableCell className="text-right tabular-nums font-medium text-[11px]">{fmt(p.amount)}</TableCell>
                             {!isMobile && <TableCell>{p.form}</TableCell>}
                             {!isMobile && <TableCell className="tabular-nums">{p.check_number || '—'}</TableCell>}
-                            {!isMobile && <TableCell><button onClick={() => startEdit(p)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>}
+                            <TableCell><button onClick={() => startEdit(p)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>
                           </>
                         )}
                       </TableRow>
                     ))}
-                    {!isMobile && (adding ? (
+                    {adding ? (
                       <TableRow className="bg-muted/30">
-                        <TableCell><Input value={newData.date || ''} onChange={e => setNewData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-28 px-1" autoFocus /></TableCell>
-                        <TableCell><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" placeholder="Name" /></TableCell>
-                        <TableCell className="text-right"><Input value={newData.amount || ''} onChange={e => setNewData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-xs w-24 px-1 text-right" placeholder="0.00" /></TableCell>
-                        <TableCell><Input value={newData.form || ''} onChange={e => setNewData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs w-20 px-1" placeholder="Form" /></TableCell>
-                        <TableCell><Input value={newData.check_number || ''} onChange={e => setNewData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" placeholder="Check #" /></TableCell>
-                        <TableCell className="flex gap-1">
-                          <button onClick={() => { if (newData.date && newData.name) { setPayments(prev => [...prev, { id: Date.now().toString(), project_id: selectedProject.id, category: activeTab, ...newData } as Payment]); setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); } }} className="text-[hsl(var(--success))]"><Check size={14} /></button>
-                          <button onClick={() => { setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); }} className="text-destructive"><X size={14} /></button>
-                        </TableCell>
+                        <TableCell><Input value={newData.date || ''} onChange={e => setNewData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full md:w-28 px-1" autoFocus /></TableCell>
+                        <TableCell><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-[10px] px-1" placeholder="Name" /></TableCell>
+                        <TableCell className="text-right"><Input value={newData.amount || ''} onChange={e => setNewData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-[10px] w-full md:w-24 px-1 text-right" placeholder="0.00" /></TableCell>
+                        {!isMobile && <TableCell><Input value={newData.form || ''} onChange={e => setNewData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs w-20 px-1" placeholder="Form" /></TableCell>}
+                        {!isMobile && <TableCell><Input value={newData.check_number || ''} onChange={e => setNewData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" placeholder="Check #" /></TableCell>}
+                        <TableCell><div className="flex gap-1">
+                          <button onClick={() => { if (newData.date && newData.name) { setPayments(prev => [...prev, { id: Date.now().toString(), project_id: selectedProject.id, category: activeTab, ...newData } as Payment]); setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
+                          <button onClick={() => { setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); }} className="text-destructive"><X size={13} /></button>
+                        </div></TableCell>
                       </TableRow>
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6}>
+                        <TableCell colSpan={isMobile ? 4 : 6}>
                           <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>

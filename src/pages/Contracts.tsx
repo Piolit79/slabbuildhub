@@ -104,60 +104,71 @@ export default function ContractsPage() {
                 <TableHead>{sh('Name', 'name')}</TableHead>
                 {!isMobile && <TableHead>{sh('Type', 'type')}</TableHead>}
                 <TableHead className="text-right">{sh('Amt', 'amount', 'justify-end')}</TableHead>
-                {!isMobile && <TableHead className="w-16"></TableHead>}
+                <TableHead className={isMobile ? 'w-10' : 'w-16'}></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sorted.map((c, idx) => (
                 <TableRow key={c.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
-                  {!isMobile && editId === c.id ? (
-                    <>
-                      <TableCell><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-32 px-1" /></TableCell>
-                      <TableCell><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
-                      <TableCell>
-                        <select value={editData.type || 'Contract'} onChange={e => setEditData(d => ({ ...d, type: e.target.value as Contract['type'] }))} className="h-6 text-xs border rounded px-1 bg-background">
-                          <option>Contract</option><option>Change Order</option><option>Credit</option>
-                        </select>
-                      </TableCell>
-                      <TableCell className="text-right"><Input value={editData.amount || ''} onChange={e => setEditData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-xs w-28 px-1 text-right" /></TableCell>
-                      <TableCell className="flex gap-1">
-                        <button onClick={saveEdit} className="text-[hsl(var(--success))] hover:opacity-70"><Check size={14} /></button>
-                        <button onClick={cancelEdit} className="text-destructive hover:opacity-70"><X size={14} /></button>
-                      </TableCell>
-                    </>
+                  {editId === c.id ? (
+                    isMobile ? (
+                      <>
+                        <TableCell><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full px-1" /></TableCell>
+                        <TableCell><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-[10px] px-1" /></TableCell>
+                        <TableCell className="text-right"><Input value={editData.amount || ''} onChange={e => setEditData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-[10px] w-full px-1 text-right" /></TableCell>
+                        <TableCell><div className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={13} /></button><button onClick={cancelEdit} className="text-destructive"><X size={13} /></button></div></TableCell>
+                      </>
+                    ) : (
+                      <>
+                        <TableCell><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-32 px-1" /></TableCell>
+                        <TableCell><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
+                        <TableCell>
+                          <select value={editData.type || 'Contract'} onChange={e => setEditData(d => ({ ...d, type: e.target.value as Contract['type'] }))} className="h-6 text-xs border rounded px-1 bg-background">
+                            <option>Contract</option><option>Change Order</option><option>Credit</option>
+                          </select>
+                        </TableCell>
+                        <TableCell className="text-right"><Input value={editData.amount || ''} onChange={e => setEditData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-xs w-28 px-1 text-right" /></TableCell>
+                        <TableCell className="flex gap-1">
+                          <button onClick={saveEdit} className="text-[hsl(var(--success))] hover:opacity-70"><Check size={14} /></button>
+                          <button onClick={cancelEdit} className="text-destructive hover:opacity-70"><X size={14} /></button>
+                        </TableCell>
+                      </>
+                    )
                   ) : (
                     <>
                       <TableCell className="tabular-nums text-[11px]">{format(new Date(c.date), 'MM.dd.yy')}</TableCell>
                       <TableCell className="font-medium text-[11px] truncate max-w-[120px] md:max-w-none">{c.name}</TableCell>
                       {!isMobile && <TableCell>{typeBadge(c.type)}</TableCell>}
                       <TableCell className={`text-right tabular-nums font-medium text-[11px] ${c.amount < 0 ? 'text-[hsl(var(--success))]' : ''}`}>{fmt(c.amount)}</TableCell>
-                      {!isMobile && <TableCell><button onClick={() => startEdit(c)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>}
+                      <TableCell><button onClick={() => startEdit(c)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>
                     </>
                   )}
                 </TableRow>
               ))}
-              {!isMobile && (adding ? (
+              {adding ? (
                 <TableRow className="bg-muted/30">
-                  <TableCell><Input value={newData.date || ''} onChange={e => setNewData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-32 px-1" autoFocus /></TableCell>
-                  <TableCell><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" placeholder="Name" /></TableCell>
-                  <TableCell>
-                    <select value={newData.type || 'Contract'} onChange={e => setNewData(d => ({ ...d, type: e.target.value as Contract['type'] }))} className="h-6 text-xs border rounded px-1 bg-background">
-                      <option>Contract</option><option>Change Order</option><option>Credit</option>
-                    </select>
-                  </TableCell>
-                  <TableCell className="text-right"><Input value={newData.amount || ''} onChange={e => setNewData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-xs w-28 px-1 text-right" placeholder="0.00" /></TableCell>
-                  <TableCell className="flex gap-1">
-                    <button onClick={() => { if (newData.date && newData.name) { setContracts(prev => [...prev, { id: Date.now().toString(), project_id: selectedProject.id, ...newData } as Contract]); setAdding(false); setNewData({ date: '', name: '', amount: 0, type: 'Contract' }); } }} className="text-[hsl(var(--success))] hover:opacity-70"><Check size={14} /></button>
-                    <button onClick={() => { setAdding(false); setNewData({ date: '', name: '', amount: 0, type: 'Contract' }); }} className="text-destructive hover:opacity-70"><X size={14} /></button>
-                  </TableCell>
+                  <TableCell><Input value={newData.date || ''} onChange={e => setNewData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full md:w-32 px-1" autoFocus /></TableCell>
+                  <TableCell><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-[10px] px-1" placeholder="Name" /></TableCell>
+                  {!isMobile && (
+                    <TableCell>
+                      <select value={newData.type || 'Contract'} onChange={e => setNewData(d => ({ ...d, type: e.target.value as Contract['type'] }))} className="h-6 text-xs border rounded px-1 bg-background">
+                        <option>Contract</option><option>Change Order</option><option>Credit</option>
+                      </select>
+                    </TableCell>
+                  )}
+                  <TableCell className="text-right"><Input value={newData.amount || ''} onChange={e => setNewData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-[10px] w-full md:w-28 px-1 text-right" placeholder="0.00" /></TableCell>
+                  <TableCell><div className="flex gap-1">
+                    <button onClick={() => { if (newData.date && newData.name) { setContracts(prev => [...prev, { id: Date.now().toString(), project_id: selectedProject.id, ...newData } as Contract]); setAdding(false); setNewData({ date: '', name: '', amount: 0, type: 'Contract' }); } }} className="text-[hsl(var(--success))] hover:opacity-70"><Check size={13} /></button>
+                    <button onClick={() => { setAdding(false); setNewData({ date: '', name: '', amount: 0, type: 'Contract' }); }} className="text-destructive hover:opacity-70"><X size={13} /></button>
+                  </div></TableCell>
                 </TableRow>
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5}>
+                  <TableCell colSpan={isMobile ? 4 : 5}>
                     <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </CardContent>
