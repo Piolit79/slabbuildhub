@@ -4,7 +4,7 @@ import { mockContracts, mockPayments, mockDraws, mockBudgetItems, dashboardTotal
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DollarSign, TrendingDown, Landmark, Calculator, FileText, Wallet, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Rectangle } from 'recharts';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(n);
 
@@ -139,7 +139,7 @@ export default function Dashboard() {
             <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Financial Summary</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-3">
-            <div className="h-64">
+            <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={[
                   { name: 'Contract Owed', total: t.contractOwed },
@@ -150,12 +150,34 @@ export default function Dashboard() {
                   { name: 'Other Hard & Soft Costs', total: t.otherSoftHardCosts },
                   { name: 'Total Paid to Date', total: t.totalPaidToDate },
                   { name: 'Current Projected Total', total: t.projectedTotal },
-                ]} layout="vertical" margin={{ left: 10 }}>
+                ]} layout="vertical" margin={{ left: 10, right: 90 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(0, 8%, 88%)" />
                   <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
                   <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} width={130} />
                   <Tooltip formatter={(val: number) => fmt(val)} />
-                  <Bar dataKey="total" fill="hsl(353, 49%, 54%)" radius={[0, 3, 3, 0]} label={{ position: 'right', fontSize: 9, formatter: (v: number) => fmt(v) }} />
+                  <Bar
+                    dataKey="total"
+                    fill="hsl(353, 49%, 54%)"
+                    radius={[0, 3, 3, 0]}
+                    label={{ position: 'right', fontSize: 9, formatter: (v: number) => fmt(v) }}
+                    shape={(props: any) => {
+                      const { x, y, width, height, fill } = props;
+                      const depth = 6;
+                      return (
+                        <g>
+                          <rect x={x} y={y} width={width} height={height} fill={fill} rx={2} />
+                          <polygon
+                            points={`${x + width},${y} ${x + width + depth},${y - depth} ${x + width + depth},${y + height - depth} ${x + width},${y + height}`}
+                            fill="hsl(353, 49%, 44%)"
+                          />
+                          <polygon
+                            points={`${x},${y} ${x + depth},${y - depth} ${x + width + depth},${y - depth} ${x + width},${y}`}
+                            fill="hsl(353, 49%, 62%)"
+                          />
+                        </g>
+                      );
+                    }}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
