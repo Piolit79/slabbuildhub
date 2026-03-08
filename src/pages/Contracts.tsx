@@ -142,11 +142,11 @@ export default function ContractsPage() {
                       </>
                     )
                   ) : (
-                      <>
+                  <>
                       <TableCell className="tabular-nums text-[11px] md:text-sm">{format(new Date(c.date), 'MM.dd.yy')}</TableCell>
-                      <TableCell className="font-medium text-[11px] md:text-sm truncate max-w-[120px] md:max-w-none">{c.name}</TableCell>
+                      <TableCell className="text-[11px] md:text-sm truncate max-w-[120px] md:max-w-none">{c.name}</TableCell>
                       {!isMobile && <TableCell>{typeBadge(c.type)}</TableCell>}
-                      <TableCell className={`text-right tabular-nums font-medium text-[11px] md:text-sm ${c.amount < 0 ? 'text-[hsl(var(--success))]' : ''}`}>{fmt(c.amount)}</TableCell>
+                      <TableCell className={`text-right tabular-nums text-[11px] md:text-sm ${c.amount < 0 ? 'text-[hsl(var(--success))]' : ''}`}>{fmt(c.amount)}</TableCell>
                       <TableCell><button onClick={() => startEdit(c)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>
                     </>
                   )}

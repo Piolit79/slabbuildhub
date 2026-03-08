@@ -138,7 +138,7 @@ export default function VendorsPage() {
                     )
                   ) : (
                   <>
-                      <TableCell className="font-medium text-[11px] md:text-sm truncate max-w-[120px] md:max-w-none">{v.name}</TableCell>
+                      <TableCell className="text-[11px] md:text-sm truncate max-w-[120px] md:max-w-none">{v.name}</TableCell>
                       <TableCell className="text-[11px] md:text-sm truncate max-w-[100px] md:max-w-none">{v.detail}</TableCell>
                       {!isMobile && <TableCell>{typeBadge(v.type)}</TableCell>}
                       {!isMobile && <TableCell className="text-[11px] md:text-sm">{v.contact || '—'}</TableCell>}

@@ -126,10 +126,10 @@ export default function DrawsPage() {
                         </>
                       )
                     ) : (
-                      <>
-                        <TableCell className="font-medium text-[11px] md:text-sm">Draw {d.draw_number.toString().padStart(3, '0')}</TableCell>
+                    <>
+                        <TableCell className="text-[11px] md:text-sm">Draw {d.draw_number.toString().padStart(3, '0')}</TableCell>
                         <TableCell className="tabular-nums text-[11px] md:text-sm">{format(new Date(d.date), 'MM.dd.yy')}</TableCell>
-                        <TableCell className="text-right tabular-nums font-semibold text-[11px] md:text-sm">{fmt(d.amount)}</TableCell>
+                        <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(d.amount)}</TableCell>
                         <TableCell><button onClick={() => startEdit(d)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>
                       </>
                     )}

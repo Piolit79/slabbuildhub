@@ -271,15 +271,37 @@ export default function Dashboard() {
             </TableHeader>
             <TableBody>
               {subSummary.map((row, idx) => (
-                <TableRow key={row.name} className={`${row.balance === 0 ? 'text-muted-foreground/50' : ''}`} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
-                  <TableCell className="font-medium text-[11px] md:text-sm">{row.name}</TableCell>
+                <TableRow
+                  key={row.name}
+                  className={row.balance === 0 ? 'text-muted-foreground/60' : undefined}
+                  style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}
+                >
+                  <TableCell className="text-[11px] md:text-sm">{row.name}</TableCell>
                   {!isMobile && <TableCell className="text-[11px] md:text-sm">{row.detail || '—'}</TableCell>}
                   <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(row.contract)}</TableCell>
-                  {!isMobile && <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{row.changeOrders ? fmt(row.changeOrders) : '—'}</TableCell>}
-                  {!isMobile && <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{row.credits ? fmt(row.credits) : '—'}</TableCell>}
-                  {!isMobile && <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(row.owed)}</TableCell>}
-                  <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(row.paid)}</TableCell>
-                  <TableCell className={`text-right tabular-nums font-semibold text-[11px] md:text-sm ${row.balance === 0 ? '' : 'text-[#c37e87]'}`}>
+                  {!isMobile && (
+                    <TableCell className="text-right tabular-nums text-[11px] md:text-sm">
+                      {row.changeOrders ? fmt(row.changeOrders) : '—'}
+                    </TableCell>
+                  )}
+                  {!isMobile && (
+                    <TableCell className="text-right tabular-nums text-[11px] md:text-sm">
+                      {row.credits ? fmt(row.credits) : '—'}
+                    </TableCell>
+                  )}
+                  {!isMobile && (
+                    <TableCell className="text-right tabular-nums text-[11px] md:text-sm">
+                      {fmt(row.owed)}
+                    </TableCell>
+                  )}
+                  <TableCell className="text-right tabular-nums text-[11px] md:text-sm">
+                    {fmt(row.paid)}
+                  </TableCell>
+                  <TableCell
+                    className={`text-right tabular-nums font-semibold text-[11px] md:text-sm ${
+                      row.balance === 0 ? '' : 'text-[#c37e87]'
+                    }`}
+                  >
                     {row.balance === 0 ? '$0' : fmt(row.balance)}
                   </TableCell>
                 </TableRow>
@@ -303,12 +325,12 @@ export default function Dashboard() {
               </TableHeader>
               <TableBody>
                 <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
-                  <TableCell className="font-medium text-[11px] md:text-sm">StudioLAB</TableCell>
+                  <TableCell className="text-[11px] md:text-sm">StudioLAB</TableCell>
                   <TableCell className="text-[11px] md:text-sm">Designer</TableCell>
                   <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(softCostStudioLAB)}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="font-medium text-[11px] md:text-sm">SLAB Builders</TableCell>
+                  <TableCell className="text-[11px] md:text-sm">SLAB Builders</TableCell>
                   <TableCell className="text-[11px] md:text-sm">Builder</TableCell>
                   <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(softCostSLAB)}</TableCell>
                 </TableRow>
@@ -328,15 +350,15 @@ export default function Dashboard() {
               </TableHeader>
               <TableBody>
                 <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
-                  <TableCell className="font-medium text-[11px] md:text-sm">Materials & Vendors</TableCell>
+                  <TableCell className="text-[11px] md:text-sm">Materials & Vendors</TableCell>
                   <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(materialsVendorsTotal)}</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="font-medium text-[11px] md:text-sm">Fixtures & Fittings</TableCell>
+                  <TableCell className="text-[11px] md:text-sm">Fixtures & Fittings</TableCell>
                   <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(Math.abs(fixturesFittingsTotal))}</TableCell>
                 </TableRow>
                 <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
-                  <TableCell className="font-medium text-[11px] md:text-sm">Field Labor</TableCell>
+                  <TableCell className="text-[11px] md:text-sm">Field Labor</TableCell>
                   <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(fieldLaborTotal)}</TableCell>
                 </TableRow>
               </TableBody>
