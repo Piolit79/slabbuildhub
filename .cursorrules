@@ -1,0 +1,31 @@
+## Project: SLAB Builders HUB
+
+### Stack
+- React 18, TypeScript, Vite, Tailwind CSS, shadcn-ui, React Router v6
+- Data: Supabase (all data is cloud-synced, no mock data, no localStorage for app data)
+- Deploy: Vercel
+
+### DO NOT MODIFY these files (they are working and connected to production):
+- src/integrations/supabase/client.ts
+- src/integrations/supabase/types.ts
+- src/coi-tracker/integrations/supabase/client.ts
+- src/coi-tracker/integrations/supabase/types.ts
+- src/contexts/ProjectContext.tsx
+- .env
+- vite.config.ts
+- tailwind.config.ts
+- package.json (do not add/remove dependencies without asking)
+
+### DO NOT:
+- Replace Supabase calls with mock data or localStorage
+- Change Supabase URLs or keys
+- Modify authentication or data-fetching logic unless explicitly asked
+- Create new config files or overwrite existing ones
+- Remove or rename existing imports/exports that other files depend on
+
+### WHEN EDITING UI:
+- Use existing shadcn-ui components from @/components/ui/
+- Use Tailwind classes for styling
+- Keep the existing color scheme (accent: #c37e87, text: #7b7c81)
+- Preserve all existing Supabase data-fetching and mutation logic in page components
+- Only change visual/layout code, not data logic, unless asked

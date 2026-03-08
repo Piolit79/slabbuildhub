@@ -273,11 +273,11 @@ export default function Dashboard() {
               {subSummary.map((row, idx) => (
                 <TableRow key={row.name} className={`${row.balance === 0 ? 'text-muted-foreground/50' : ''}`} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
                   <TableCell className="font-medium text-[11px] md:text-sm">{row.name}</TableCell>
-                  {!isMobile && <TableCell>{row.detail || '—'}</TableCell>}
+                  {!isMobile && <TableCell className="text-[11px] md:text-sm">{row.detail || '—'}</TableCell>}
                   <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(row.contract)}</TableCell>
-                  {!isMobile && <TableCell className="text-right tabular-nums">{row.changeOrders ? fmt(row.changeOrders) : '—'}</TableCell>}
-                  {!isMobile && <TableCell className="text-right tabular-nums">{row.credits ? fmt(row.credits) : '—'}</TableCell>}
-                  {!isMobile && <TableCell className="text-right tabular-nums">{fmt(row.owed)}</TableCell>}
+                  {!isMobile && <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{row.changeOrders ? fmt(row.changeOrders) : '—'}</TableCell>}
+                  {!isMobile && <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{row.credits ? fmt(row.credits) : '—'}</TableCell>}
+                  {!isMobile && <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(row.owed)}</TableCell>}
                   <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(row.paid)}</TableCell>
                   <TableCell className={`text-right tabular-nums font-semibold text-[11px] md:text-sm ${row.balance === 0 ? '' : 'text-[#c37e87]'}`}>
                     {row.balance === 0 ? '$0' : fmt(row.balance)}
@@ -294,10 +294,24 @@ export default function Dashboard() {
           <CardHeader className="pb-1 pt-3 px-4"><CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Soft Costs</CardTitle></CardHeader>
           <CardContent className="px-4 pb-3">
             <Table>
-              <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Detail</TableHead><TableHead className="text-right">Payments</TableHead></TableRow></TableHeader>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Detail</TableHead>
+                  <TableHead className="text-right">Payments</TableHead>
+                </TableRow>
+              </TableHeader>
               <TableBody>
-                <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}><TableCell className="font-medium">StudioLAB</TableCell><TableCell>Designer</TableCell><TableCell className="text-right tabular-nums">{fmt(softCostStudioLAB)}</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">SLAB Builders</TableCell><TableCell>Builder</TableCell><TableCell className="text-right tabular-nums">{fmt(softCostSLAB)}</TableCell></TableRow>
+                <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
+                  <TableCell className="font-medium text-[11px] md:text-sm">StudioLAB</TableCell>
+                  <TableCell className="text-[11px] md:text-sm">Designer</TableCell>
+                  <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(softCostStudioLAB)}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium text-[11px] md:text-sm">SLAB Builders</TableCell>
+                  <TableCell className="text-[11px] md:text-sm">Builder</TableCell>
+                  <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(softCostSLAB)}</TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           </CardContent>
@@ -306,11 +320,25 @@ export default function Dashboard() {
           <CardHeader className="pb-1 pt-3 px-4"><CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Other Hard Costs</CardTitle></CardHeader>
           <CardContent className="px-4 pb-3">
             <Table>
-              <TableHeader><TableRow><TableHead>Type</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                </TableRow>
+              </TableHeader>
               <TableBody>
-                <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}><TableCell className="font-medium">Materials & Vendors</TableCell><TableCell className="text-right tabular-nums">{fmt(materialsVendorsTotal)}</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">Fixtures & Fittings</TableCell><TableCell className="text-right tabular-nums">{fmt(Math.abs(fixturesFittingsTotal))}</TableCell></TableRow>
-                <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}><TableCell className="font-medium">Field Labor</TableCell><TableCell className="text-right tabular-nums">{fmt(fieldLaborTotal)}</TableCell></TableRow>
+                <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
+                  <TableCell className="font-medium text-[11px] md:text-sm">Materials & Vendors</TableCell>
+                  <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(materialsVendorsTotal)}</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium text-[11px] md:text-sm">Fixtures & Fittings</TableCell>
+                  <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(Math.abs(fixturesFittingsTotal))}</TableCell>
+                </TableRow>
+                <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
+                  <TableCell className="font-medium text-[11px] md:text-sm">Field Labor</TableCell>
+                  <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(fieldLaborTotal)}</TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           </CardContent>
