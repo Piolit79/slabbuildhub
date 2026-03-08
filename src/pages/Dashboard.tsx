@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useProject } from '@/contexts/ProjectContext';
-import { mockContracts, mockPayments, mockDraws, mockBudgetItems, dashboardTotals, mockVendors } from '@/data/mock-data';
+import { mockContracts, mockPayments, mockDraws, dashboardTotals, mockVendors } from '@/data/mock-data';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DollarSign, TrendingDown, Landmark, Calculator, FileText, Wallet, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
@@ -25,8 +26,26 @@ export default function Dashboard() {
 
   const contracts = mockContracts.filter(c => c.project_id === pid);
   const payments = mockPayments.filter(p => p.project_id === pid);
-  const budget = mockBudgetItems.filter(b => b.project_id === pid);
   const draws = mockDraws.filter(d => d.project_id === pid);
+
+  const [budget, setBudget] = useState<{ labor: number; material: number }[]>([]);
+  const [designFeePct, setDesignFeePct] = useState(0.10);
+  const [buildFeePct, setBuildFeePct] = useState(0.15);
+
+  useEffect(() => {
+    const load = async () => {
+      const [{ data: items }, { data: settings }] = await Promise.all([
+        supabase.from('budget_items').select('labor,material').eq('project_id', pid),
+        supabase.from('budget_settings').select('design_fee_pct,build_fee_pct').eq('project_id', pid).maybeSingle(),
+      ]);
+      setBudget(items || []);
+      if (settings) {
+        setDesignFeePct(settings.design_fee_pct ?? 0.10);
+        setBuildFeePct(settings.build_fee_pct ?? 0.15);
+      }
+    };
+    load();
+  }, [pid]);
 
   // Compute totals from actual project data
   const contractOwed = contracts.reduce((s, c) => s + c.amount, 0);
@@ -44,7 +63,7 @@ export default function Dashboard() {
   const otherSoftHardCosts = allPaymentsTotal - contractPaid;
   const totalPaidToDate = allPaymentsTotal;
   const hardCostBudget = budget.reduce((s, b) => s + b.labor + b.material, 0);
-  const budgetFees = Math.round(hardCostBudget * 0.25);
+  const budgetFees = Math.round(hardCostBudget * (designFeePct + buildFeePct));
   const budgetTotal = hardCostBudget + budgetFees;
   const projectedTotal = totalPaidToDate + contractBalance;
 
@@ -81,8 +100,8 @@ export default function Dashboard() {
 
   // Pie chart: Hard Cost vs Fees
   const hardCost = budget.reduce((s, b) => s + b.labor + b.material, 0);
-  const designFee = Math.round(hardCost * 0.10);
-  const buildFee = Math.round(hardCost * 0.15);
+  const designFee = Math.round(hardCost * designFeePct);
+  const buildFee = Math.round(hardCost * buildFeePct);
   const budgetChartData = [
     { name: 'Budget Hard Cost', total: hardCost },
     { name: 'Budget Fees', total: designFee + buildFee },
