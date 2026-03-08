@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -9,6 +10,7 @@ import { Plus } from 'lucide-react';
 
 export default function AppHeader() {
   const { projects, selectedProject, setSelectedProjectId, addProject } = useProject();
+  const { isClient } = useAuth();
   const [addOpen, setAddOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [newAddress, setNewAddress] = useState('');
@@ -22,6 +24,17 @@ export default function AppHeader() {
     setNewAddress('');
     setAddOpen(false);
   };
+
+  // Client users see project name only (no selector)
+  if (isClient) {
+    return (
+      <header className="h-14 md:h-16 border-b border-border bg-card flex items-center px-4 md:px-6 sticky top-0 z-10">
+        <div className="ml-10 md:ml-0">
+          <span className="text-xs md:text-sm font-medium text-muted-foreground">{selectedProject.name}</span>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <>

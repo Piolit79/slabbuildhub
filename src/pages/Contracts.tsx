@@ -24,7 +24,7 @@ function SortBtn({ label, active, dir, onClick, className }: { label: string; ac
   );
 }
 
-export default function ContractsPage() {
+export default function ContractsPage({ readOnly }: { readOnly?: boolean }) {
   const { selectedProject } = useProject();
   const isMobile = useIsMobile();
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -83,23 +83,25 @@ export default function ContractsPage() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Contracts</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button size="sm"><Plus size={14} /> Add</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Add Contract Entry</DialogTitle></DialogHeader>
-            <form onSubmit={handleAdd} className="space-y-3">
-              <div className="space-y-1"><Label className="text-xs">Date</Label><Input name="date" type="date" required className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Name</Label><Input name="name" required className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Amount</Label><Input name="amount" type="number" step="0.01" required className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Type</Label>
-                <Select name="type" defaultValue="Contract"><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="Contract">Contract</SelectItem><SelectItem value="Change Order">Change Order</SelectItem><SelectItem value="Credit">Credit</SelectItem></SelectContent>
-                </Select>
-              </div>
-              <Button type="submit" size="sm" className="w-full">Save</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+        {!readOnly && (
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild><Button size="sm"><Plus size={14} /> Add</Button></DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Add Contract Entry</DialogTitle></DialogHeader>
+              <form onSubmit={handleAdd} className="space-y-3">
+                <div className="space-y-1"><Label className="text-xs">Date</Label><Input name="date" type="date" required className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-xs">Name</Label><Input name="name" required className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-xs">Amount</Label><Input name="amount" type="number" step="0.01" required className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-xs">Type</Label>
+                  <Select name="type" defaultValue="Contract"><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="Contract">Contract</SelectItem><SelectItem value="Change Order">Change Order</SelectItem><SelectItem value="Credit">Credit</SelectItem></SelectContent>
+                  </Select>
+                </div>
+                <Button type="submit" size="sm" className="w-full">Save</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <Card>
@@ -111,7 +113,7 @@ export default function ContractsPage() {
                 <TableHead>{sh('Name', 'name')}</TableHead>
                 {!isMobile && <TableHead>{sh('Type', 'type')}</TableHead>}
                 <TableHead className="text-right">{sh('Amt', 'amount', 'justify-end')}</TableHead>
-                <TableHead className={isMobile ? 'w-10' : 'w-16'}></TableHead>
+                {!readOnly && <TableHead className={isMobile ? 'w-10' : 'w-16'}></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -147,12 +149,12 @@ export default function ContractsPage() {
                       <TableCell className="text-[11px] md:text-sm truncate max-w-[120px] md:max-w-none">{c.name}</TableCell>
                       {!isMobile && <TableCell>{typeBadge(c.type)}</TableCell>}
                       <TableCell className={`text-right tabular-nums text-[11px] md:text-sm ${c.amount < 0 ? 'text-[hsl(var(--success))]' : ''}`}>{fmt(c.amount)}</TableCell>
-                      <TableCell><button onClick={() => startEdit(c)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>
+                      {!readOnly && <TableCell><button onClick={() => startEdit(c)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>}
                     </>
                   )}
                 </TableRow>
               ))}
-              {adding ? (
+              {!readOnly && (adding ? (
                 <TableRow className="bg-muted/30">
                   <TableCell><Input value={newData.date || ''} onChange={e => setNewData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full md:w-32 px-1" autoFocus /></TableCell>
                   <TableCell><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-[10px] px-1" placeholder="Name" /></TableCell>
@@ -175,7 +177,7 @@ export default function ContractsPage() {
                     <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
                   </TableCell>
                 </TableRow>
-              )}
+              ))}
             </TableBody>
           </Table>
         </CardContent>

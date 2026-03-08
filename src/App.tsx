@@ -2,10 +2,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ProjectProvider } from "@/contexts/ProjectContext";
-import { AuthProvider } from "@/coi-tracker/context/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import AppLayout from "@/components/layout/AppLayout";
+import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import ContractsPage from "./pages/Contracts";
 import PaymentsPage from "./pages/Payments";
@@ -13,10 +14,11 @@ import BudgetPage from "./pages/Budget";
 import VendorsPage from "./pages/Vendors";
 import DrawsPage from "./pages/Draws";
 import SettingsPage from "./pages/Settings";
+import ClientUsers from "./pages/ClientUsers";
+import ClientFiles from "./pages/ClientFiles";
 import NotFound from "./pages/NotFound";
 
 // COI Tracker pages
-import COILogin from "./coi-tracker/pages/Login";
 import COIIndex from "./coi-tracker/pages/Index";
 import COIProjects from "./coi-tracker/pages/Projects";
 import COIProjectDetail from "./coi-tracker/pages/ProjectDetail";
@@ -29,6 +31,19 @@ import ManageSources from "./code-hub/pages/ManageSources";
 
 const queryClient = new QueryClient();
 
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return null;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+function ClientRedirect({ children }: { children: React.ReactNode }) {
+  const { isClient } = useAuth();
+  if (isClient) return <Navigate to="/client/dashboard" replace />;
+  return <>{children}</>;
+}
+
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
@@ -37,36 +52,50 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <ProjectProvider>
-              <Routes>
-                {/* COI tracker login (outside Hub layout — full screen) */}
-                <Route path="/insurance/login" element={<COILogin />} />
+            <Routes>
+              {/* Login page (no layout) */}
+              <Route path="/login" element={<Login />} />
 
-                {/* Hub layout wraps everything else */}
-                <Route element={<AppLayout />}>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/contracts" element={<ContractsPage />} />
-                  <Route path="/payments" element={<PaymentsPage />} />
-                  <Route path="/budget" element={<BudgetPage />} />
-                  <Route path="/vendors" element={<VendorsPage />} />
-                  <Route path="/draws" element={<DrawsPage />} />
-                  <Route path="/settings" element={<SettingsPage />} />
+              {/* All app routes require auth */}
+              <Route element={
+                <AuthGuard>
+                  <ProjectProvider>
+                    <AppLayout />
+                  </ProjectProvider>
+                </AuthGuard>
+              }>
+                {/* Company-only routes (redirect clients to client hub) */}
+                <Route path="/" element={<ClientRedirect><Dashboard /></ClientRedirect>} />
+                <Route path="/contracts" element={<ClientRedirect><ContractsPage /></ClientRedirect>} />
+                <Route path="/payments" element={<ClientRedirect><PaymentsPage /></ClientRedirect>} />
+                <Route path="/budget" element={<ClientRedirect><BudgetPage /></ClientRedirect>} />
+                <Route path="/vendors" element={<ClientRedirect><VendorsPage /></ClientRedirect>} />
+                <Route path="/draws" element={<ClientRedirect><DrawsPage /></ClientRedirect>} />
+                <Route path="/settings" element={<ClientRedirect><SettingsPage /></ClientRedirect>} />
 
-                  {/* COI Tracker routes */}
-                  <Route path="/insurance" element={<COIIndex />} />
-                  <Route path="/insurance/projects" element={<COIProjects />} />
-                  <Route path="/insurance/projects/:id" element={<COIProjectDetail />} />
-                  <Route path="/insurance/files" element={<COIFiles />} />
-                  <Route path="/insurance/settings" element={<COISettings />} />
+                {/* COI Tracker routes (company only) */}
+                <Route path="/insurance" element={<ClientRedirect><COIIndex /></ClientRedirect>} />
+                <Route path="/insurance/projects" element={<ClientRedirect><COIProjects /></ClientRedirect>} />
+                <Route path="/insurance/projects/:id" element={<ClientRedirect><COIProjectDetail /></ClientRedirect>} />
+                <Route path="/insurance/files" element={<ClientRedirect><COIFiles /></ClientRedirect>} />
+                <Route path="/insurance/settings" element={<ClientRedirect><COISettings /></ClientRedirect>} />
 
-                  {/* Code Hub routes */}
-                  <Route path="/code" element={<AskCodes />} />
-                  <Route path="/code/admin" element={<ManageSources />} />
-                </Route>
+                {/* Code Hub routes (company only) */}
+                <Route path="/code" element={<ClientRedirect><AskCodes /></ClientRedirect>} />
+                <Route path="/code/admin" element={<ClientRedirect><ManageSources /></ClientRedirect>} />
 
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </ProjectProvider>
+                {/* Client Hub routes (company: admin views, client: read-only project views) */}
+                <Route path="/client" element={<ClientRedirect><ClientUsers /></ClientRedirect>} />
+                <Route path="/client/files" element={<ClientFiles />} />
+                <Route path="/client/dashboard" element={<Dashboard readOnly />} />
+                <Route path="/client/budget" element={<BudgetPage readOnly />} />
+                <Route path="/client/contracts" element={<ContractsPage readOnly />} />
+                <Route path="/client/payments" element={<PaymentsPage readOnly />} />
+                <Route path="/client/draws" element={<DrawsPage readOnly />} />
+              </Route>
+
+              <Route path="*" element={<NotFound />} />
+            </Routes>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

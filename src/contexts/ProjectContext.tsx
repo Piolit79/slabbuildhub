@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Project } from '@/types';
 
 interface ProjectContextType {
@@ -14,6 +15,7 @@ interface ProjectContextType {
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isClient, profile } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [loaded, setLoaded] = useState(false);
@@ -23,12 +25,22 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const { data } = await supabase.from('projects').select('*').order('created_at');
       if (data && data.length > 0) {
         setProjects(data as Project[]);
-        setSelectedProjectId(data[0].id);
+        // Client users: auto-select their assigned project
+        if (isClient && profile?.project_id) {
+          const assigned = data.find((p: any) => p.id === profile.project_id);
+          if (assigned) {
+            setSelectedProjectId(assigned.id);
+          } else {
+            setSelectedProjectId(data[0].id);
+          }
+        } else {
+          setSelectedProjectId(data[0].id);
+        }
       }
       setLoaded(true);
     };
     load();
-  }, []);
+  }, [isClient, profile?.project_id]);
 
   const activeProjects = projects.filter(p => p.status !== 'archived');
   const selectedProject = activeProjects.find(p => p.id === selectedProjectId) || activeProjects[0];

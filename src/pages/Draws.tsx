@@ -18,7 +18,7 @@ function SortBtn({ label, active, dir, onClick, className }: { label: string; ac
   return <button onClick={onClick} className={`inline-flex items-center gap-0.5 hover:text-foreground ${className || ''}`}>{label}{active ? (dir === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />) : <ChevronsUpDown size={11} className="opacity-30" />}</button>;
 }
 
-export default function DrawsPage() {
+export default function DrawsPage({ readOnly }: { readOnly?: boolean }) {
   const { selectedProject } = useProject();
   const isMobile = useIsMobile();
   const [draws, setDraws] = useState<Draw[]>([]);
@@ -69,18 +69,20 @@ export default function DrawsPage() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Draws</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild><Button size="sm"><Plus size={14} /> Add</Button></DialogTrigger>
-          <DialogContent>
-            <DialogHeader><DialogTitle>Add Draw Request</DialogTitle></DialogHeader>
-            <form onSubmit={handleAdd} className="space-y-3">
-              <div className="space-y-1"><Label className="text-xs">Date</Label><Input name="date" type="date" required className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Draw #</Label><Input name="draw_number" type="number" defaultValue={filtered.length + 1} required className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Amount</Label><Input name="amount" type="number" step="0.01" required className="h-8 text-xs" /></div>
-              <Button type="submit" size="sm" className="w-full">Save</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+        {!readOnly && (
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild><Button size="sm"><Plus size={14} /> Add</Button></DialogTrigger>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Add Draw Request</DialogTitle></DialogHeader>
+              <form onSubmit={handleAdd} className="space-y-3">
+                <div className="space-y-1"><Label className="text-xs">Date</Label><Input name="date" type="date" required className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-xs">Draw #</Label><Input name="draw_number" type="number" defaultValue={filtered.length + 1} required className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-xs">Amount</Label><Input name="amount" type="number" step="0.01" required className="h-8 text-xs" /></div>
+                <Button type="submit" size="sm" className="w-full">Save</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-2 max-w-sm">
@@ -102,7 +104,7 @@ export default function DrawsPage() {
                 <TableHead>{sh('Draw #', 'draw_number')}</TableHead>
                 <TableHead>{sh('Date', 'date')}</TableHead>
                 <TableHead className="text-right">{sh('Amt', 'amount', 'justify-end')}</TableHead>
-                <TableHead className={isMobile ? 'w-8' : 'w-10'}></TableHead>
+                {!readOnly && <TableHead className={isMobile ? 'w-8' : 'w-10'}></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -130,13 +132,13 @@ export default function DrawsPage() {
                         <TableCell className="text-[11px] md:text-sm">Draw {d.draw_number.toString().padStart(3, '0')}</TableCell>
                         <TableCell className="tabular-nums text-[11px] md:text-sm">{format(new Date(d.date), 'MM.dd.yy')}</TableCell>
                         <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(d.amount)}</TableCell>
-                        <TableCell><button onClick={() => startEdit(d)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>
+                        {!readOnly && <TableCell><button onClick={() => startEdit(d)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>}
                       </>
                     )}
                   </TableRow>
                 );
               })}
-              {adding ? (
+              {!readOnly && (adding ? (
                 <TableRow className="bg-muted/30">
                   <TableCell><Input value={newData.draw_number || ''} onChange={e => setNewData(x => ({ ...x, draw_number: parseInt(e.target.value) || 0 }))} type="number" className="h-6 text-[10px] w-full md:w-16 px-1" placeholder="#" autoFocus /></TableCell>
                   <TableCell><Input value={newData.date || ''} onChange={e => setNewData(x => ({ ...x, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full md:w-28 px-1" /></TableCell>
@@ -152,7 +154,7 @@ export default function DrawsPage() {
                     <button onClick={() => { setNewData(d => ({ ...d, draw_number: filtered.length + 1 })); setAdding(true); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
                   </TableCell>
                 </TableRow>
-              )}
+              ))}
             </TableBody>
           </Table>
         </CardContent>

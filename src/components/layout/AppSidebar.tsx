@@ -1,17 +1,27 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderOpen, UserRound, MessageSquare, Settings2 } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderOpen, UserRound, MessageSquare, Settings2, FolderClosed } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/contexts/AuthContext';
 import slabLogo from '@/assets/slab-builders-logo.svg';
 
-const navItems = [
+const companyNavItems = [
   { to: '/', label: 'Ledger Dashboard', icon: LayoutDashboard },
   { to: '/budget', label: 'Budget', icon: Calculator },
   { to: '/contracts', label: 'Contracts', icon: FileText },
   { to: '/payments', label: 'Payments', icon: CreditCard },
   { to: '/vendors', label: 'Vendors', icon: Users },
   { to: '/draws', label: 'Draws', icon: Landmark },
+];
+
+const clientNavItems = [
+  { to: '/client/dashboard', label: 'Ledger Dashboard', icon: LayoutDashboard },
+  { to: '/client/budget', label: 'Budget', icon: Calculator },
+  { to: '/client/contracts', label: 'Contracts', icon: FileText },
+  { to: '/client/payments', label: 'Payments', icon: CreditCard },
+  { to: '/client/draws', label: 'Draws', icon: Landmark },
+  { to: '/client/files', label: 'Project Files', icon: FolderOpen },
 ];
 
 const insuranceItems = [
@@ -26,6 +36,32 @@ export default function AppSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const isMobile = useIsMobile();
+  const { isClient, logout } = useAuth();
+
+  const navItems = isClient ? clientNavItems : companyNavItems;
+
+  const renderNavLink = (to: string, label: string, Icon: any, exact?: boolean) => {
+    const isActive = exact !== undefined
+      ? (exact ? location.pathname === to : location.pathname.startsWith(to))
+      : (to === '/' || to === '/client/dashboard' ? location.pathname === to : location.pathname.startsWith(to));
+    return (
+      <NavLink
+        key={to}
+        to={to}
+        onClick={() => isMobile && setMobileOpen(false)}
+        className={cn(
+          'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+          isActive
+            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+            : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
+          collapsed && !isMobile && 'justify-center px-0'
+        )}
+      >
+        <Icon className="h-[18px] w-[18px] shrink-0" />
+        {(isMobile || !collapsed) && <span>{label}</span>}
+      </NavLink>
+    );
+  };
 
   const navContent = (
     <>
@@ -47,143 +83,64 @@ export default function AppSidebar() {
       <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
         {!(collapsed && !isMobile) && (
           <span className="block text-base font-semibold uppercase tracking-widest text-muted-foreground px-3 pb-2">
-            Project Hub
+            {isClient ? 'Project Hub' : 'Project Hub'}
           </span>
         )}
-        {navItems.map(({ to, label, icon: Icon }) => {
-          const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
-          return (
-            <NavLink
-              key={to}
-              to={to}
-              onClick={() => isMobile && setMobileOpen(false)}
-              className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
-                collapsed && !isMobile && 'justify-center px-0'
-              )}
-            >
-              <Icon className="h-[18px] w-[18px] shrink-0" />
-              {(isMobile || !collapsed) && <span>{label}</span>}
-            </NavLink>
-          );
-        })}
+        {navItems.map(({ to, label, icon }) => renderNavLink(to, label, icon))}
 
-        {/* Insurance Hub Section */}
-        {!(collapsed && !isMobile) && (
-          <span className="block text-base font-semibold uppercase tracking-widest text-muted-foreground px-3 pb-2 pt-4">
-            Insurance Hub
-          </span>
+        {/* Insurance Hub Section — company only */}
+        {!isClient && (
+          <>
+            {!(collapsed && !isMobile) && (
+              <span className="block text-base font-semibold uppercase tracking-widest text-muted-foreground px-3 pb-2 pt-4">
+                Insurance Hub
+              </span>
+            )}
+            {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
+            {insuranceItems.map(({ to, label, icon, exact }) => renderNavLink(to, label, icon, exact))}
+          </>
         )}
-        {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
-        {insuranceItems.map(({ to, label, icon: Icon, exact }) => {
-          const isActive = exact
-            ? location.pathname === to
-            : location.pathname.startsWith(to);
-          return (
-            <NavLink
-              key={to}
-              to={to}
-              onClick={() => isMobile && setMobileOpen(false)}
-              className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
-                collapsed && !isMobile && 'justify-center px-0'
-              )}
-            >
-              <Icon className="h-[18px] w-[18px] shrink-0" />
-              {(isMobile || !collapsed) && <span>{label}</span>}
-            </NavLink>
-          );
-        })}
-        {/* Client Hub Section */}
-        {!(collapsed && !isMobile) && (
-          <span className="block text-base font-semibold uppercase tracking-widest text-muted-foreground px-3 pb-2 pt-4">
-            Client Hub
-          </span>
-        )}
-        {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
-        <NavLink
-          to="/client"
-          onClick={() => isMobile && setMobileOpen(false)}
-          className={cn(
-            'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-            location.pathname.startsWith('/client')
-              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-              : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
-            collapsed && !isMobile && 'justify-center px-0'
-          )}
-        >
-          <UserRound className="h-[18px] w-[18px] shrink-0" />
-          {(isMobile || !collapsed) && <span>Client Hub</span>}
-        </NavLink>
 
-        {/* Code Hub Section */}
-        {!(collapsed && !isMobile) && (
-          <span className="block text-base font-semibold uppercase tracking-widest text-muted-foreground px-3 pb-2 pt-4">
-            Code Hub
-          </span>
+        {/* Client Hub Section — company only (admin view) */}
+        {!isClient && (
+          <>
+            {!(collapsed && !isMobile) && (
+              <span className="block text-base font-semibold uppercase tracking-widest text-muted-foreground px-3 pb-2 pt-4">
+                Client Hub
+              </span>
+            )}
+            {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
+            {renderNavLink('/client', 'Client Users', UserRound)}
+            {renderNavLink('/client/files', 'Project Files', FolderClosed)}
+          </>
         )}
-        {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
-        {[
-          { to: '/code', label: 'Code Questions', icon: MessageSquare, exact: true },
-          { to: '/code/admin', label: 'Manage Sources', icon: Settings2, exact: false },
-        ].map(({ to, label, icon: Icon, exact }) => {
-          const isActive = exact
-            ? location.pathname === to
-            : location.pathname.startsWith(to);
-          return (
-            <NavLink
-              key={to}
-              to={to}
-              onClick={() => isMobile && setMobileOpen(false)}
-              className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
-                collapsed && !isMobile && 'justify-center px-0'
-              )}
-            >
-              <Icon className="h-[18px] w-[18px] shrink-0" />
-              {(isMobile || !collapsed) && <span>{label}</span>}
-            </NavLink>
-          );
-        })}
+
+        {/* Code Hub Section — company only */}
+        {!isClient && (
+          <>
+            {!(collapsed && !isMobile) && (
+              <span className="block text-base font-semibold uppercase tracking-widest text-muted-foreground px-3 pb-2 pt-4">
+                Code Hub
+              </span>
+            )}
+            {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
+            {[
+              { to: '/code', label: 'Code Questions', icon: MessageSquare, exact: true },
+              { to: '/code/admin', label: 'Manage Sources', icon: Settings2, exact: false },
+            ].map(({ to, label, icon, exact }) => renderNavLink(to, label, icon, exact))}
+          </>
+        )}
       </nav>
 
       <div className="mt-auto border-t border-sidebar-border">
         <nav className="px-3 py-2 space-y-1">
-          {[{ to: '/settings', label: 'Settings', icon: Settings }].map(({ to, label, icon: Icon }) => {
-            const isActive = location.pathname === to;
-            return (
-              <NavLink
-                key={to}
-                to={to}
-                onClick={() => isMobile && setMobileOpen(false)}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
-                  collapsed && !isMobile && 'justify-center px-0'
-                )}
-              >
-                <Icon className="h-[18px] w-[18px] shrink-0" />
-                {(isMobile || !collapsed) && <span>{label}</span>}
-              </NavLink>
-            );
-          })}
+          {!isClient && renderNavLink('/settings', 'Settings', Settings)}
           <button
             className={cn(
               'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors w-full text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
               collapsed && !isMobile && 'justify-center px-0'
             )}
-            onClick={() => { /* logout placeholder */ }}
+            onClick={() => logout()}
           >
             <LogOut className="h-[18px] w-[18px] shrink-0" />
             {(isMobile || !collapsed) && <span>Log Out</span>}

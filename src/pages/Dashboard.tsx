@@ -19,7 +19,7 @@ function SortBtn({ label, active, dir, onClick, className }: { label: string; ac
   );
 }
 
-export default function Dashboard() {
+export default function Dashboard({ readOnly }: { readOnly?: boolean }) {
   const isMobile = useIsMobile();
   const { selectedProject } = useProject();
   const pid = selectedProject.id;

@@ -25,7 +25,7 @@ type DbBudgetItem = {
   notes: string; status: string; sort_order: number;
 };
 
-export default function BudgetPage() {
+export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
   const { selectedProject } = useProject();
   const isMobile = useIsMobile();
 
@@ -270,10 +270,12 @@ export default function BudgetPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Budget</h1>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setAddingCat(true)}><Plus size={14} /> Subgroup</Button>
-          <Button size="sm" onClick={() => setAddOpen(true)}><Plus size={14} /> Add</Button>
-        </div>
+        {!readOnly && (
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => setAddingCat(true)}><Plus size={14} /> Subgroup</Button>
+            <Button size="sm" onClick={() => setAddOpen(true)}><Plus size={14} /> Add</Button>
+          </div>
+        )}
       </div>
 
       {/* Summary cards */}
@@ -285,14 +287,14 @@ export default function BudgetPage() {
         <Card><CardContent className="p-3">
           <div className="flex items-center justify-between mb-0.5">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Design Fee ({Math.round(designFeePct * 100)}%)</p>
-            <button onClick={() => openFeeEdit('design')} className="text-muted-foreground/40 hover:text-foreground ml-1"><Pencil size={10} /></button>
+            {!readOnly && <button onClick={() => openFeeEdit('design')} className="text-muted-foreground/40 hover:text-foreground ml-1"><Pencil size={10} /></button>}
           </div>
           <p className="text-sm md:text-base font-bold tabular-nums">{fmtN(designFee)}</p>
         </CardContent></Card>
         <Card><CardContent className="p-3">
           <div className="flex items-center justify-between mb-0.5">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Build Fee ({Math.round(buildFeePct * 100)}%)</p>
-            <button onClick={() => openFeeEdit('build')} className="text-muted-foreground/40 hover:text-foreground ml-1"><Pencil size={10} /></button>
+            {!readOnly && <button onClick={() => openFeeEdit('build')} className="text-muted-foreground/40 hover:text-foreground ml-1"><Pencil size={10} /></button>}
           </div>
           <p className="text-sm md:text-base font-bold tabular-nums">{fmtN(buildFee)}</p>
         </CardContent></Card>
@@ -405,7 +407,7 @@ export default function BudgetPage() {
                   return (
                     <TableRow key={`hdr-${cat}`} className="bg-accent/60">
                       <TableCell className="px-1 py-1 w-5">
-                        {!isOther && (
+                        {!readOnly && !isOther && (
                           <div className="flex flex-col">
                             <button onClick={() => moveCat(cat, 'up')} disabled={catIdx === 0} className="text-muted-foreground/50 hover:text-foreground disabled:opacity-20 leading-none"><ChevronUp size={10} /></button>
                             <button onClick={() => moveCat(cat, 'down')} disabled={catIdx === categories.length - 1} className="text-muted-foreground/50 hover:text-foreground disabled:opacity-20 leading-none"><ChevronDown size={10} /></button>
@@ -424,7 +426,7 @@ export default function BudgetPage() {
                         ) : (
                           <div className="flex items-center gap-1.5">
                             <span className="font-bold text-xs uppercase tracking-wider text-accent-foreground">{cat}</span>
-                            {!isOther && <button onClick={() => startRenameCat(cat)} className="text-muted-foreground/30 hover:text-muted-foreground"><Pencil size={10} /></button>}
+                            {!readOnly && !isOther && <button onClick={() => startRenameCat(cat)} className="text-muted-foreground/30 hover:text-muted-foreground"><Pencil size={10} /></button>}
                           </div>
                         )}
                       </TableCell>
@@ -441,10 +443,12 @@ export default function BudgetPage() {
                 return (
                   <TableRow key={b.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
                     <TableCell className="px-1 py-0 w-5">
-                      <div className="flex flex-col">
-                        <button onClick={() => moveItem(b.id, 'up')} disabled={itemIdx === 0} className="text-muted-foreground/40 hover:text-foreground disabled:opacity-20 leading-none"><ChevronUp size={10} /></button>
-                        <button onClick={() => moveItem(b.id, 'down')} disabled={itemIdx === catItems.length - 1} className="text-muted-foreground/40 hover:text-foreground disabled:opacity-20 leading-none"><ChevronDown size={10} /></button>
-                      </div>
+                      {!readOnly && (
+                        <div className="flex flex-col">
+                          <button onClick={() => moveItem(b.id, 'up')} disabled={itemIdx === 0} className="text-muted-foreground/40 hover:text-foreground disabled:opacity-20 leading-none"><ChevronUp size={10} /></button>
+                          <button onClick={() => moveItem(b.id, 'down')} disabled={itemIdx === catItems.length - 1} className="text-muted-foreground/40 hover:text-foreground disabled:opacity-20 leading-none"><ChevronDown size={10} /></button>
+                        </div>
+                      )}
                     </TableCell>
                     {editId === b.id ? (
                       isMobile ? (
@@ -486,14 +490,16 @@ export default function BudgetPage() {
                         <TableCell className="text-right tabular-nums text-[11px] md:text-sm px-4 pr-6">{isMobile ? fmt(b.labor + b.material) : fmt(b.material)}</TableCell>
                         <TableCell className="pl-6 pr-4">{statusBadge(b.status)}</TableCell>
                         <TableCell className="text-right">
-                          <div className="flex gap-1.5 justify-end">
-                            {!isMobile && (
-                              <button onClick={() => openNote(b)} className={`hover:text-foreground ${hasDetails ? 'text-primary' : 'text-muted-foreground/40'}`} title={hasDetails ? `${b.subcontractor || ''}${b.subcontractor && b.notes ? ' | ' : ''}${b.notes || ''}` : 'Add details'}>
-                                <MessageSquare size={12} />
-                              </button>
-                            )}
-                            <button onClick={() => startEdit(b)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button>
-                          </div>
+                          {!readOnly && (
+                            <div className="flex gap-1.5 justify-end">
+                              {!isMobile && (
+                                <button onClick={() => openNote(b)} className={`hover:text-foreground ${hasDetails ? 'text-primary' : 'text-muted-foreground/40'}`} title={hasDetails ? `${b.subcontractor || ''}${b.subcontractor && b.notes ? ' | ' : ''}${b.notes || ''}` : 'Add details'}>
+                                  <MessageSquare size={12} />
+                                </button>
+                              )}
+                              <button onClick={() => startEdit(b)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button>
+                            </div>
+                          )}
                         </TableCell>
                       </>
                     )}
@@ -501,7 +507,7 @@ export default function BudgetPage() {
                 );
               })}
 
-              {adding ? (
+              {!readOnly && (adding ? (
                 <TableRow className="bg-muted/30">
                   <TableCell className="px-1 w-5" />
                   <TableCell>
@@ -541,7 +547,7 @@ export default function BudgetPage() {
                     </button>
                   </TableCell>
                 </TableRow>
-              )}
+              ))}
             </TableBody>
 
             <TableFooter>
@@ -558,13 +564,13 @@ export default function BudgetPage() {
               </TableRow>
               <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
                 <TableCell />
-                <TableCell className="font-semibold text-[11px]"><span className="flex items-center gap-1">Design Fee ({Math.round(designFeePct * 100)}%)<button onClick={() => openFeeEdit('design')} className="text-muted-foreground/40 hover:text-foreground"><Pencil size={9} /></button></span></TableCell>
+                <TableCell className="font-semibold text-[11px]"><span className="flex items-center gap-1">Design Fee ({Math.round(designFeePct * 100)}%){!readOnly && <button onClick={() => openFeeEdit('design')} className="text-muted-foreground/40 hover:text-foreground"><Pencil size={9} /></button>}</span></TableCell>
                 <TableCell colSpan={isMobile ? 1 : 2} className="text-right font-semibold tabular-nums">{fmtN(designFee)}</TableCell>
                 <TableCell colSpan={isMobile ? 1 : 2} />
               </TableRow>
               <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
                 <TableCell />
-                <TableCell className="font-semibold text-[11px]"><span className="flex items-center gap-1">Build Fee ({Math.round(buildFeePct * 100)}%)<button onClick={() => openFeeEdit('build')} className="text-muted-foreground/40 hover:text-foreground"><Pencil size={9} /></button></span></TableCell>
+                <TableCell className="font-semibold text-[11px]"><span className="flex items-center gap-1">Build Fee ({Math.round(buildFeePct * 100)}%){!readOnly && <button onClick={() => openFeeEdit('build')} className="text-muted-foreground/40 hover:text-foreground"><Pencil size={9} /></button>}</span></TableCell>
                 <TableCell colSpan={isMobile ? 1 : 2} className="text-right font-semibold tabular-nums">{fmtN(buildFee)}</TableCell>
                 <TableCell colSpan={isMobile ? 1 : 2} />
               </TableRow>

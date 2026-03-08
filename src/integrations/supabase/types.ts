@@ -86,6 +86,66 @@ export type Database = {
         }
         Relationships: []
       }
+      dropbox_folders: {
+        Row: {
+          id: string
+          project_id: string
+          category: string
+          folder_name: string
+          dropbox_url: string
+          sort_order: number
+          category_sort_order: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          category: string
+          folder_name: string
+          dropbox_url?: string
+          sort_order?: number
+          category_sort_order?: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          category?: string
+          folder_name?: string
+          dropbox_url?: string
+          sort_order?: number
+          category_sort_order?: number
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          id: string
+          email: string
+          full_name: string
+          user_type: string
+          project_id: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id: string
+          email: string
+          full_name?: string
+          user_type?: string
+          project_id?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          email?: string
+          full_name?: string
+          user_type?: string
+          project_id?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
       coi_files: {
         Row: {
           coi_id: string | null

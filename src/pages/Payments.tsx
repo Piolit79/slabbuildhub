@@ -27,7 +27,7 @@ const tabs: { value: PaymentCategory; label: string }[] = [
   { value: 'field_labor', label: 'Field Labor' },
 ];
 
-export default function PaymentsPage() {
+export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
   const { selectedProject } = useProject();
   const isMobile = useIsMobile();
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -80,7 +80,7 @@ export default function PaymentsPage() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Payments</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
+        {!readOnly && <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button size="sm"><Plus size={14} /> Add</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Add Payment</DialogTitle></DialogHeader>
@@ -98,7 +98,7 @@ export default function PaymentsPage() {
               <Button type="submit" size="sm" className="w-full">Save</Button>
             </form>
           </DialogContent>
-        </Dialog>
+        </Dialog>}
       </div>
 
       <Tabs value={activeTab} onValueChange={v => { setActiveTab(v as PaymentCategory); setSortKey('date'); setSortDir('asc'); setEditId(null); }}>
@@ -129,7 +129,7 @@ export default function PaymentsPage() {
                       <TableHead className="text-right pr-6">{sh('Amt', 'amount', 'justify-end')}</TableHead>
                       {!isMobile && <TableHead className="pl-6">{sh('Form', 'form')}</TableHead>}
                       {!isMobile && <TableHead>{sh('Check #', 'check_number')}</TableHead>}
-                      <TableHead className={isMobile ? 'w-10' : 'w-12'}></TableHead>
+                      {!readOnly && <TableHead className={isMobile ? 'w-10' : 'w-12'}></TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -160,12 +160,12 @@ export default function PaymentsPage() {
                             <TableCell className="text-right tabular-nums text-[11px] md:text-sm pr-6">{fmt(p.amount)}</TableCell>
                             {!isMobile && <TableCell className="text-[11px] md:text-sm pl-6">{p.form}</TableCell>}
                             {!isMobile && <TableCell className="tabular-nums text-[11px] md:text-sm">{p.check_number || '—'}</TableCell>}
-                            <TableCell><button onClick={() => startEdit(p)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>
+                            {!readOnly && <TableCell><button onClick={() => startEdit(p)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>}
                           </>
                         )}
                       </TableRow>
                     ))}
-                    {adding ? (
+                    {!readOnly && (adding ? (
                       <TableRow className="bg-muted/30">
                         <TableCell className="pr-6"><Input value={newData.date || ''} onChange={e => setNewData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full md:w-28 px-1" autoFocus /></TableCell>
                         <TableCell className="pl-6"><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-[10px] px-1" placeholder="Name" /></TableCell>
@@ -183,7 +183,7 @@ export default function PaymentsPage() {
                           <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
                         </TableCell>
                       </TableRow>
-                    )}
+                    ))}
                   </TableBody>
                 </Table>
               </CardContent>
