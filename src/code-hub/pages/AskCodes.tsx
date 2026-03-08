@@ -52,7 +52,7 @@ export default function AskCodes() {
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="border-b border-border px-4 md:px-6 py-3 flex items-center gap-3 shrink-0">
-          <h1 className="text-lg md:text-xl font-bold" style={{ color: '#7b7c81' }}>Ask Codes</h1>
+          <h1 className="text-lg md:text-xl font-bold" style={{ color: '#7b7c81' }}>Code Questions</h1>
           <div className="flex-1">
             <Select value={municipality} onValueChange={setMunicipality}>
               <SelectTrigger className="w-64 h-8 text-xs">

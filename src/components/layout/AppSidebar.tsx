@@ -6,7 +6,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import slabLogo from '@/assets/slab-builders-logo.svg';
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/', label: 'Ledger Dashboard', icon: LayoutDashboard },
   { to: '/budget', label: 'Budget', icon: Calculator },
   { to: '/contracts', label: 'Contracts', icon: FileText },
   { to: '/payments', label: 'Payments', icon: CreditCard },
@@ -130,7 +130,7 @@ export default function AppSidebar() {
         )}
         {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
         {[
-          { to: '/code', label: 'Ask Codes', icon: MessageSquare, exact: true },
+          { to: '/code', label: 'Code Questions', icon: MessageSquare, exact: true },
           { to: '/code/admin', label: 'Manage Sources', icon: Settings2, exact: false },
         ].map(({ to, label, icon: Icon, exact }) => {
           const isActive = exact
