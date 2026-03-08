@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      budget_items: {
+        Row: {
+          id: string
+          project_id: string
+          category: string
+          description: string
+          labor: number
+          material: number
+          optional: number
+          subcontractor: string
+          notes: string
+          status: string
+          sort_order: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          category: string
+          description: string
+          labor?: number
+          material?: number
+          optional?: number
+          subcontractor?: string
+          notes?: string
+          status?: string
+          sort_order?: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          category?: string
+          description?: string
+          labor?: number
+          material?: number
+          optional?: number
+          subcontractor?: string
+          notes?: string
+          status?: string
+          sort_order?: number
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      budget_settings: {
+        Row: {
+          id: string
+          project_id: string
+          design_fee_pct: number
+          build_fee_pct: number
+          category_order: Json
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          design_fee_pct?: number
+          build_fee_pct?: number
+          category_order?: Json
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          design_fee_pct?: number
+          build_fee_pct?: number
+          category_order?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       coi_files: {
         Row: {
           coi_id: string | null
