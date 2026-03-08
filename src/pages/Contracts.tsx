@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
-import { mockContracts } from '@/data/mock-data';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -27,8 +27,14 @@ function SortBtn({ label, active, dir, onClick, className }: { label: string; ac
 export default function ContractsPage() {
   const { selectedProject } = useProject();
   const isMobile = useIsMobile();
-  const [contracts, setContracts] = useState<Contract[]>(mockContracts);
+  const [contracts, setContracts] = useState<Contract[]>([]);
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    supabase.from('contracts').select('*').eq('project_id', selectedProject.id).then(({ data }) => {
+      if (data) setContracts(data as Contract[]);
+    });
+  }, [selectedProject.id]);
   const [editId, setEditId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Contract>>({});
   const [adding, setAdding] = useState(false);
@@ -47,6 +53,8 @@ export default function ContractsPage() {
   const startEdit = (c: Contract) => { setEditId(c.id); setEditData({ ...c }); };
   const cancelEdit = () => { setEditId(null); setEditData({}); };
   const saveEdit = () => {
+    const updated = { ...editData } as Contract;
+    supabase.from('contracts').update(updated).eq('id', editId!);
     setContracts(prev => prev.map(c => c.id === editId ? { ...c, ...editData } as Contract : c));
     setEditId(null); setEditData({});
   };
@@ -54,11 +62,13 @@ export default function ContractsPage() {
   const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    setContracts(prev => [...prev, {
+    const newContract: Contract = {
       id: Date.now().toString(), project_id: selectedProject.id,
       date: fd.get('date') as string, name: fd.get('name') as string,
       amount: parseFloat(fd.get('amount') as string) || 0, type: fd.get('type') as Contract['type'],
-    }]);
+    };
+    supabase.from('contracts').insert(newContract);
+    setContracts(prev => [...prev, newContract]);
     setOpen(false);
   };
 
@@ -155,7 +165,7 @@ export default function ContractsPage() {
                   )}
                   <TableCell className="text-right"><Input value={newData.amount || ''} onChange={e => setNewData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-[10px] w-full md:w-28 px-1 text-right" placeholder="0.00" /></TableCell>
                   <TableCell><div className="flex gap-1">
-                    <button onClick={() => { if (newData.date && newData.name) { setContracts(prev => [...prev, { id: Date.now().toString(), project_id: selectedProject.id, ...newData } as Contract]); setAdding(false); setNewData({ date: '', name: '', amount: 0, type: 'Contract' }); } }} className="text-[hsl(var(--success))] hover:opacity-70"><Check size={13} /></button>
+                    <button onClick={() => { if (newData.date && newData.name) { const nc = { id: Date.now().toString(), project_id: selectedProject.id, ...newData } as Contract; supabase.from('contracts').insert(nc); setContracts(prev => [...prev, nc]); setAdding(false); setNewData({ date: '', name: '', amount: 0, type: 'Contract' }); } }} className="text-[hsl(var(--success))] hover:opacity-70"><Check size={13} /></button>
                     <button onClick={() => { setAdding(false); setNewData({ date: '', name: '', amount: 0, type: 'Contract' }); }} className="text-destructive hover:opacity-70"><X size={13} /></button>
                   </div></TableCell>
                 </TableRow>

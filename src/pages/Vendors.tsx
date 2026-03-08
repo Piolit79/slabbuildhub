@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { mockVendors } from '@/data/mock-data';
+import React, { useState, useMemo, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
@@ -18,8 +18,14 @@ function SortBtn({ label, active, dir, onClick, className }: { label: string; ac
 
 export default function VendorsPage() {
   const isMobile = useIsMobile();
-  const [vendors, setVendors] = useState<Vendor[]>(mockVendors);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    supabase.from('vendors').select('*').then(({ data }) => {
+      if (data) setVendors(data as Vendor[]);
+    });
+  }, []);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Vendor>>({});
@@ -40,16 +46,18 @@ export default function VendorsPage() {
 
   const startEdit = (v: Vendor) => { setEditId(v.id); setEditData({ ...v }); };
   const cancelEdit = () => { setEditId(null); setEditData({}); };
-  const saveEdit = () => { setVendors(prev => prev.map(v => v.id === editId ? { ...v, ...editData } as Vendor : v)); cancelEdit(); };
+  const saveEdit = () => { supabase.from('vendors').update(editData).eq('id', editId!); setVendors(prev => prev.map(v => v.id === editId ? { ...v, ...editData } as Vendor : v)); cancelEdit(); };
 
   const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    setVendors(prev => [...prev, {
+    const nv: Vendor = {
       id: Date.now().toString(), name: fd.get('name') as string, detail: fd.get('detail') as string,
       type: fd.get('type') as Vendor['type'], contact: fd.get('contact') as string,
       email: fd.get('email') as string, phone: fd.get('phone') as string,
-    }]);
+    };
+    supabase.from('vendors').insert(nv);
+    setVendors(prev => [...prev, nv]);
     setOpen(false);
   };
 
@@ -156,7 +164,7 @@ export default function VendorsPage() {
                   {!isMobile && <TableCell><Input value={newData.email || ''} onChange={e => setNewData(d => ({ ...d, email: e.target.value }))} className="h-6 text-xs px-1" placeholder="Email" /></TableCell>}
                   {!isMobile && <TableCell><Input value={newData.phone || ''} onChange={e => setNewData(d => ({ ...d, phone: e.target.value }))} className="h-6 text-xs px-1" placeholder="Phone" /></TableCell>}
                   <TableCell><div className="flex gap-1">
-                    <button onClick={() => { if (newData.name) { setVendors(prev => [...prev, { id: Date.now().toString(), ...newData } as Vendor]); setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
+                    <button onClick={() => { if (newData.name) { const nv = { id: Date.now().toString(), ...newData } as Vendor; supabase.from('vendors').insert(nv); setVendors(prev => [...prev, nv]); setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
                     <button onClick={() => { setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); }} className="text-destructive"><X size={13} /></button>
                   </div></TableCell>
                 </TableRow>

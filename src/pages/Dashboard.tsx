@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useProject } from '@/contexts/ProjectContext';
-import { mockContracts, mockPayments, mockDraws, dashboardTotals, mockVendors } from '@/data/mock-data';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DollarSign, TrendingDown, Landmark, Calculator, FileText, Wallet, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Rectangle } from 'recharts';
+import { Contract, Payment, Draw, Vendor } from '@/types';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(n);
 
@@ -24,20 +24,28 @@ export default function Dashboard() {
   const { selectedProject } = useProject();
   const pid = selectedProject.id;
 
-  const contracts = mockContracts.filter(c => c.project_id === pid);
-  const payments = mockPayments.filter(p => p.project_id === pid);
-  const draws = mockDraws.filter(d => d.project_id === pid);
-
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [draws, setDraws] = useState<Draw[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [budget, setBudget] = useState<{ labor: number; material: number }[]>([]);
   const [designFeePct, setDesignFeePct] = useState(0.10);
   const [buildFeePct, setBuildFeePct] = useState(0.15);
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: items }, { data: settings }] = await Promise.all([
+      const [{ data: c }, { data: p }, { data: d }, { data: v }, { data: items }, { data: settings }] = await Promise.all([
+        supabase.from('contracts').select('*').eq('project_id', pid),
+        supabase.from('payments').select('*').eq('project_id', pid),
+        supabase.from('draws').select('*').eq('project_id', pid),
+        supabase.from('vendors').select('*'),
         supabase.from('budget_items').select('labor,material').eq('project_id', pid),
         supabase.from('budget_settings').select('design_fee_pct,build_fee_pct').eq('project_id', pid).maybeSingle(),
       ]);
+      setContracts((c || []) as Contract[]);
+      setPayments((p || []) as Payment[]);
+      setDraws((d || []) as Draw[]);
+      setVendors((v || []) as Vendor[]);
       setBudget(items || []);
       if (settings) {
         setDesignFeePct(settings.design_fee_pct ?? 0.10);
@@ -57,7 +65,7 @@ export default function Dashboard() {
   const softCostStudioLAB = payments.filter(p => p.name === 'StudioLAB' && p.category === 'soft_costs').reduce((s, p) => s + p.amount, 0);
   const softCostSLAB = payments.filter(p => p.name === 'SLAB Builders' && p.category === 'soft_costs').reduce((s, p) => s + p.amount, 0);
   const materialsVendorsTotal = payments.filter(p => p.category === 'materials').reduce((s, p) => s + p.amount, 0);
-  const fixturesFittingsTotal = payments.filter(p => p.category === 'materials' && mockVendors.find(v => v.name === p.name)?.detail?.toLowerCase().includes('fixture')).reduce((s, p) => s + p.amount, 0);
+  const fixturesFittingsTotal = payments.filter(p => p.category === 'materials' && vendors.find(v => v.name === p.name)?.detail?.toLowerCase().includes('fixture')).reduce((s, p) => s + p.amount, 0);
   const fieldLaborTotal = payments.filter(p => p.category === 'field_labor').reduce((s, p) => s + p.amount, 0);
   const allPaymentsTotal = payments.reduce((s, p) => s + p.amount, 0);
   const otherSoftHardCosts = allPaymentsTotal - contractPaid;
@@ -88,7 +96,7 @@ export default function Dashboard() {
       const sCr = contracts.filter(c => c.name === name && c.type === 'Credit').reduce((s, c) => s + c.amount, 0);
       const owed = sC + sCO + sCr;
       const paid = payments.filter(p => p.name === name && p.category === 'subcontractor').reduce((s, p) => s + p.amount, 0);
-      const vendor = mockVendors.find(v => v.name === name);
+      const vendor = vendors.find(v => v.name === name);
       return { name, detail: vendor?.detail || '', contract: sC, changeOrders: sCO, credits: sCr, owed, paid, balance: owed - paid };
     });
     return rows.sort((a: any, b: any) => {
@@ -96,7 +104,7 @@ export default function Dashboard() {
       if (typeof av === 'number') return sortDir === 'asc' ? av - bv : bv - av;
       return sortDir === 'asc' ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
     });
-  }, [contracts, payments, sortKey, sortDir]);
+  }, [contracts, payments, vendors, sortKey, sortDir]);
 
   // Pie chart: Hard Cost vs Fees
   const hardCost = budget.reduce((s, b) => s + b.labor + b.material, 0);
