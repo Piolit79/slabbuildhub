@@ -494,9 +494,9 @@ export default function BudgetPage() {
                       )
                     ) : (
                       <>
-                        <TableCell className="font-medium text-[11px] truncate max-w-[120px] md:max-w-none">{b.description}</TableCell>
-                        {!isMobile && <TableCell className="text-right tabular-nums text-[11px] px-4">{fmt(b.labor)}</TableCell>}
-                        <TableCell className="text-right tabular-nums text-[11px] px-4">{isMobile ? fmt(b.labor + b.material) : fmt(b.material)}</TableCell>
+                        <TableCell className="font-medium text-[11px] md:text-sm truncate max-w-[120px] md:max-w-none">{b.description}</TableCell>
+                        {!isMobile && <TableCell className="text-right tabular-nums text-[11px] md:text-sm px-4">{fmt(b.labor)}</TableCell>}
+                        <TableCell className="text-right tabular-nums text-[11px] md:text-sm px-4">{isMobile ? fmt(b.labor + b.material) : fmt(b.material)}</TableCell>
                         <TableCell className="pr-6" style={{ paddingLeft: `${statusPadding}px` }}>{statusBadge(b.status)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-1.5 justify-end">

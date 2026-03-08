@@ -147,11 +147,11 @@ export default function PaymentsPage() {
                           )
                         ) : (
                           <>
-                            <TableCell className="tabular-nums text-[11px]">{format(new Date(p.date), 'MM.dd.yy')}</TableCell>
-                            <TableCell className="font-medium text-[11px] truncate max-w-[120px] md:max-w-none">{p.name}</TableCell>
-                            <TableCell className="text-right tabular-nums font-medium text-[11px]">{fmt(p.amount)}</TableCell>
-                            {!isMobile && <TableCell>{p.form}</TableCell>}
-                            {!isMobile && <TableCell className="tabular-nums">{p.check_number || '—'}</TableCell>}
+                            <TableCell className="tabular-nums text-[11px] md:text-sm">{format(new Date(p.date), 'MM.dd.yy')}</TableCell>
+                            <TableCell className="font-medium text-[11px] md:text-sm truncate max-w-[120px] md:max-w-none">{p.name}</TableCell>
+                            <TableCell className="text-right tabular-nums font-medium text-[11px] md:text-sm">{fmt(p.amount)}</TableCell>
+                            {!isMobile && <TableCell className="text-[11px] md:text-sm">{p.form}</TableCell>}
+                            {!isMobile && <TableCell className="tabular-nums text-[11px] md:text-sm">{p.check_number || '—'}</TableCell>}
                             <TableCell><button onClick={() => startEdit(p)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>
                           </>
                         )}

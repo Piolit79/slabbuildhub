@@ -137,13 +137,13 @@ export default function VendorsPage() {
                       </>
                     )
                   ) : (
-                    <>
-                      <TableCell className="font-medium text-[11px] truncate max-w-[120px] md:max-w-none">{v.name}</TableCell>
-                      <TableCell className="text-[11px] truncate max-w-[100px] md:max-w-none">{v.detail}</TableCell>
+                  <>
+                      <TableCell className="font-medium text-[11px] md:text-sm truncate max-w-[120px] md:max-w-none">{v.name}</TableCell>
+                      <TableCell className="text-[11px] md:text-sm truncate max-w-[100px] md:max-w-none">{v.detail}</TableCell>
                       {!isMobile && <TableCell>{typeBadge(v.type)}</TableCell>}
-                      {!isMobile && <TableCell>{v.contact || '—'}</TableCell>}
-                      {!isMobile && <TableCell className="text-primary">{v.email || '—'}</TableCell>}
-                      {!isMobile && <TableCell>{v.phone || '—'}</TableCell>}
+                      {!isMobile && <TableCell className="text-[11px] md:text-sm">{v.contact || '—'}</TableCell>}
+                      {!isMobile && <TableCell className="text-[11px] md:text-sm text-primary">{v.email || '—'}</TableCell>}
+                      {!isMobile && <TableCell className="text-[11px] md:text-sm">{v.phone || '—'}</TableCell>}
                       <TableCell><button onClick={() => startEdit(v)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>
                     </>
                   )}
