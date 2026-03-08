@@ -48,9 +48,9 @@ export default function DrawsPage() {
 
   const startEdit = (d: Draw) => { setEditId(d.id); setEditData({ ...d }); };
   const cancelEdit = () => { setEditId(null); setEditData({}); };
-  const saveEdit = () => { supabase.from('draws').update(editData).eq('id', editId!); setDraws(prev => prev.map(d => d.id === editId ? { ...d, ...editData } as Draw : d)); cancelEdit(); };
+  const saveEdit = async () => { await supabase.from('draws').update(editData).eq('id', editId!); setDraws(prev => prev.map(d => d.id === editId ? { ...d, ...editData } as Draw : d)); cancelEdit(); };
 
-  const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const nd: Draw = {
@@ -58,7 +58,7 @@ export default function DrawsPage() {
       date: fd.get('date') as string, draw_number: parseInt(fd.get('draw_number') as string) || filtered.length + 1,
       amount: parseFloat(fd.get('amount') as string) || 0,
     };
-    supabase.from('draws').insert(nd);
+    await supabase.from('draws').insert(nd);
     setDraws(prev => [...prev, nd]);
     setOpen(false);
   };
@@ -142,7 +142,7 @@ export default function DrawsPage() {
                   <TableCell><Input value={newData.date || ''} onChange={e => setNewData(x => ({ ...x, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full md:w-28 px-1" /></TableCell>
                   <TableCell className="text-right"><Input value={newData.amount || ''} onChange={e => setNewData(x => ({ ...x, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-[10px] w-full md:w-28 px-1 text-right" placeholder="0.00" /></TableCell>
                   <TableCell><div className="flex gap-1">
-                    <button onClick={() => { if (newData.date) { const nd: Draw = { id: Date.now().toString(), project_id: selectedProject.id, draw_number: newData.draw_number || filtered.length + 1, date: newData.date!, amount: newData.amount || 0 }; supabase.from('draws').insert(nd); setDraws(prev => [...prev, nd]); setAdding(false); setNewData({ date: '', draw_number: 0, amount: 0 }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
+                    <button onClick={async () => { if (newData.date) { const nd: Draw = { id: Date.now().toString(), project_id: selectedProject.id, draw_number: newData.draw_number || filtered.length + 1, date: newData.date!, amount: newData.amount || 0 }; await supabase.from('draws').insert(nd); setDraws(prev => [...prev, nd]); setAdding(false); setNewData({ date: '', draw_number: 0, amount: 0 }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
                     <button onClick={() => { setAdding(false); setNewData({ date: '', draw_number: 0, amount: 0 }); }} className="text-destructive"><X size={13} /></button>
                   </div></TableCell>
                 </TableRow>

@@ -57,9 +57,9 @@ export default function PaymentsPage() {
 
   const startEdit = (p: Payment) => { setEditId(p.id); setEditData({ ...p }); };
   const cancelEdit = () => { setEditId(null); setEditData({}); };
-  const saveEdit = () => { supabase.from('payments').update(editData).eq('id', editId!); setPayments(prev => prev.map(p => p.id === editId ? { ...p, ...editData } as Payment : p)); cancelEdit(); };
+  const saveEdit = async () => { await supabase.from('payments').update(editData).eq('id', editId!); setPayments(prev => prev.map(p => p.id === editId ? { ...p, ...editData } as Payment : p)); cancelEdit(); };
 
-  const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const np: Payment = {
@@ -69,7 +69,7 @@ export default function PaymentsPage() {
       category: fd.get('category') as PaymentCategory, form: fd.get('form') as string,
       check_number: (fd.get('check_number') as string) || undefined,
     };
-    supabase.from('payments').insert(np);
+    await supabase.from('payments').insert(np);
     setPayments(prev => [...prev, np]);
     setOpen(false);
   };
@@ -165,7 +165,7 @@ export default function PaymentsPage() {
                         {!isMobile && <TableCell><Input value={newData.form || ''} onChange={e => setNewData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs w-20 px-1" placeholder="Form" /></TableCell>}
                         {!isMobile && <TableCell><Input value={newData.check_number || ''} onChange={e => setNewData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" placeholder="Check #" /></TableCell>}
                         <TableCell><div className="flex gap-1">
-                          <button onClick={() => { if (newData.date && newData.name) { const np = { id: Date.now().toString(), project_id: selectedProject.id, category: activeTab, ...newData } as Payment; supabase.from('payments').insert(np); setPayments(prev => [...prev, np]); setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
+                          <button onClick={async () => { if (newData.date && newData.name) { const np = { id: Date.now().toString(), project_id: selectedProject.id, category: activeTab, ...newData } as Payment; await supabase.from('payments').insert(np); setPayments(prev => [...prev, np]); setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
                           <button onClick={() => { setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); }} className="text-destructive"><X size={13} /></button>
                         </div></TableCell>
                       </TableRow>

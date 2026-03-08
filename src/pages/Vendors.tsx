@@ -46,9 +46,9 @@ export default function VendorsPage() {
 
   const startEdit = (v: Vendor) => { setEditId(v.id); setEditData({ ...v }); };
   const cancelEdit = () => { setEditId(null); setEditData({}); };
-  const saveEdit = () => { supabase.from('vendors').update(editData).eq('id', editId!); setVendors(prev => prev.map(v => v.id === editId ? { ...v, ...editData } as Vendor : v)); cancelEdit(); };
+  const saveEdit = async () => { await supabase.from('vendors').update(editData).eq('id', editId!); setVendors(prev => prev.map(v => v.id === editId ? { ...v, ...editData } as Vendor : v)); cancelEdit(); };
 
-  const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const nv: Vendor = {
@@ -56,7 +56,7 @@ export default function VendorsPage() {
       type: fd.get('type') as Vendor['type'], contact: fd.get('contact') as string,
       email: fd.get('email') as string, phone: fd.get('phone') as string,
     };
-    supabase.from('vendors').insert(nv);
+    await supabase.from('vendors').insert(nv);
     setVendors(prev => [...prev, nv]);
     setOpen(false);
   };
@@ -164,7 +164,7 @@ export default function VendorsPage() {
                   {!isMobile && <TableCell><Input value={newData.email || ''} onChange={e => setNewData(d => ({ ...d, email: e.target.value }))} className="h-6 text-xs px-1" placeholder="Email" /></TableCell>}
                   {!isMobile && <TableCell><Input value={newData.phone || ''} onChange={e => setNewData(d => ({ ...d, phone: e.target.value }))} className="h-6 text-xs px-1" placeholder="Phone" /></TableCell>}
                   <TableCell><div className="flex gap-1">
-                    <button onClick={() => { if (newData.name) { const nv = { id: Date.now().toString(), ...newData } as Vendor; supabase.from('vendors').insert(nv); setVendors(prev => [...prev, nv]); setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
+                    <button onClick={async () => { if (newData.name) { const nv = { id: Date.now().toString(), ...newData } as Vendor; await supabase.from('vendors').insert(nv); setVendors(prev => [...prev, nv]); setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
                     <button onClick={() => { setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); }} className="text-destructive"><X size={13} /></button>
                   </div></TableCell>
                 </TableRow>

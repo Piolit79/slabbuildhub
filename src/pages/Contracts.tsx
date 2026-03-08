@@ -52,14 +52,14 @@ export default function ContractsPage() {
 
   const startEdit = (c: Contract) => { setEditId(c.id); setEditData({ ...c }); };
   const cancelEdit = () => { setEditId(null); setEditData({}); };
-  const saveEdit = () => {
+  const saveEdit = async () => {
     const updated = { ...editData } as Contract;
-    supabase.from('contracts').update(updated).eq('id', editId!);
+    await supabase.from('contracts').update(updated).eq('id', editId!);
     setContracts(prev => prev.map(c => c.id === editId ? { ...c, ...editData } as Contract : c));
     setEditId(null); setEditData({});
   };
 
-  const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const newContract: Contract = {
@@ -67,7 +67,7 @@ export default function ContractsPage() {
       date: fd.get('date') as string, name: fd.get('name') as string,
       amount: parseFloat(fd.get('amount') as string) || 0, type: fd.get('type') as Contract['type'],
     };
-    supabase.from('contracts').insert(newContract);
+    await supabase.from('contracts').insert(newContract);
     setContracts(prev => [...prev, newContract]);
     setOpen(false);
   };
@@ -165,7 +165,7 @@ export default function ContractsPage() {
                   )}
                   <TableCell className="text-right"><Input value={newData.amount || ''} onChange={e => setNewData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-[10px] w-full md:w-28 px-1 text-right" placeholder="0.00" /></TableCell>
                   <TableCell><div className="flex gap-1">
-                    <button onClick={() => { if (newData.date && newData.name) { const nc = { id: Date.now().toString(), project_id: selectedProject.id, ...newData } as Contract; supabase.from('contracts').insert(nc); setContracts(prev => [...prev, nc]); setAdding(false); setNewData({ date: '', name: '', amount: 0, type: 'Contract' }); } }} className="text-[hsl(var(--success))] hover:opacity-70"><Check size={13} /></button>
+                    <button onClick={async () => { if (newData.date && newData.name) { const nc = { id: Date.now().toString(), project_id: selectedProject.id, ...newData } as Contract; await supabase.from('contracts').insert(nc); setContracts(prev => [...prev, nc]); setAdding(false); setNewData({ date: '', name: '', amount: 0, type: 'Contract' }); } }} className="text-[hsl(var(--success))] hover:opacity-70"><Check size={13} /></button>
                     <button onClick={() => { setAdding(false); setNewData({ date: '', name: '', amount: 0, type: 'Contract' }); }} className="text-destructive hover:opacity-70"><X size={13} /></button>
                   </div></TableCell>
                 </TableRow>
