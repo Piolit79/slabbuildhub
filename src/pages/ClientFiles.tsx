@@ -177,7 +177,7 @@ export default function ClientFiles() {
                     <Input
                       value={editUrl}
                       onChange={(e) => setEditUrl(e.target.value)}
-                      placeholder="Paste Dropbox URL"
+                      placeholder="Paste folder URL"
                       className="h-7 text-xs flex-1"
                       autoFocus
                       onKeyDown={(e) => { if (e.key === 'Enter') saveUrl(folder.id); if (e.key === 'Escape') setEditingId(null); }}
@@ -247,7 +247,7 @@ export default function ClientFiles() {
                     </select>
                   </div>
                   <div className="space-y-1"><Label className="text-xs">Folder Name</Label><Input name="folder_name" required className="h-8 text-xs" /></div>
-                  <div className="space-y-1"><Label className="text-xs">Dropbox URL (optional)</Label><Input name="dropbox_url" className="h-8 text-xs" placeholder="https://dropbox.com/..." /></div>
+                  <div className="space-y-1"><Label className="text-xs">Link URL (optional)</Label><Input name="dropbox_url" className="h-8 text-xs" placeholder="https://..." /></div>
                   <Button type="submit" size="sm" className="w-full">Add</Button>
                 </form>
               </DialogContent>
