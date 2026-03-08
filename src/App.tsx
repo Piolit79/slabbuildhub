@@ -23,6 +23,10 @@ import COIProjectDetail from "./coi-tracker/pages/ProjectDetail";
 import COIFiles from "./coi-tracker/pages/Files";
 import COISettings from "./coi-tracker/pages/Settings";
 
+// Code Hub pages
+import AskCodes from "./code-hub/pages/AskCodes";
+import ManageSources from "./code-hub/pages/ManageSources";
+
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -54,6 +58,10 @@ const App = () => {
                   <Route path="/insurance/projects/:id" element={<COIProjectDetail />} />
                   <Route path="/insurance/files" element={<COIFiles />} />
                   <Route path="/insurance/settings" element={<COISettings />} />
+
+                  {/* Code Hub routes */}
+                  <Route path="/code" element={<AskCodes />} />
+                  <Route path="/code/admin" element={<ManageSources />} />
                 </Route>
 
                 <Route path="*" element={<NotFound />} />

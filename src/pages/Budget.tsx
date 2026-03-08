@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -242,24 +242,6 @@ export default function BudgetPage() {
     setEditingFee(null);
   };
 
-  // ── Status column drag ─────────────────────────────────────────────────
-  const [statusPadding, setStatusPadding] = useState(40);
-  const statusPaddingRef = useRef(40);
-  const handleStatusDragLeft = useCallback((e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation();
-    const startX = e.clientX; const startPad = statusPaddingRef.current;
-    const onMouseMove = (ev: MouseEvent) => {
-      const newPad = Math.max(8, Math.min(300, startPad + ev.clientX - startX));
-      statusPaddingRef.current = newPad; setStatusPadding(newPad);
-    };
-    const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove); document.removeEventListener('mouseup', onMouseUp);
-      document.body.style.cursor = ''; document.body.style.userSelect = '';
-    };
-    document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none';
-    document.addEventListener('mousemove', onMouseMove); document.addEventListener('mouseup', onMouseUp);
-  }, []);
-
   // ── Totals ─────────────────────────────────────────────────────────────
   const grandLabor = items.reduce((s, b) => s + b.labor, 0);
   const grandMaterial = items.reduce((s, b) => s + b.material, 0);
@@ -392,21 +374,26 @@ export default function BudgetPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Main table */}
+      {/* Main table — column widths via colgroup for consistent spacing */}
       <Card>
         <CardContent className="p-0">
           <Table>
+            <colgroup>
+              <col style={{ width: 24 }} />
+              <col style={{ width: 180 }} />
+              {!isMobile && <col style={{ width: 88 }} />}
+              <col style={{ width: 100 }} />
+              <col style={{ width: 116 }} />
+              <col style={{ width: 48 }} />
+            </colgroup>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-5 px-1" />
                 <TableHead>Description</TableHead>
                 {!isMobile && <TableHead className="text-right whitespace-nowrap px-4">Labor</TableHead>}
-                <TableHead className="text-right whitespace-nowrap px-4">{isMobile ? 'Total' : 'Material'}</TableHead>
-                <TableHead className="whitespace-nowrap pr-6 relative" style={{ paddingLeft: `${statusPadding}px` }}>
-                  <div onMouseDown={handleStatusDragLeft} className="absolute left-0 top-0 h-full w-1.5 cursor-col-resize hover:bg-primary/30 active:bg-primary/50" />
-                  Status
-                </TableHead>
-                <TableHead className="text-right" />
+                <TableHead className="text-right whitespace-nowrap px-4 pr-6">{isMobile ? 'Total' : 'Material'}</TableHead>
+                <TableHead className="whitespace-nowrap pl-6 pr-4">Status</TableHead>
+                <TableHead className="text-right w-12" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -463,8 +450,8 @@ export default function BudgetPage() {
                       isMobile ? (
                         <>
                           <TableCell><Input value={editData.description || ''} onChange={e => setEditData(d => ({ ...d, description: e.target.value }))} className="h-6 text-[10px] px-1" /></TableCell>
-                          <TableCell><Input value={(editData.labor || 0) + (editData.material || 0)} onChange={e => setEditData(d => ({ ...d, labor: parseFloat(e.target.value) || 0, material: 0 }))} type="number" className="h-6 text-[10px] w-full px-1 text-right" /></TableCell>
-                          <TableCell>
+                          <TableCell className="pr-6"><Input value={(editData.labor || 0) + (editData.material || 0)} onChange={e => setEditData(d => ({ ...d, labor: parseFloat(e.target.value) || 0, material: 0 }))} type="number" className="h-6 text-[10px] w-full px-1 text-right" /></TableCell>
+                          <TableCell className="pl-6">
                             <select value={editData.status} onChange={e => setEditData(d => ({ ...d, status: e.target.value }))} className="h-5 text-[9px] border rounded px-0.5 bg-background">
                               <option value="estimated">est</option><option value="proposed">prop</option><option value="contracted">cont</option><option value="complete">done</option>
                             </select>
@@ -483,8 +470,8 @@ export default function BudgetPage() {
                             </div>
                           </TableCell>
                           <TableCell><Input value={editData.labor || 0} onChange={e => setEditData(d => ({ ...d, labor: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" /></TableCell>
-                          <TableCell><Input value={editData.material || 0} onChange={e => setEditData(d => ({ ...d, material: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" /></TableCell>
-                          <TableCell>
+                          <TableCell className="pr-6"><Input value={editData.material || 0} onChange={e => setEditData(d => ({ ...d, material: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" /></TableCell>
+                          <TableCell className="pl-6">
                             <select value={editData.status} onChange={e => setEditData(d => ({ ...d, status: e.target.value }))} className="h-6 text-[10px] border rounded px-1 bg-background">
                               <option value="estimated">estimated</option><option value="proposed">proposed</option><option value="contracted">contracted</option><option value="complete">complete</option>
                             </select>
@@ -496,8 +483,8 @@ export default function BudgetPage() {
                     <>
                         <TableCell className="text-[11px] md:text-sm truncate max-w-[120px] md:max-w-none">{b.description}</TableCell>
                         {!isMobile && <TableCell className="text-right tabular-nums text-[11px] md:text-sm px-4">{fmt(b.labor)}</TableCell>}
-                        <TableCell className="text-right tabular-nums text-[11px] md:text-sm px-4">{isMobile ? fmt(b.labor + b.material) : fmt(b.material)}</TableCell>
-                        <TableCell className="pr-6" style={{ paddingLeft: `${statusPadding}px` }}>{statusBadge(b.status)}</TableCell>
+                        <TableCell className="text-right tabular-nums text-[11px] md:text-sm px-4 pr-6">{isMobile ? fmt(b.labor + b.material) : fmt(b.material)}</TableCell>
+                        <TableCell className="pl-6 pr-4">{statusBadge(b.status)}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-1.5 justify-end">
                             {!isMobile && (
@@ -530,8 +517,8 @@ export default function BudgetPage() {
                     )}
                   </TableCell>
                   {!isMobile && <TableCell><Input value={newData.labor || ''} onChange={e => setNewData(d => ({ ...d, labor: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" placeholder="0" /></TableCell>}
-                  <TableCell><Input value={isMobile ? (newData.labor || '') : (newData.material || '')} onChange={e => { const v = parseFloat(e.target.value) || 0; isMobile ? setNewData(d => ({ ...d, labor: v })) : setNewData(d => ({ ...d, material: v })); }} type="number" className="h-6 text-[10px] w-full md:w-20 px-1 text-right" placeholder="0" /></TableCell>
-                  <TableCell>
+                  <TableCell className="pr-6"><Input value={isMobile ? (newData.labor || '') : (newData.material || '')} onChange={e => { const v = parseFloat(e.target.value) || 0; isMobile ? setNewData(d => ({ ...d, labor: v })) : setNewData(d => ({ ...d, material: v })); }} type="number" className="h-6 text-[10px] w-full md:w-20 px-1 text-right" placeholder="0" /></TableCell>
+                  <TableCell className="pl-6">
                     <select value={newData.status || 'estimated'} onChange={e => setNewData(d => ({ ...d, status: e.target.value }))} className="h-5 md:h-6 text-[9px] md:text-[10px] border rounded px-0.5 md:px-1 bg-background">
                       <option value="estimated">{isMobile ? 'est' : 'estimated'}</option>
                       <option value="proposed">{isMobile ? 'prop' : 'proposed'}</option>
@@ -561,7 +548,7 @@ export default function BudgetPage() {
               <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
                 <TableCell /><TableCell className="font-semibold text-[11px]">{isMobile ? 'Labor / Material' : 'Labor / Material Totals'}</TableCell>
                 {!isMobile && <TableCell className="text-right font-semibold tabular-nums">{fmtN(grandLabor)}</TableCell>}
-                <TableCell className="text-right font-semibold tabular-nums">{isMobile ? fmtN(hardCostTotal) : fmtN(grandMaterial)}</TableCell>
+                <TableCell className="text-right font-semibold tabular-nums pr-6">{isMobile ? fmtN(hardCostTotal) : fmtN(grandMaterial)}</TableCell>
                 <TableCell colSpan={isMobile ? 1 : 2} />
               </TableRow>
               <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>

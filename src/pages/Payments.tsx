@@ -114,12 +114,20 @@ export default function PaymentsPage() {
                   <span className="text-xs font-semibold tabular-nums">Total: {fmt(tabTotal)}</span>
                 </div>
                 <Table>
+                  <colgroup>
+                    <col style={{ width: 88 }} />
+                    <col style={{ minWidth: 120 }} />
+                    <col style={{ width: 116 }} />
+                    {!isMobile && <col style={{ width: 116 }} />}
+                    {!isMobile && <col style={{ width: 80 }} />}
+                    <col style={{ width: 48 }} />
+                  </colgroup>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>{sh('Date', 'date')}</TableHead>
-                      <TableHead>{sh('Name', 'name')}</TableHead>
-                      <TableHead className="text-right">{sh('Amt', 'amount', 'justify-end')}</TableHead>
-                      {!isMobile && <TableHead>{sh('Form', 'form')}</TableHead>}
+                      <TableHead className="pr-6">{sh('Date', 'date')}</TableHead>
+                      <TableHead className="pl-6">{sh('Name', 'name')}</TableHead>
+                      <TableHead className="text-right pr-6">{sh('Amt', 'amount', 'justify-end')}</TableHead>
+                      {!isMobile && <TableHead className="pl-6">{sh('Form', 'form')}</TableHead>}
                       {!isMobile && <TableHead>{sh('Check #', 'check_number')}</TableHead>}
                       <TableHead className={isMobile ? 'w-10' : 'w-12'}></TableHead>
                     </TableRow>
@@ -130,27 +138,27 @@ export default function PaymentsPage() {
                         {editId === p.id ? (
                           isMobile ? (
                             <>
-                              <TableCell><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full px-1" /></TableCell>
-                              <TableCell><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-[10px] px-1" /></TableCell>
+                              <TableCell className="pr-6"><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full px-1" /></TableCell>
+                              <TableCell className="pl-6"><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-[10px] px-1" /></TableCell>
                               <TableCell className="text-right"><Input value={editData.amount || ''} onChange={e => setEditData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-[10px] w-full px-1 text-right" /></TableCell>
                               <TableCell><div className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={13} /></button><button onClick={cancelEdit} className="text-destructive"><X size={13} /></button></div></TableCell>
                             </>
                           ) : (
                             <>
-                              <TableCell><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-28 px-1" /></TableCell>
-                              <TableCell><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
-                              <TableCell className="text-right"><Input value={editData.amount || ''} onChange={e => setEditData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-xs w-24 px-1 text-right" /></TableCell>
-                              <TableCell><Input value={editData.form || ''} onChange={e => setEditData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs w-20 px-1" /></TableCell>
+                              <TableCell className="pr-6"><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-28 px-1" /></TableCell>
+                              <TableCell className="pl-6"><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
+                              <TableCell className="text-right pr-6"><Input value={editData.amount || ''} onChange={e => setEditData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-xs w-24 px-1 text-right" /></TableCell>
+                              <TableCell className="pl-6"><Input value={editData.form || ''} onChange={e => setEditData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs w-20 px-1" /></TableCell>
                               <TableCell><Input value={editData.check_number || ''} onChange={e => setEditData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" /></TableCell>
                               <TableCell className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button><button onClick={cancelEdit} className="text-destructive"><X size={14} /></button></TableCell>
                             </>
                           )
                         ) : (
                           <>
-                            <TableCell className="tabular-nums text-[11px] md:text-sm">{format(new Date(p.date), 'MM.dd.yy')}</TableCell>
-                            <TableCell className="text-[11px] md:text-sm truncate max-w-[120px] md:max-w-none">{p.name}</TableCell>
-                            <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(p.amount)}</TableCell>
-                            {!isMobile && <TableCell className="text-[11px] md:text-sm">{p.form}</TableCell>}
+                            <TableCell className="tabular-nums text-[11px] md:text-sm pr-6">{format(new Date(p.date), 'MM.dd.yy')}</TableCell>
+                            <TableCell className="text-[11px] md:text-sm truncate max-w-[120px] md:max-w-none pl-6">{p.name}</TableCell>
+                            <TableCell className="text-right tabular-nums text-[11px] md:text-sm pr-6">{fmt(p.amount)}</TableCell>
+                            {!isMobile && <TableCell className="text-[11px] md:text-sm pl-6">{p.form}</TableCell>}
                             {!isMobile && <TableCell className="tabular-nums text-[11px] md:text-sm">{p.check_number || '—'}</TableCell>}
                             <TableCell><button onClick={() => startEdit(p)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>
                           </>
@@ -159,10 +167,10 @@ export default function PaymentsPage() {
                     ))}
                     {adding ? (
                       <TableRow className="bg-muted/30">
-                        <TableCell><Input value={newData.date || ''} onChange={e => setNewData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full md:w-28 px-1" autoFocus /></TableCell>
-                        <TableCell><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-[10px] px-1" placeholder="Name" /></TableCell>
-                        <TableCell className="text-right"><Input value={newData.amount || ''} onChange={e => setNewData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-[10px] w-full md:w-24 px-1 text-right" placeholder="0.00" /></TableCell>
-                        {!isMobile && <TableCell><Input value={newData.form || ''} onChange={e => setNewData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs w-20 px-1" placeholder="Form" /></TableCell>}
+                        <TableCell className="pr-6"><Input value={newData.date || ''} onChange={e => setNewData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full md:w-28 px-1" autoFocus /></TableCell>
+                        <TableCell className="pl-6"><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-[10px] px-1" placeholder="Name" /></TableCell>
+                        <TableCell className="text-right pr-6"><Input value={newData.amount || ''} onChange={e => setNewData(d => ({ ...d, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-[10px] w-full md:w-24 px-1 text-right" placeholder="0.00" /></TableCell>
+                        {!isMobile && <TableCell className="pl-6"><Input value={newData.form || ''} onChange={e => setNewData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs w-20 px-1" placeholder="Form" /></TableCell>}
                         {!isMobile && <TableCell><Input value={newData.check_number || ''} onChange={e => setNewData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" placeholder="Check #" /></TableCell>}
                         <TableCell><div className="flex gap-1">
                           <button onClick={async () => { if (newData.date && newData.name) { const np = { id: Date.now().toString(), project_id: selectedProject.id, category: activeTab, ...newData } as Payment; await supabase.from('payments').insert(np); setPayments(prev => [...prev, np]); setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>

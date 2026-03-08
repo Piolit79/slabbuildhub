@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderOpen, UserRound, Code2 } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderOpen, UserRound, MessageSquare, Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -129,20 +129,31 @@ export default function AppSidebar() {
           </span>
         )}
         {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
-        <NavLink
-          to="/code"
-          onClick={() => isMobile && setMobileOpen(false)}
-          className={cn(
-            'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-            location.pathname.startsWith('/code')
-              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-              : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
-            collapsed && !isMobile && 'justify-center px-0'
-          )}
-        >
-          <Code2 className="h-[18px] w-[18px] shrink-0" />
-          {(isMobile || !collapsed) && <span>Code Hub</span>}
-        </NavLink>
+        {[
+          { to: '/code', label: 'Ask Codes', icon: MessageSquare, exact: true },
+          { to: '/code/admin', label: 'Manage Sources', icon: Settings2, exact: false },
+        ].map(({ to, label, icon: Icon, exact }) => {
+          const isActive = exact
+            ? location.pathname === to
+            : location.pathname.startsWith(to);
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              onClick={() => isMobile && setMobileOpen(false)}
+              className={cn(
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
+                collapsed && !isMobile && 'justify-center px-0'
+              )}
+            >
+              <Icon className="h-[18px] w-[18px] shrink-0" />
+              {(isMobile || !collapsed) && <span>{label}</span>}
+            </NavLink>
+          );
+        })}
       </nav>
 
       <div className="mt-auto border-t border-sidebar-border">
