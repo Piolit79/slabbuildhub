@@ -7,8 +7,45 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DollarSign, TrendingDown, Landmark, Calculator, FileText, Wallet, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Rectangle } from 'recharts';
 import { Contract, Payment, Draw, Vendor } from '@/types';
+import { format } from 'date-fns';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(n);
+const fmt2 = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
+
+function PaymentHover({ total, payments: items, align = 'right' }: { total: number; payments: Payment[]; align?: 'left' | 'right' }) {
+  const [show, setShow] = React.useState(false);
+  if (items.length === 0) return <span>{fmt(total)}</span>;
+  return (
+    <span
+      className="relative cursor-default"
+      onMouseEnter={() => setShow(true)}
+      onMouseLeave={() => setShow(false)}
+    >
+      <span className="underline decoration-dotted underline-offset-2">{fmt(total)}</span>
+      {show && (
+        <div className={`absolute z-50 bottom-full mb-1 ${align === 'right' ? 'right-0' : 'left-0'} bg-popover border border-border rounded-md shadow-lg p-2 min-w-[200px] max-w-[280px] max-h-[240px] overflow-y-auto`}>
+          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 px-0.5">Payments ({items.length})</div>
+          <table className="w-full text-[11px]">
+            <tbody>
+              {items
+                .sort((a, b) => a.date.localeCompare(b.date))
+                .map((p, i) => (
+                <tr key={p.id || i} className={i % 2 === 0 ? 'bg-muted/40' : ''}>
+                  <td className="px-1 py-0.5 tabular-nums whitespace-nowrap">{(() => { try { return format(new Date(p.date), 'MM.dd.yy'); } catch { return p.date; } })()}</td>
+                  <td className="px-1 py-0.5 text-right tabular-nums whitespace-nowrap font-medium">{fmt2(p.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="border-t border-border mt-1 pt-1 flex justify-between px-1 text-[11px] font-semibold">
+            <span>Total</span>
+            <span className="tabular-nums">{fmt2(items.reduce((s, p) => s + p.amount, 0))}</span>
+          </div>
+        </div>
+      )}
+    </span>
+  );
+}
 
 function SortBtn({ label, active, dir, onClick, className }: { label: string; active: boolean; dir: string; onClick: () => void; className?: string }) {
   return (
@@ -294,7 +331,7 @@ export default function Dashboard({ readOnly }: { readOnly?: boolean }) {
                     </TableCell>
                   )}
                   <TableCell className="text-right tabular-nums text-[11px] md:text-sm">
-                    {fmt(row.paid)}
+                    <PaymentHover total={row.paid} payments={payments.filter(p => p.name === row.name && p.category === 'subcontractor')} />
                   </TableCell>
                   <TableCell
                     className={`text-right tabular-nums font-semibold text-[11px] md:text-sm ${
@@ -326,12 +363,16 @@ export default function Dashboard({ readOnly }: { readOnly?: boolean }) {
                 <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
                   <TableCell className="text-[11px] md:text-sm">StudioLAB</TableCell>
                   <TableCell className="text-[11px] md:text-sm">Designer</TableCell>
-                  <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(softCostStudioLAB)}</TableCell>
+                  <TableCell className="text-right tabular-nums text-[11px] md:text-sm">
+                    <PaymentHover total={softCostStudioLAB} payments={payments.filter(p => p.name === 'StudioLAB' && p.category === 'soft_costs')} />
+                  </TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell className="text-[11px] md:text-sm">SLAB Builders</TableCell>
                   <TableCell className="text-[11px] md:text-sm">Builder</TableCell>
-                  <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(softCostSLAB)}</TableCell>
+                  <TableCell className="text-right tabular-nums text-[11px] md:text-sm">
+                    <PaymentHover total={softCostSLAB} payments={payments.filter(p => p.name === 'SLAB Builders' && p.category === 'soft_costs')} />
+                  </TableCell>
                 </TableRow>
               </TableBody>
             </Table>
