@@ -93,8 +93,6 @@ const App = () => {
                 <Route path="/client/files" element={<ClientFiles />} />
                 <Route path="/client/dashboard" element={<Dashboard readOnly />} />
                 <Route path="/client/budget" element={<BudgetPage readOnly />} />
-                <Route path="/client/contracts" element={<ContractsPage readOnly />} />
-                <Route path="/client/payments" element={<PaymentsPage readOnly />} />
                 <Route path="/client/draws" element={<DrawsPage readOnly />} />
               </Route>
 

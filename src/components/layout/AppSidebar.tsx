@@ -18,8 +18,6 @@ const companyNavItems = [
 const clientNavItems = [
   { to: '/client/dashboard', label: 'Ledger', icon: LayoutDashboard },
   { to: '/client/budget', label: 'Budget', icon: Calculator },
-  { to: '/client/contracts', label: 'Contracts', icon: FileText },
-  { to: '/client/payments', label: 'Payments', icon: CreditCard },
   { to: '/client/draws', label: 'Draws', icon: Landmark },
   { to: '/client/files', label: 'Project Files', icon: FolderOpen },
 ];
