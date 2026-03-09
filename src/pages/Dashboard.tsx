@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useProject } from '@/contexts/ProjectContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,18 +13,35 @@ import { format } from 'date-fns';
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(n);
 const fmt2 = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
 
-function PaymentHover({ total, payments: items, align = 'right' }: { total: number; payments: Payment[]; align?: 'left' | 'right' }) {
+function PaymentHover({ total, payments: items }: { total: number; payments: Payment[] }) {
   const [show, setShow] = React.useState(false);
+  const spanRef = useRef<HTMLSpanElement>(null);
+  const [pos, setPos] = React.useState<{ top: number; left: number } | null>(null);
+
+  function handleEnter() {
+    if (spanRef.current) {
+      const rect = spanRef.current.getBoundingClientRect();
+      setPos({ top: rect.top, left: rect.right });
+    }
+    setShow(true);
+  }
+
   if (items.length === 0) return <span>{fmt(total)}</span>;
   return (
     <span
-      className="relative cursor-default"
-      onMouseEnter={() => setShow(true)}
+      ref={spanRef}
+      className="cursor-default"
+      onMouseEnter={handleEnter}
       onMouseLeave={() => setShow(false)}
     >
       <span className="underline decoration-dotted underline-offset-2">{fmt(total)}</span>
-      {show && (
-        <div className={`absolute z-50 bottom-full mb-1 ${align === 'right' ? 'right-0' : 'left-0'} bg-popover border border-border rounded-md shadow-lg p-2 min-w-[200px] max-w-[280px] max-h-[240px] overflow-y-auto`}>
+      {show && pos && createPortal(
+        <div
+          style={{ position: 'fixed', top: pos.top, left: pos.left, transform: 'translate(-100%, -100%)', zIndex: 9999 }}
+          className="bg-popover border border-border rounded-md shadow-lg p-2 min-w-[200px] max-w-[280px] max-h-[240px] overflow-y-auto mb-1 mr-1"
+          onMouseEnter={() => setShow(true)}
+          onMouseLeave={() => setShow(false)}
+        >
           <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 px-0.5">Payments ({items.length})</div>
           <table className="w-full text-[11px]">
             <tbody>
@@ -41,7 +59,8 @@ function PaymentHover({ total, payments: items, align = 'right' }: { total: numb
             <span>Total</span>
             <span className="tabular-nums">{fmt2(items.reduce((s, p) => s + p.amount, 0))}</span>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </span>
   );
