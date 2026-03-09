@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
@@ -44,6 +45,7 @@ export default function ContractsPage({ readOnly }: { readOnly?: boolean }) {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const toggle = (k: string) => { if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortKey(k); setSortDir('asc'); } };
+  const nameSuggestions = useMemo(() => [...new Set(contracts.map(c => c.name).filter(Boolean))], [contracts]);
   const filtered = contracts.filter(c => c.project_id === selectedProject.id);
   const sorted = useMemo(() => [...filtered].sort((a: any, b: any) => {
     const av = a[sortKey], bv = b[sortKey];
@@ -91,7 +93,7 @@ export default function ContractsPage({ readOnly }: { readOnly?: boolean }) {
               <DialogHeader><DialogTitle>Add Contract Entry</DialogTitle></DialogHeader>
               <form onSubmit={handleAdd} className="space-y-3">
                 <div className="space-y-1"><Label className="text-xs">Date</Label><Input name="date" type="date" required className="h-8 text-xs" /></div>
-                <div className="space-y-1"><Label className="text-xs">Name</Label><Input name="name" required className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-xs">Name</Label><AutocompleteInput name="name" required suggestions={nameSuggestions} className="h-8 text-xs" /></div>
                 <div className="space-y-1"><Label className="text-xs">Amount</Label><CurrencyInput name="amount" required className="h-8 text-xs" /></div>
                 <div className="space-y-1"><Label className="text-xs">Type</Label>
                   <Select name="type" defaultValue="Contract"><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
@@ -124,14 +126,14 @@ export default function ContractsPage({ readOnly }: { readOnly?: boolean }) {
                     isMobile ? (
                       <>
                         <TableCell><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full px-1" /></TableCell>
-                        <TableCell><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-[10px] px-1" /></TableCell>
+                        <TableCell><AutocompleteInput value={editData.name || ''} onChange={v => setEditData(d => ({ ...d, name: v }))} suggestions={nameSuggestions} className="h-6 text-[10px] px-1" /></TableCell>
                         <TableCell className="text-right"><CurrencyInput value={editData.amount || 0} onChange={v => setEditData(d => ({ ...d, amount: v }))} className="h-6 text-[10px] w-full px-1" /></TableCell>
                         <TableCell><div className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={13} /></button><button onClick={cancelEdit} className="text-destructive"><X size={13} /></button></div></TableCell>
                       </>
                     ) : (
                       <>
                         <TableCell><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-32 px-1" /></TableCell>
-                        <TableCell><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
+                        <TableCell><AutocompleteInput value={editData.name || ''} onChange={v => setEditData(d => ({ ...d, name: v }))} suggestions={nameSuggestions} className="h-6 text-xs px-1" /></TableCell>
                         <TableCell>
                           <select value={editData.type || 'Contract'} onChange={e => setEditData(d => ({ ...d, type: e.target.value as Contract['type'] }))} className="h-6 text-xs border rounded px-1 bg-background">
                             <option>Contract</option><option>Change Order</option><option>Credit</option>
@@ -158,7 +160,7 @@ export default function ContractsPage({ readOnly }: { readOnly?: boolean }) {
               {!readOnly && (adding ? (
                 <TableRow className="bg-muted/30">
                   <TableCell><Input value={newData.date || ''} onChange={e => setNewData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full md:w-32 px-1" autoFocus /></TableCell>
-                  <TableCell><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-[10px] px-1" placeholder="Name" /></TableCell>
+                  <TableCell><AutocompleteInput value={newData.name || ''} onChange={v => setNewData(d => ({ ...d, name: v }))} suggestions={nameSuggestions} className="h-6 text-[10px] px-1" placeholder="Name" /></TableCell>
                   {!isMobile && (
                     <TableCell>
                       <select value={newData.type || 'Contract'} onChange={e => setNewData(d => ({ ...d, type: e.target.value as Contract['type'] }))} className="h-6 text-xs border rounded px-1 bg-background">

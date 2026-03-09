@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -115,6 +116,8 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
 
   // ── Item ordering ──────────────────────────────────────────────────────
   const orderedItems = useMemo(() => [...items].sort((a, b) => a.sort_order - b.sort_order), [items]);
+  const descriptionSuggestions = useMemo(() => [...new Set(items.map(b => b.description).filter(Boolean))], [items]);
+  const subcontractorSuggestions = useMemo(() => [...new Set(items.map(b => b.subcontractor).filter(Boolean))], [items]);
 
   const moveItem = async (itemId: string, dir: 'up' | 'down') => {
     const item = items.find(b => b.id === itemId);
@@ -316,12 +319,12 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
                 <SelectContent>{categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="space-y-1"><Label className="text-xs">Description</Label><Input name="description" required className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-xs">Description</Label><AutocompleteInput name="description" required suggestions={descriptionSuggestions} className="h-8 text-xs" /></div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1"><Label className="text-xs">Labor</Label><CurrencyInput name="labor" defaultValue={0} className="h-8 text-xs" /></div>
               <div className="space-y-1"><Label className="text-xs">Material</Label><CurrencyInput name="material" defaultValue={0} className="h-8 text-xs" /></div>
             </div>
-            <div className="space-y-1"><Label className="text-xs">Subcontractor</Label><Input name="subcontractor" className="h-8 text-xs" /></div>
+            <div className="space-y-1"><Label className="text-xs">Subcontractor</Label><AutocompleteInput name="subcontractor" suggestions={subcontractorSuggestions} className="h-8 text-xs" /></div>
             <div className="space-y-1"><Label className="text-xs">Status</Label>
               <Select name="status" defaultValue="estimated">
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
@@ -356,7 +359,7 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle className="text-sm">Edit Details</DialogTitle></DialogHeader>
           <div className="space-y-2">
-            <div className="space-y-1"><Label className="text-xs">Subcontractor</Label><Input value={noteSub} onChange={e => setNoteSub(e.target.value)} className="h-8 text-xs" placeholder="Subcontractor name..." /></div>
+            <div className="space-y-1"><Label className="text-xs">Subcontractor</Label><AutocompleteInput value={noteSub} onChange={v => setNoteSub(v)} suggestions={subcontractorSuggestions} className="h-8 text-xs" placeholder="Subcontractor name..." /></div>
             <div className="space-y-1"><Label className="text-xs">Notes</Label><Textarea value={noteText} onChange={e => setNoteText(e.target.value)} className="text-xs min-h-[80px]" placeholder="Add a note..." /></div>
           </div>
           <Button size="sm" onClick={saveNote} className="w-full">Save</Button>
@@ -454,7 +457,7 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
                     {editId === b.id ? (
                       isMobile ? (
                         <>
-                          <TableCell><Input value={editData.description || ''} onChange={e => setEditData(d => ({ ...d, description: e.target.value }))} className="h-6 text-[10px] px-1" /></TableCell>
+                          <TableCell><AutocompleteInput value={editData.description || ''} onChange={v => setEditData(d => ({ ...d, description: v }))} suggestions={descriptionSuggestions} className="h-6 text-[10px] px-1" /></TableCell>
                           <TableCell className="pr-6"><CurrencyInput value={(editData.labor || 0) + (editData.material || 0)} onChange={v => setEditData(d => ({ ...d, labor: v, material: 0 }))} className="h-6 text-[10px] w-full px-1" /></TableCell>
                           <TableCell className="pl-6">
                             <select value={editData.status} onChange={e => setEditData(d => ({ ...d, status: e.target.value }))} className="h-5 text-[9px] border rounded px-0.5 bg-background">
@@ -471,7 +474,7 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
                                 <SelectTrigger className="h-6 text-[10px] w-28"><SelectValue /></SelectTrigger>
                                 <SelectContent>{categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                               </Select>
-                              <Input value={editData.description || ''} onChange={e => setEditData(d => ({ ...d, description: e.target.value }))} className="h-6 text-xs px-1" />
+                              <AutocompleteInput value={editData.description || ''} onChange={v => setEditData(d => ({ ...d, description: v }))} suggestions={descriptionSuggestions} className="h-6 text-xs px-1" />
                             </div>
                           </TableCell>
                           <TableCell><CurrencyInput value={editData.labor || 0} onChange={v => setEditData(d => ({ ...d, labor: v }))} className="h-6 text-xs w-24 px-1" /></TableCell>
@@ -513,13 +516,13 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
                   <TableCell className="px-1 w-5" />
                   <TableCell>
                     {isMobile ? (
-                      <Input value={newData.description || ''} onChange={e => setNewData(d => ({ ...d, description: e.target.value }))} className="h-6 text-[10px] px-1" placeholder="Description" autoFocus />
+                      <AutocompleteInput value={newData.description || ''} onChange={v => setNewData(d => ({ ...d, description: v }))} suggestions={descriptionSuggestions} className="h-6 text-[10px] px-1" placeholder="Description" autoFocus />
                     ) : (
                       <div className="flex gap-1">
                         <select value={newData.category || categories[0]} onChange={e => setNewData(d => ({ ...d, category: e.target.value }))} className="h-6 text-[10px] border rounded px-1 bg-background w-28">
                           {categories.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
-                        <Input value={newData.description || ''} onChange={e => setNewData(d => ({ ...d, description: e.target.value }))} className="h-6 text-xs px-1" placeholder="Description" autoFocus />
+                        <AutocompleteInput value={newData.description || ''} onChange={v => setNewData(d => ({ ...d, description: v }))} suggestions={descriptionSuggestions} className="h-6 text-xs px-1" placeholder="Description" autoFocus />
                       </div>
                     )}
                   </TableCell>

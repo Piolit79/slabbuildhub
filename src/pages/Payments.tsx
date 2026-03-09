@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
+import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
@@ -48,6 +49,8 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   const toggle = (k: string) => { if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortKey(k); setSortDir('asc'); } };
+  const nameSuggestions = useMemo(() => [...new Set(payments.map(p => p.name).filter(Boolean))], [payments]);
+  const formSuggestions = useMemo(() => [...new Set(payments.map(p => p.form).filter(Boolean))], [payments]);
   const filtered = payments.filter(p => p.project_id === selectedProject.id && p.category === activeTab);
   const sorted = useMemo(() => [...filtered].sort((a: any, b: any) => {
     const av = a[sortKey], bv = b[sortKey];
@@ -87,14 +90,14 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
             <DialogHeader><DialogTitle>Add Payment</DialogTitle></DialogHeader>
             <form onSubmit={handleAdd} className="space-y-3">
               <div className="space-y-1"><Label className="text-xs">Date</Label><Input name="date" type="date" required className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Name</Label><Input name="name" required className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">Name</Label><AutocompleteInput name="name" required suggestions={nameSuggestions} className="h-8 text-xs" /></div>
               <div className="space-y-1"><Label className="text-xs">Amount</Label><CurrencyInput name="amount" required className="h-8 text-xs" /></div>
               <div className="space-y-1"><Label className="text-xs">Category</Label>
                 <Select name="category" defaultValue={activeTab}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>{tabs.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1"><Label className="text-xs">Form</Label><Input name="form" placeholder="Check / ACH / Cash" required className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">Form</Label><AutocompleteInput name="form" placeholder="Check / ACH / Cash" required suggestions={formSuggestions} className="h-8 text-xs" /></div>
               <div className="space-y-1"><Label className="text-xs">Check # (optional)</Label><Input name="check_number" className="h-8 text-xs" /></div>
               <Button type="submit" size="sm" className="w-full">Save</Button>
             </form>
@@ -140,16 +143,16 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                           isMobile ? (
                             <>
                               <TableCell className="pr-6"><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full px-1" /></TableCell>
-                              <TableCell className="pl-6"><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-[10px] px-1" /></TableCell>
+                              <TableCell className="pl-6"><AutocompleteInput value={editData.name || ''} onChange={v => setEditData(d => ({ ...d, name: v }))} suggestions={nameSuggestions} className="h-6 text-[10px] px-1" /></TableCell>
                               <TableCell className="text-right"><CurrencyInput value={editData.amount || 0} onChange={v => setEditData(d => ({ ...d, amount: v }))} className="h-6 text-[10px] w-full px-1" /></TableCell>
                               <TableCell><div className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={13} /></button><button onClick={cancelEdit} className="text-destructive"><X size={13} /></button></div></TableCell>
                             </>
                           ) : (
                             <>
                               <TableCell className="pr-6"><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-28 px-1" /></TableCell>
-                              <TableCell className="pl-6"><Input value={editData.name || ''} onChange={e => setEditData(d => ({ ...d, name: e.target.value }))} className="h-6 text-xs px-1" /></TableCell>
+                              <TableCell className="pl-6"><AutocompleteInput value={editData.name || ''} onChange={v => setEditData(d => ({ ...d, name: v }))} suggestions={nameSuggestions} className="h-6 text-xs px-1" /></TableCell>
                               <TableCell className="text-right pr-6"><CurrencyInput value={editData.amount || 0} onChange={v => setEditData(d => ({ ...d, amount: v }))} className="h-6 text-xs w-28 px-1" /></TableCell>
-                              <TableCell className="pl-6"><Input value={editData.form || ''} onChange={e => setEditData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs w-20 px-1" /></TableCell>
+                              <TableCell className="pl-6"><AutocompleteInput value={editData.form || ''} onChange={v => setEditData(d => ({ ...d, form: v }))} suggestions={formSuggestions} className="h-6 text-xs w-20 px-1" /></TableCell>
                               <TableCell><Input value={editData.check_number || ''} onChange={e => setEditData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" /></TableCell>
                               <TableCell className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button><button onClick={cancelEdit} className="text-destructive"><X size={14} /></button></TableCell>
                             </>
@@ -169,9 +172,9 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                     {!readOnly && (adding ? (
                       <TableRow className="bg-muted/30">
                         <TableCell className="pr-6"><Input value={newData.date || ''} onChange={e => setNewData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full md:w-28 px-1" autoFocus /></TableCell>
-                        <TableCell className="pl-6"><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-[10px] px-1" placeholder="Name" /></TableCell>
+                        <TableCell className="pl-6"><AutocompleteInput value={newData.name || ''} onChange={v => setNewData(d => ({ ...d, name: v }))} suggestions={nameSuggestions} className="h-6 text-[10px] px-1" placeholder="Name" /></TableCell>
                         <TableCell className="text-right pr-6"><CurrencyInput value={newData.amount || 0} onChange={v => setNewData(d => ({ ...d, amount: v }))} className="h-6 text-[10px] w-full md:w-28 px-1" placeholder="0.00" /></TableCell>
-                        {!isMobile && <TableCell className="pl-6"><Input value={newData.form || ''} onChange={e => setNewData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs w-20 px-1" placeholder="Form" /></TableCell>}
+                        {!isMobile && <TableCell className="pl-6"><AutocompleteInput value={newData.form || ''} onChange={v => setNewData(d => ({ ...d, form: v }))} suggestions={formSuggestions} className="h-6 text-xs w-20 px-1" placeholder="Form" /></TableCell>}
                         {!isMobile && <TableCell><Input value={newData.check_number || ''} onChange={e => setNewData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" placeholder="Check #" /></TableCell>}
                         <TableCell><div className="flex gap-1">
                           <button onClick={async () => { if (newData.date && newData.name) { const np = { id: Date.now().toString(), project_id: selectedProject.id, category: activeTab, ...newData } as Payment; await supabase.from('payments').insert(np); setPayments(prev => [...prev, np]); setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
