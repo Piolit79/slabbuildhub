@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderOpen, UserRound, MessageSquare, Settings2, FolderClosed, Store } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderOpen, UserRound, MessageSquare, Settings2, FolderClosed, Store, ClipboardCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -19,6 +19,8 @@ const clientNavItems = [
   { to: '/client/dashboard', label: 'Ledger', icon: LayoutDashboard },
   { to: '/client/budget', label: 'Budget', icon: Calculator },
   { to: '/client/draws', label: 'Draws', icon: Landmark },
+  { to: '/client/coi', label: 'Cert. Of Insurance', icon: Shield },
+  { to: '/client/sub-agreements', label: 'Sub. Agreements', icon: ClipboardCheck },
   { to: '/client/files', label: 'Project Files', icon: FolderOpen },
 ];
 

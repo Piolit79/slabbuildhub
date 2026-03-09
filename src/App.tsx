@@ -29,6 +29,8 @@ import COISettings from "./coi-tracker/pages/Settings";
 import AskCodes from "./code-hub/pages/AskCodes";
 import ManageSources from "./code-hub/pages/ManageSources";
 import VendorDirectoryPage from "./pages/VendorDirectory";
+import ClientCOI from "./pages/ClientCOI";
+import ClientSubAgreements from "./pages/ClientSubAgreements";
 
 const queryClient = new QueryClient();
 
@@ -94,6 +96,8 @@ const App = () => {
                 <Route path="/client/dashboard" element={<Dashboard readOnly />} />
                 <Route path="/client/budget" element={<BudgetPage readOnly />} />
                 <Route path="/client/draws" element={<DrawsPage readOnly />} />
+                <Route path="/client/coi" element={<ClientCOI />} />
+                <Route path="/client/sub-agreements" element={<ClientSubAgreements />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
