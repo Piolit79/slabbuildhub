@@ -1,14 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useProject } from '@/contexts/ProjectContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown, Trash2, Undo2 } from 'lucide-react';
 import { Vendor } from '@/types';
@@ -18,37 +16,22 @@ function SortBtn({ label, active, dir, onClick, className }: { label: string; ac
   return <button onClick={onClick} className={`inline-flex items-center gap-0.5 hover:text-foreground ${className || ''}`}>{label}{active ? (dir === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />) : <ChevronsUpDown size={11} className="opacity-30" />}</button>;
 }
 
-export default function VendorsPage() {
-  const { selectedProject } = useProject();
+export default function VendorDirectoryPage() {
   const isMobile = useIsMobile();
   const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [directory, setDirectory] = useState<Vendor[]>([]);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    const load = async () => {
-      // Load full directory
-      const { data: allVendors } = await supabase.from('vendors').select('*');
-      setDirectory((allVendors || []) as Vendor[]);
-
-      // Load project-specific vendors via junction
-      const { data: links } = await supabase
-        .from('project_vendors')
-        .select('vendor_id')
-        .eq('project_id', selectedProject.id);
-
-      if (links && allVendors) {
-        const linkedIds = new Set(links.map(l => l.vendor_id));
-        setVendors((allVendors as Vendor[]).filter(v => linkedIds.has(v.id)));
-      }
-    };
-    load();
-  }, [selectedProject.id]);
+    supabase.from('vendors').select('*').then(({ data }) => {
+      if (data) setVendors(data as Vendor[]);
+    });
+  }, []);
 
   const [open, setOpen] = useState(false);
-  const [addName, setAddName] = useState('');
   const [editId, setEditId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Vendor>>({});
+  const [adding, setAdding] = useState(false);
+  const [newData, setNewData] = useState<Partial<Vendor>>({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' });
   const [sortKey, setSortKey] = useState('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
@@ -68,17 +51,15 @@ export default function VendorsPage() {
     setUndoInfo(null);
   };
 
-  // Delete (unlink from project)
+  // Delete
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const unlinkVendor = async (id: string) => {
+  const deleteVendor = async (id: string) => {
     setVendors(prev => prev.filter(v => v.id !== id));
-    await supabase.from('project_vendors').delete().eq('project_id', selectedProject.id).eq('vendor_id', id);
+    await supabase.from('vendors').delete().eq('id', id);
     setConfirmDeleteId(null);
   };
 
   const toggle = (k: string) => { if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortKey(k); setSortDir('asc'); } };
-
-  const directorySuggestions = useMemo(() => directory.map(v => v.name), [directory]);
 
   const filtered = useMemo(() => {
     const f = vendors.filter(v => v.name.toLowerCase().includes(search.toLowerCase()) || v.detail.toLowerCase().includes(search.toLowerCase()) || v.type.toLowerCase().includes(search.toLowerCase()));
@@ -94,8 +75,6 @@ export default function VendorsPage() {
     const prev = vendors.find(v => v.id === editId);
     await supabase.from('vendors').update(editData).eq('id', editId!);
     setVendors(p => p.map(v => v.id === editId ? { ...v, ...editData } as Vendor : v));
-    // Also update directory cache
-    setDirectory(p => p.map(v => v.id === editId ? { ...v, ...editData } as Vendor : v));
     if (prev) showUndo(editId!, prev);
     cancelEdit();
   };
@@ -103,39 +82,15 @@ export default function VendorsPage() {
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const name = fd.get('name') as string;
-
-    // Check if vendor exists in directory
-    const existing = directory.find(v => v.name.toLowerCase() === name.toLowerCase());
-
-    if (existing) {
-      // Link existing vendor to project
-      const alreadyLinked = vendors.find(v => v.id === existing.id);
-      if (!alreadyLinked) {
-        await supabase.from('project_vendors').insert({ project_id: selectedProject.id, vendor_id: existing.id });
-        setVendors(prev => [...prev, existing]);
-      }
-    } else {
-      // Create new vendor in directory + link to project
-      const nv: Vendor = {
-        id: Date.now().toString(), name,
-        detail: fd.get('detail') as string,
-        type: fd.get('type') as Vendor['type'],
-        contact: fd.get('contact') as string,
-        email: fd.get('email') as string,
-        phone: fd.get('phone') as string,
-      };
-      await supabase.from('vendors').insert(nv);
-      await supabase.from('project_vendors').insert({ project_id: selectedProject.id, vendor_id: nv.id });
-      setVendors(prev => [...prev, nv]);
-      setDirectory(prev => [...prev, nv]);
-    }
+    const nv: Vendor = {
+      id: Date.now().toString(), name: fd.get('name') as string, detail: fd.get('detail') as string,
+      type: fd.get('type') as Vendor['type'], contact: fd.get('contact') as string,
+      email: fd.get('email') as string, phone: fd.get('phone') as string,
+    };
+    await supabase.from('vendors').insert(nv);
+    setVendors(prev => [...prev, nv]);
     setOpen(false);
-    setAddName('');
   };
-
-  // When user picks a name from directory, pre-fill the form
-  const selectedDirVendor = useMemo(() => directory.find(v => v.name.toLowerCase() === addName.toLowerCase()), [addName, directory]);
 
   const typeBadge = (type: string) => {
     return <Badge className="text-[9px] px-1 py-0 text-white" style={{ backgroundColor: '#c37e87' }}>{type}</Badge>;
@@ -146,39 +101,27 @@ export default function VendorsPage() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Vendors</h1>
-        <Button size="sm" onClick={() => setOpen(true)}><Plus size={14} /> Add</Button>
+        <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Vendor Directory</h1>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild><Button size="sm"><Plus size={14} /> Add</Button></DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Add Vendor</DialogTitle></DialogHeader>
+            <form onSubmit={handleAdd} className="space-y-3">
+              <div className="space-y-1"><Label className="text-xs">Name</Label><Input name="name" required className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">Detail / Trade</Label><Input name="detail" required className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">Type</Label>
+                <Select name="type" defaultValue="Subcontractor"><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="Subcontractor">Subcontractor</SelectItem><SelectItem value="Vendor">Vendor</SelectItem><SelectItem value="Consultant">Consultant</SelectItem></SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1"><Label className="text-xs">Contact</Label><Input name="contact" className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">Email</Label><Input name="email" type="email" className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">Phone</Label><Input name="phone" className="h-8 text-xs" /></div>
+              <Button type="submit" size="sm" className="w-full">Save</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
-
-      {/* Add vendor dialog */}
-      <Dialog open={open} onOpenChange={o => { setOpen(o); if (!o) setAddName(''); }}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Add Vendor to Project</DialogTitle></DialogHeader>
-          <form onSubmit={handleAdd} className="space-y-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Name</Label>
-              <AutocompleteInput name="name" required suggestions={directorySuggestions} value={addName} onChange={setAddName} className="h-8 text-xs" placeholder="Search directory or enter new..." />
-              {selectedDirVendor && (
-                <p className="text-[10px] text-muted-foreground">Found in directory: {selectedDirVendor.detail} ({selectedDirVendor.type})</p>
-              )}
-            </div>
-            {!selectedDirVendor && (
-              <>
-                <div className="space-y-1"><Label className="text-xs">Detail / Trade</Label><Input name="detail" required className="h-8 text-xs" /></div>
-                <div className="space-y-1"><Label className="text-xs">Type</Label>
-                  <Select name="type" defaultValue="Subcontractor"><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="Subcontractor">Subcontractor</SelectItem><SelectItem value="Vendor">Vendor</SelectItem><SelectItem value="Consultant">Consultant</SelectItem></SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1"><Label className="text-xs">Contact</Label><Input name="contact" className="h-8 text-xs" /></div>
-                <div className="space-y-1"><Label className="text-xs">Email</Label><Input name="email" type="email" className="h-8 text-xs" /></div>
-                <div className="space-y-1"><Label className="text-xs">Phone</Label><Input name="phone" className="h-8 text-xs" /></div>
-              </>
-            )}
-            <Button type="submit" size="sm" className="w-full">{selectedDirVendor ? 'Link to Project' : 'Save & Link'}</Button>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       <div className="relative max-w-xs">
         <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -237,8 +180,8 @@ export default function VendorsPage() {
                           <button onClick={handleUndo} className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline whitespace-nowrap"><Undo2 size={11} /> Undo</button>
                         ) : confirmDeleteId === v.id ? (
                           <div className="flex items-center gap-1 whitespace-nowrap">
-                            <span className="text-[10px] text-muted-foreground">Remove?</span>
-                            <button onClick={() => unlinkVendor(v.id)} className="text-destructive hover:opacity-70"><Check size={13} /></button>
+                            <span className="text-[10px] text-muted-foreground">Delete?</span>
+                            <button onClick={() => deleteVendor(v.id)} className="text-destructive hover:opacity-70"><Check size={13} /></button>
                             <button onClick={() => setConfirmDeleteId(null)} className="text-muted-foreground hover:text-foreground"><X size={13} /></button>
                           </div>
                         ) : (
@@ -252,10 +195,29 @@ export default function VendorsPage() {
                   )}
                 </TableRow>
               ))}
-              {filtered.length === 0 && !search && (
+              {adding ? (
+                <TableRow className="bg-muted/30" onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); if (newData.name) { const nv = { id: Date.now().toString(), ...newData } as Vendor; supabase.from('vendors').insert(nv); setVendors(prev => [...prev, nv]); setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); } } else if (e.key === 'Escape') { setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); } }}>
+                  <TableCell><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-[10px] px-1" placeholder="Name" autoFocus /></TableCell>
+                  <TableCell><Input value={newData.detail || ''} onChange={e => setNewData(d => ({ ...d, detail: e.target.value }))} className="h-6 text-[10px] px-1" placeholder="Detail" /></TableCell>
+                  {!isMobile && (
+                    <TableCell>
+                      <select value={newData.type || 'Subcontractor'} onChange={e => setNewData(d => ({ ...d, type: e.target.value as Vendor['type'] }))} className="h-6 text-[10px] border rounded px-1 bg-background">
+                        <option>Subcontractor</option><option>Vendor</option><option>Consultant</option>
+                      </select>
+                    </TableCell>
+                  )}
+                  {!isMobile && <TableCell><Input value={newData.contact || ''} onChange={e => setNewData(d => ({ ...d, contact: e.target.value }))} className="h-6 text-xs px-1" placeholder="Contact" /></TableCell>}
+                  {!isMobile && <TableCell><Input value={newData.email || ''} onChange={e => setNewData(d => ({ ...d, email: e.target.value }))} className="h-6 text-xs px-1" placeholder="Email" /></TableCell>}
+                  {!isMobile && <TableCell><Input value={newData.phone || ''} onChange={e => setNewData(d => ({ ...d, phone: e.target.value }))} className="h-6 text-xs px-1" placeholder="Phone" /></TableCell>}
+                  <TableCell><div className="flex gap-1">
+                    <button onClick={async () => { if (newData.name) { const nv = { id: Date.now().toString(), ...newData } as Vendor; await supabase.from('vendors').insert(nv); setVendors(prev => [...prev, nv]); setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
+                    <button onClick={() => { setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); }} className="text-destructive"><X size={13} /></button>
+                  </div></TableCell>
+                </TableRow>
+              ) : (
                 <TableRow>
-                  <TableCell colSpan={isMobile ? 3 : 7} className="text-center text-xs text-muted-foreground py-6">
-                    No vendors linked to this project yet. Click "Add" to link vendors from the directory.
+                  <TableCell colSpan={isMobile ? 3 : 7}>
+                    <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5"><Plus size={12} /> Add row</button>
                   </TableCell>
                 </TableRow>
               )}

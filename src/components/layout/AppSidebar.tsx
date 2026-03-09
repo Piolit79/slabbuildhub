@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderOpen, UserRound, MessageSquare, Settings2, FolderClosed, Store, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderOpen, UserRound, MessageSquare, Settings2, FolderClosed, Store } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -111,7 +111,6 @@ export default function AppSidebar() {
             )}
             {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
             {renderNavLink('/vendor-hub', 'Vendor Directory', Store)}
-            {renderNavLink('/vendor-hub/requests', 'Requests', ClipboardList)}
           </>
         )}
 
