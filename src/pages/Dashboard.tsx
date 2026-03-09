@@ -34,7 +34,7 @@ function PaymentHover({ total, payments: items }: { total: number; payments: Pay
       onMouseEnter={handleEnter}
       onMouseLeave={() => setShow(false)}
     >
-      <span className="underline decoration-dotted underline-offset-2">{fmt(total)}</span>
+      <span className={show ? "underline decoration-dotted underline-offset-2" : ""}>{fmt(total)}</span>
       {show && pos && createPortal(
         <div
           style={{ position: 'fixed', top: pos.top, left: pos.left, transform: 'translate(-100%, -100%)', zIndex: 9999 }}
