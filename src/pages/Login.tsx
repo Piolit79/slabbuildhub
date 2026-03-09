@@ -33,8 +33,8 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#1e1e22] px-4">
-      <Card className="w-full max-w-sm border-border/30 bg-[#2a2a2e]">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <Card className="w-full max-w-sm">
         <CardContent className="pt-8 pb-6 px-6">
           <div className="flex justify-center mb-8">
             <img src={slabLogo} alt="SLAB Builders" className="w-48" />
@@ -42,33 +42,38 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-xs text-gray-400">Email</Label>
+              <Label className="text-xs text-muted-foreground">Email</Label>
               <Input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="h-9 text-sm bg-[#1e1e22] border-border/30 text-white placeholder:text-gray-500"
+                className="h-9 text-sm"
                 placeholder="you@example.com"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-gray-400">Password</Label>
+              <Label className="text-xs text-muted-foreground">Password</Label>
               <Input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="h-9 text-sm bg-[#1e1e22] border-border/30 text-white placeholder:text-gray-500"
+                className="h-9 text-sm"
                 placeholder="Enter password"
               />
             </div>
 
             {error && (
-              <p className="text-xs text-red-400">{error}</p>
+              <p className="text-xs text-destructive">{error}</p>
             )}
 
-            <Button type="submit" disabled={loading} className="w-full h-9 text-sm" style={{ backgroundColor: '#c37e87' }}>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full h-9 text-sm"
+              style={{ backgroundColor: '#c37e87' }}
+            >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Sign In'}
             </Button>
           </form>
