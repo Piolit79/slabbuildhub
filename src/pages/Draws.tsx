@@ -140,7 +140,7 @@ export default function DrawsPage({ readOnly }: { readOnly?: boolean }) {
             <TableBody>
               {sorted.map((d, idx) => {
                 return (
-                  <TableRow key={d.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
+                  <TableRow key={d.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined} onKeyDown={editId === d.id ? (e: React.KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); saveEdit(); } else if (e.key === 'Escape') cancelEdit(); } : undefined}>
                     {editId === d.id ? (
                       isMobile ? (
                         <>
@@ -186,7 +186,7 @@ export default function DrawsPage({ readOnly }: { readOnly?: boolean }) {
                 );
               })}
               {!readOnly && (adding ? (
-                <TableRow className="bg-muted/30">
+                <TableRow className="bg-muted/30" onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); if (newData.date) { const nd: Draw = { id: Date.now().toString(), project_id: selectedProject.id, draw_number: newData.draw_number || filtered.length + 1, date: newData.date!, amount: newData.amount || 0 }; supabase.from('draws').insert(nd); setDraws(prev => [...prev, nd]); setAdding(false); setNewData({ date: '', draw_number: 0, amount: 0 }); } } else if (e.key === 'Escape') { setAdding(false); setNewData({ date: '', draw_number: 0, amount: 0 }); } }}>
                   <TableCell><Input value={newData.draw_number || ''} onChange={e => setNewData(x => ({ ...x, draw_number: parseInt(e.target.value) || 0 }))} type="number" className="h-6 text-[10px] w-full md:w-16 px-1" placeholder="#" autoFocus /></TableCell>
                   <TableCell><SmartDateInput value={newData.date || ''} onChange={v => setNewData(x => ({ ...x, date: v }))} className="h-6 text-[10px] w-full md:w-28 px-1" /></TableCell>
                   <TableCell className="text-right"><CurrencyInput value={newData.amount || 0} onChange={v => setNewData(x => ({ ...x, amount: v }))} className="h-6 text-[10px] w-full md:w-28 px-1" placeholder="0.00" /></TableCell>

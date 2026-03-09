@@ -146,7 +146,7 @@ export default function ContractsPage({ readOnly }: { readOnly?: boolean }) {
             </TableHeader>
             <TableBody>
               {sorted.map((c, idx) => (
-                <TableRow key={c.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
+                <TableRow key={c.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined} onKeyDown={editId === c.id ? (e: React.KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); saveEdit(); } else if (e.key === 'Escape') cancelEdit(); } : undefined}>
                   {editId === c.id ? (
                     isMobile ? (
                       <>
@@ -200,7 +200,7 @@ export default function ContractsPage({ readOnly }: { readOnly?: boolean }) {
                 </TableRow>
               ))}
               {!readOnly && (adding ? (
-                <TableRow className="bg-muted/30">
+                <TableRow className="bg-muted/30" onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); if (newData.date && newData.name) { const nc = { id: Date.now().toString(), project_id: selectedProject.id, ...newData } as Contract; supabase.from('contracts').insert(nc); setContracts(prev => [...prev, nc]); setAdding(false); setNewData({ date: '', name: '', amount: 0, type: 'Contract' }); } } else if (e.key === 'Escape') { setAdding(false); setNewData({ date: '', name: '', amount: 0, type: 'Contract' }); } }}>
                   <TableCell><SmartDateInput value={newData.date || ''} onChange={v => setNewData(d => ({ ...d, date: v }))} className="h-6 text-[10px] w-full md:w-32 px-1" autoFocus /></TableCell>
                   <TableCell><AutocompleteInput value={newData.name || ''} onChange={v => setNewData(d => ({ ...d, name: v }))} suggestions={nameSuggestions} className="h-6 text-[10px] px-1" placeholder="Name" /></TableCell>
                   {!isMobile && (

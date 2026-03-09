@@ -447,7 +447,7 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
                   if (readOnly) return null;
                   if (addingCatRow === cat) {
                     return (
-                      <TableRow key={`add-${cat}`} className="bg-muted/30">
+                      <TableRow key={`add-${cat}`} className="bg-muted/30" onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); handleAddInline(cat); } else if (e.key === 'Escape') { setAddingCatRow(null); setNewData({ category: categories[0] || 'Site', description: '', labor: 0, material: 0, status: 'estimated' }); } }}>
                         <TableCell className="px-1 w-5" />
                         <TableCell>
                           {isMobile ? (
@@ -527,7 +527,7 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
                 const hasDetails = b.notes || b.subcontractor;
 
                 return (
-                  <TableRow key={b.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
+                  <TableRow key={b.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined} onKeyDown={editId === b.id ? (e: React.KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); saveEdit(); } else if (e.key === 'Escape') cancelEdit(); } : undefined}>
                     <TableCell className="px-1 py-0 w-5">
                       {!readOnly && (
                         <div className="flex flex-col">

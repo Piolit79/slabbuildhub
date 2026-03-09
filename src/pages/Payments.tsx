@@ -167,7 +167,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                   </TableHeader>
                   <TableBody>
                     {sorted.map((p, idx) => (
-                      <TableRow key={p.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
+                      <TableRow key={p.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined} onKeyDown={editId === p.id ? (e: React.KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); saveEdit(); } else if (e.key === 'Escape') cancelEdit(); } : undefined}>
                         {editId === p.id ? (
                           isMobile ? (
                             <>
@@ -216,7 +216,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                       </TableRow>
                     ))}
                     {!readOnly && (adding ? (
-                      <TableRow className="bg-muted/30">
+                      <TableRow className="bg-muted/30" onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); if (newData.date && newData.name) { const np = { id: Date.now().toString(), project_id: selectedProject.id, category: activeTab, ...newData } as Payment; supabase.from('payments').insert(np); setPayments(prev => [...prev, np]); setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); } } else if (e.key === 'Escape') { setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); } }}>
                         <TableCell className="pr-6"><SmartDateInput value={newData.date || ''} onChange={v => setNewData(d => ({ ...d, date: v }))} className="h-6 text-[10px] w-full md:w-28 px-1" autoFocus /></TableCell>
                         <TableCell className="pl-6"><AutocompleteInput value={newData.name || ''} onChange={v => setNewData(d => ({ ...d, name: v }))} suggestions={nameSuggestions} className="h-6 text-[10px] px-1" placeholder="Name" /></TableCell>
                         <TableCell className="text-right pr-6"><CurrencyInput value={newData.amount || 0} onChange={v => setNewData(d => ({ ...d, amount: v }))} className="h-6 text-[10px] w-full md:w-28 px-1" placeholder="0.00" /></TableCell>
