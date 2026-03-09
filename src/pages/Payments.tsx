@@ -51,7 +51,6 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
 
   const toggle = (k: string) => { if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortKey(k); setSortDir('asc'); } };
   const nameSuggestions = useMemo(() => [...new Set(payments.map(p => p.name).filter(Boolean))], [payments]);
-  const formSuggestions = useMemo(() => [...new Set(payments.map(p => p.form).filter(Boolean))], [payments]);
   const filtered = payments.filter(p => p.project_id === selectedProject.id && p.category === activeTab);
   const sorted = useMemo(() => [...filtered].sort((a: any, b: any) => {
     const av = a[sortKey], bv = b[sortKey];
@@ -126,7 +125,11 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                   <SelectContent>{tabs.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1"><Label className="text-xs">Form</Label><AutocompleteInput name="form" placeholder="Check / ACH / Cash" required suggestions={formSuggestions} className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">Form</Label>
+                <Select name="form" defaultValue="Check"><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent><SelectItem value="Check">Check</SelectItem><SelectItem value="Credit">Credit</SelectItem><SelectItem value="Wire">Wire</SelectItem><SelectItem value="ACH">ACH</SelectItem></SelectContent>
+                </Select>
+              </div>
               <div className="space-y-1"><Label className="text-xs">Check # (optional)</Label><Input name="check_number" className="h-8 text-xs" /></div>
               <Button type="submit" size="sm" className="w-full">Save</Button>
             </form>
@@ -181,7 +184,11 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                               <TableCell className="pr-6"><SmartDateInput value={editData.date || ''} onChange={v => setEditData(d => ({ ...d, date: v }))} className="h-6 text-xs w-28 px-1" /></TableCell>
                               <TableCell className="pl-6"><AutocompleteInput value={editData.name || ''} onChange={v => setEditData(d => ({ ...d, name: v }))} suggestions={nameSuggestions} className="h-6 text-xs px-1" /></TableCell>
                               <TableCell className="text-right pr-6"><CurrencyInput value={editData.amount || 0} onChange={v => setEditData(d => ({ ...d, amount: v }))} className="h-6 text-xs w-28 px-1" /></TableCell>
-                              <TableCell className="pl-6"><AutocompleteInput value={editData.form || ''} onChange={v => setEditData(d => ({ ...d, form: v }))} suggestions={formSuggestions} className="h-6 text-xs w-20 px-1" /></TableCell>
+                              <TableCell className="pl-6">
+                                <select value={editData.form || 'Check'} onChange={e => setEditData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs border rounded px-1 bg-background w-20">
+                                  <option>Check</option><option>Credit</option><option>Wire</option><option>ACH</option>
+                                </select>
+                              </TableCell>
                               <TableCell><Input value={editData.check_number || ''} onChange={e => setEditData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" /></TableCell>
                               <TableCell className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button><button onClick={cancelEdit} className="text-destructive"><X size={14} /></button></TableCell>
                             </>
@@ -220,7 +227,11 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                         <TableCell className="pr-6"><SmartDateInput value={newData.date || ''} onChange={v => setNewData(d => ({ ...d, date: v }))} className="h-6 text-[10px] w-full md:w-28 px-1" autoFocus /></TableCell>
                         <TableCell className="pl-6"><AutocompleteInput value={newData.name || ''} onChange={v => setNewData(d => ({ ...d, name: v }))} suggestions={nameSuggestions} className="h-6 text-[10px] px-1" placeholder="Name" /></TableCell>
                         <TableCell className="text-right pr-6"><CurrencyInput value={newData.amount || 0} onChange={v => setNewData(d => ({ ...d, amount: v }))} className="h-6 text-[10px] w-full md:w-28 px-1" placeholder="0.00" /></TableCell>
-                        {!isMobile && <TableCell className="pl-6"><AutocompleteInput value={newData.form || ''} onChange={v => setNewData(d => ({ ...d, form: v }))} suggestions={formSuggestions} className="h-6 text-xs w-20 px-1" placeholder="Form" /></TableCell>}
+                        {!isMobile && <TableCell className="pl-6">
+                          <select value={newData.form || 'Check'} onChange={e => setNewData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs border rounded px-1 bg-background w-20">
+                            <option>Check</option><option>Credit</option><option>Wire</option><option>ACH</option>
+                          </select>
+                        </TableCell>}
                         {!isMobile && <TableCell><Input value={newData.check_number || ''} onChange={e => setNewData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" placeholder="Check #" /></TableCell>}
                         <TableCell><div className="flex gap-1">
                           <button onClick={async () => { if (newData.date && newData.name) { const np = { id: Date.now().toString(), project_id: selectedProject.id, category: activeTab, ...newData } as Payment; await supabase.from('payments').insert(np); setPayments(prev => [...prev, np]); setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
