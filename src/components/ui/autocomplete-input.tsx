@@ -73,8 +73,9 @@ const AutocompleteInput = React.forwardRef<HTMLInputElement, AutocompleteInputPr
         select(filtered[selectedIdx]);
       } else if (e.key === "Escape") {
         setOpen(false);
-      } else if (e.key === "Tab") {
-        setOpen(false);
+      } else if (e.key === "Tab" && filtered.length > 0) {
+        e.preventDefault();
+        select(filtered[selectedIdx >= 0 ? selectedIdx : 0]);
       }
     }
 
