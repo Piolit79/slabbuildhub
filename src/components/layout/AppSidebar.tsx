@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderOpen, UserRound, MessageSquare, Settings2, FolderClosed } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderOpen, UserRound, MessageSquare, Settings2, FolderClosed, Store, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -7,16 +7,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import slabLogo from '@/assets/slab-builders-logo.svg';
 
 const companyNavItems = [
-  { to: '/', label: 'Ledger Dashboard', icon: LayoutDashboard },
+  { to: '/', label: 'Ledger', icon: LayoutDashboard },
   { to: '/budget', label: 'Budget', icon: Calculator },
-  { to: '/contracts', label: 'Contracts', icon: FileText },
   { to: '/payments', label: 'Payments', icon: CreditCard },
-  { to: '/vendors', label: 'Vendors', icon: Users },
+  { to: '/contracts', label: 'Contracts', icon: FileText },
   { to: '/draws', label: 'Draws', icon: Landmark },
+  { to: '/vendors', label: 'Vendors', icon: Users },
 ];
 
 const clientNavItems = [
-  { to: '/client/dashboard', label: 'Ledger Dashboard', icon: LayoutDashboard },
+  { to: '/client/dashboard', label: 'Ledger', icon: LayoutDashboard },
   { to: '/client/budget', label: 'Budget', icon: Calculator },
   { to: '/client/contracts', label: 'Contracts', icon: FileText },
   { to: '/client/payments', label: 'Payments', icon: CreditCard },
@@ -98,6 +98,20 @@ export default function AppSidebar() {
             )}
             {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
             {insuranceItems.map(({ to, label, icon, exact }) => renderNavLink(to, label, icon, exact))}
+          </>
+        )}
+
+        {/* Vendor Hub Section — company only */}
+        {!isClient && (
+          <>
+            {!(collapsed && !isMobile) && (
+              <span className="block text-base font-semibold uppercase tracking-widest text-muted-foreground px-3 pb-2 pt-4">
+                Vendor Hub
+              </span>
+            )}
+            {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
+            {renderNavLink('/vendor-hub', 'Vendor Directory', Store)}
+            {renderNavLink('/vendor-hub/requests', 'Requests', ClipboardList)}
           </>
         )}
 
