@@ -12,7 +12,7 @@ import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
-import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown, Undo2 } from 'lucide-react';
+import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown, Undo2, Trash2 } from 'lucide-react';
 import { Payment, PaymentCategory } from '@/types';
 import { format } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -83,6 +83,11 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
     setPayments(p => p.map(x => x.id === editId ? { ...x, ...editData } as Payment : x));
     if (prev) showUndo(editId!, prev);
     cancelEdit();
+  };
+
+  const deletePayment = async (id: string) => {
+    setPayments(prev => prev.filter(p => p.id !== id));
+    await supabase.from('payments').delete().eq('id', id);
   };
 
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -192,7 +197,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                             <TableCell className="text-right tabular-nums text-[11px] md:text-sm pr-6">{fmt(p.amount)}</TableCell>
                             {!isMobile && <TableCell className="text-[11px] md:text-sm pl-6">{p.form}</TableCell>}
                             {!isMobile && <TableCell className="tabular-nums text-[11px] md:text-sm">{p.check_number || '—'}</TableCell>}
-                            {!readOnly && <TableCell><button onClick={() => startEdit(p)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>}
+                            {!readOnly && <TableCell><div className="flex gap-1.5"><button onClick={() => startEdit(p)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button><button onClick={() => deletePayment(p.id)} className="text-muted-foreground/40 hover:text-destructive"><Trash2 size={12} /></button></div></TableCell>}
                           </>
                         )}
                       </TableRow>

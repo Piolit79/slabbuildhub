@@ -12,7 +12,7 @@ import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, MessageSquare, Loader2, Undo2 } from 'lucide-react';
+import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, MessageSquare, Loader2, Undo2, Trash2 } from 'lucide-react';
 import { BudgetItem } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -195,6 +195,11 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
     }).eq('id', editId!);
     if (prev) showUndo(editId!, prev);
     cancelEdit();
+  };
+
+  const deleteItem = async (id: string) => {
+    setItems(prev => prev.filter(b => b.id !== id));
+    await supabase.from('budget_items').delete().eq('id', id);
   };
 
   // ── Add item ───────────────────────────────────────────────────────────
@@ -583,6 +588,7 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
                                 </button>
                               )}
                               <button onClick={() => startEdit(b)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button>
+                              <button onClick={() => deleteItem(b.id)} className="text-muted-foreground/40 hover:text-destructive"><Trash2 size={12} /></button>
                             </div>
                           )}
                         </TableCell>

@@ -12,7 +12,7 @@ import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
-import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown, Undo2 } from 'lucide-react';
+import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown, Undo2, Trash2 } from 'lucide-react';
 import { Contract } from '@/types';
 import { format } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -78,6 +78,11 @@ export default function ContractsPage({ readOnly }: { readOnly?: boolean }) {
     setContracts(p => p.map(c => c.id === editId ? { ...c, ...editData } as Contract : c));
     if (prev) showUndo(editId!, prev);
     setEditId(null); setEditData({});
+  };
+
+  const deleteContract = async (id: string) => {
+    setContracts(prev => prev.filter(c => c.id !== id));
+    await supabase.from('contracts').delete().eq('id', id);
   };
 
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -176,7 +181,7 @@ export default function ContractsPage({ readOnly }: { readOnly?: boolean }) {
                       <TableCell className="text-[11px] md:text-sm truncate max-w-[120px] md:max-w-none">{c.name}</TableCell>
                       {!isMobile && <TableCell>{typeBadge(c.type)}</TableCell>}
                       <TableCell className={`text-right tabular-nums text-[11px] md:text-sm ${c.amount < 0 ? 'text-[hsl(var(--success))]' : ''}`}>{fmt(c.amount)}</TableCell>
-                      {!readOnly && <TableCell><button onClick={() => startEdit(c)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>}
+                      {!readOnly && <TableCell><div className="flex gap-1.5"><button onClick={() => startEdit(c)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button><button onClick={() => deleteContract(c.id)} className="text-muted-foreground/40 hover:text-destructive"><Trash2 size={12} /></button></div></TableCell>}
                     </>
                   )}
                 </TableRow>

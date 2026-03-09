@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
-import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown, Undo2 } from 'lucide-react';
+import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown, Undo2, Trash2 } from 'lucide-react';
 import { Draw } from '@/types';
 import { format } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -71,6 +71,11 @@ export default function DrawsPage({ readOnly }: { readOnly?: boolean }) {
     setDraws(p => p.map(d => d.id === editId ? { ...d, ...editData } as Draw : d));
     if (prev) showUndo(editId!, prev);
     cancelEdit();
+  };
+
+  const deleteDraw = async (id: string) => {
+    setDraws(prev => prev.filter(d => d.id !== id));
+    await supabase.from('draws').delete().eq('id', id);
   };
 
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -161,7 +166,7 @@ export default function DrawsPage({ readOnly }: { readOnly?: boolean }) {
                         <TableCell className="text-[11px] md:text-sm">Draw {d.draw_number.toString().padStart(3, '0')}</TableCell>
                         <TableCell className="tabular-nums text-[11px] md:text-sm">{format(new Date(d.date), 'MM.dd.yy')}</TableCell>
                         <TableCell className="text-right tabular-nums text-[11px] md:text-sm">{fmt(d.amount)}</TableCell>
-                        {!readOnly && <TableCell><button onClick={() => startEdit(d)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button></TableCell>}
+                        {!readOnly && <TableCell><div className="flex gap-1.5"><button onClick={() => startEdit(d)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button><button onClick={() => deleteDraw(d.id)} className="text-muted-foreground/40 hover:text-destructive"><Trash2 size={12} /></button></div></TableCell>}
                       </>
                     )}
                   </TableRow>
