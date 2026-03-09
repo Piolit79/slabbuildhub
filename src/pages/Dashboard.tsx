@@ -107,8 +107,8 @@ export default function Dashboard({ readOnly }: { readOnly?: boolean }) {
 
   // Pie chart: Hard Cost vs Fees
   const hardCost = budget.reduce((s, b) => s + b.labor + b.material, 0);
-  const designFee = Math.round(hardCost * designFeePct);
-  const buildFee = Math.round(hardCost * buildFeePct);
+  const designFee = hardCost * designFeePct;
+  const buildFee = hardCost * buildFeePct;
   const budgetChartData = [
     { name: 'Budget Hard Cost', total: hardCost },
     { name: 'Budget Fees', total: designFee + buildFee },
