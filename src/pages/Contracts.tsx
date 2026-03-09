@@ -54,19 +54,20 @@ export default function ContractsPage({ readOnly }: { readOnly?: boolean }) {
     return sortDir === 'asc' ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
   }), [filtered, sortKey, sortDir]);
 
-  const [lastEdit, setLastEdit] = useState<{ id: string; prev: Contract } | null>(null);
+  const [undoInfo, setUndoInfo] = useState<{ id: string; prev: Contract } | null>(null);
   const undoTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const showUndo = (id: string, prev: Contract) => {
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-    setLastEdit({ id, prev });
-    undoTimerRef.current = setTimeout(() => setLastEdit(null), 6000);
+    setUndoInfo({ id, prev });
+    undoTimerRef.current = setTimeout(() => setUndoInfo(null), 10000);
   };
   const handleUndo = async () => {
-    if (!lastEdit) return;
-    const { id, prev } = lastEdit;
+    if (!undoInfo) return;
+    const { id, prev } = undoInfo;
     setContracts(p => p.map(x => x.id === id ? prev : x));
     await supabase.from('contracts').update(prev).eq('id', id);
-    setLastEdit(null);
+    setUndoInfo(null);
   };
 
   const startEdit = (c: Contract) => { setEditId(c.id); setEditData({ ...c }); };
@@ -81,9 +82,9 @@ export default function ContractsPage({ readOnly }: { readOnly?: boolean }) {
   };
 
   const deleteContract = async (id: string) => {
-    if (!window.confirm('Delete this row?')) return;
     setContracts(prev => prev.filter(c => c.id !== id));
     await supabase.from('contracts').delete().eq('id', id);
+    setConfirmDeleteId(null);
   };
 
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -108,13 +109,6 @@ export default function ContractsPage({ readOnly }: { readOnly?: boolean }) {
 
   return (
     <div className="space-y-3">
-      {lastEdit && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 rounded-lg bg-foreground text-background text-sm shadow-lg">
-          <span>Edit saved.</span>
-          <button onClick={handleUndo} className="inline-flex items-center gap-1 font-semibold underline"><Undo2 size={13} /> Undo</button>
-          <button onClick={() => setLastEdit(null)} className="ml-1 opacity-60 hover:opacity-100"><X size={14} /></button>
-        </div>
-      )}
       <div className="flex items-center justify-between">
         <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Contracts</h1>
         {!readOnly && (
@@ -183,7 +177,24 @@ export default function ContractsPage({ readOnly }: { readOnly?: boolean }) {
                       <TableCell className="text-[11px] md:text-sm truncate max-w-[120px] md:max-w-none">{c.name}</TableCell>
                       {!isMobile && <TableCell>{typeBadge(c.type)}</TableCell>}
                       <TableCell className={`text-right tabular-nums text-[11px] md:text-sm ${c.amount < 0 ? 'text-[hsl(var(--success))]' : ''}`}>{fmt(c.amount)}</TableCell>
-                      {!readOnly && <TableCell><div className="flex gap-1.5"><button onClick={() => startEdit(c)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button><button onClick={() => deleteContract(c.id)} className="text-muted-foreground/40 hover:text-destructive"><Trash2 size={12} /></button></div></TableCell>}
+                      {!readOnly && (
+                        <TableCell>
+                          {undoInfo?.id === c.id ? (
+                            <button onClick={handleUndo} className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline whitespace-nowrap"><Undo2 size={11} /> Undo</button>
+                          ) : confirmDeleteId === c.id ? (
+                            <div className="flex items-center gap-1 whitespace-nowrap">
+                              <span className="text-[10px] text-muted-foreground">Delete?</span>
+                              <button onClick={() => deleteContract(c.id)} className="text-destructive hover:opacity-70"><Check size={13} /></button>
+                              <button onClick={() => setConfirmDeleteId(null)} className="text-muted-foreground hover:text-foreground"><X size={13} /></button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-1.5">
+                              <button onClick={() => startEdit(c)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button>
+                              <button onClick={() => setConfirmDeleteId(c.id)} className="text-muted-foreground/40 hover:text-destructive"><Trash2 size={12} /></button>
+                            </div>
+                          )}
+                        </TableCell>
+                      )}
                     </>
                   )}
                 </TableRow>

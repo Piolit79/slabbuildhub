@@ -160,25 +160,28 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
   }, [orderedItems, categories]);
 
   // ── Undo support ──────────────────────────────────────────────────────
-  const [lastEdit, setLastEdit] = useState<{ id: string; prev: DbBudgetItem } | null>(null);
+  const [undoInfo, setUndoInfo] = useState<{ id: string; prev: DbBudgetItem } | null>(null);
   const undoTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showUndo = (id: string, prev: DbBudgetItem) => {
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-    setLastEdit({ id, prev });
-    undoTimerRef.current = setTimeout(() => setLastEdit(null), 6000);
+    setUndoInfo({ id, prev });
+    undoTimerRef.current = setTimeout(() => setUndoInfo(null), 10000);
   };
 
   const handleUndo = async () => {
-    if (!lastEdit) return;
-    const { id, prev } = lastEdit;
+    if (!undoInfo) return;
+    const { id, prev } = undoInfo;
     setItems(p => p.map(b => b.id === id ? prev : b));
     await supabase.from('budget_items').update({
       category: prev.category, description: prev.description,
       labor: prev.labor, material: prev.material, status: prev.status,
     }).eq('id', id);
-    setLastEdit(null);
+    setUndoInfo(null);
   };
+
+  // ── Delete confirmation ──────────────────────────────────────────────
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // ── Row edit ───────────────────────────────────────────────────────────
   const [editId, setEditId] = useState<string | null>(null);
@@ -198,9 +201,9 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
   };
 
   const deleteItem = async (id: string) => {
-    if (!window.confirm('Delete this row?')) return;
     setItems(prev => prev.filter(b => b.id !== id));
     await supabase.from('budget_items').delete().eq('id', id);
+    setConfirmDeleteId(null);
   };
 
   // ── Add item ───────────────────────────────────────────────────────────
@@ -316,15 +319,6 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
           </div>
         )}
       </div>
-
-      {/* Undo toast */}
-      {lastEdit && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 rounded-lg bg-foreground text-background text-sm shadow-lg">
-          <span>Edit saved.</span>
-          <button onClick={handleUndo} className="inline-flex items-center gap-1 font-semibold underline"><Undo2 size={13} /> Undo</button>
-          <button onClick={() => setLastEdit(null)} className="ml-1 opacity-60 hover:opacity-100"><X size={14} /></button>
-        </div>
-      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
@@ -583,15 +577,25 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
                         <TableCell className="pl-6 pr-4">{statusBadge(b.status)}</TableCell>
                         <TableCell className="text-right">
                           {!readOnly && (
-                            <div className="flex gap-1.5 justify-end">
-                              {!isMobile && (
-                                <button onClick={() => openNote(b)} className={`hover:text-foreground ${hasDetails ? 'text-primary' : 'text-muted-foreground/40'}`} title={hasDetails ? `${b.subcontractor || ''}${b.subcontractor && b.notes ? ' | ' : ''}${b.notes || ''}` : 'Add details'}>
-                                  <MessageSquare size={12} />
-                                </button>
-                              )}
-                              <button onClick={() => startEdit(b)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button>
-                              <button onClick={() => deleteItem(b.id)} className="text-muted-foreground/40 hover:text-destructive"><Trash2 size={12} /></button>
-                            </div>
+                            undoInfo?.id === b.id ? (
+                              <button onClick={handleUndo} className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline whitespace-nowrap"><Undo2 size={11} /> Undo</button>
+                            ) : confirmDeleteId === b.id ? (
+                              <div className="flex items-center gap-1 justify-end whitespace-nowrap">
+                                <span className="text-[10px] text-muted-foreground">Delete?</span>
+                                <button onClick={() => deleteItem(b.id)} className="text-destructive hover:opacity-70"><Check size={13} /></button>
+                                <button onClick={() => setConfirmDeleteId(null)} className="text-muted-foreground hover:text-foreground"><X size={13} /></button>
+                              </div>
+                            ) : (
+                              <div className="flex gap-1.5 justify-end">
+                                {!isMobile && (
+                                  <button onClick={() => openNote(b)} className={`hover:text-foreground ${hasDetails ? 'text-primary' : 'text-muted-foreground/40'}`} title={hasDetails ? `${b.subcontractor || ''}${b.subcontractor && b.notes ? ' | ' : ''}${b.notes || ''}` : 'Add details'}>
+                                    <MessageSquare size={12} />
+                                  </button>
+                                )}
+                                <button onClick={() => startEdit(b)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button>
+                                <button onClick={() => setConfirmDeleteId(b.id)} className="text-muted-foreground/40 hover:text-destructive"><Trash2 size={12} /></button>
+                              </div>
+                            )
                           )}
                         </TableCell>
                       </>
