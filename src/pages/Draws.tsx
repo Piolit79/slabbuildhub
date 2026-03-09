@@ -74,6 +74,7 @@ export default function DrawsPage({ readOnly }: { readOnly?: boolean }) {
   };
 
   const deleteDraw = async (id: string) => {
+    if (!window.confirm('Delete this row?')) return;
     setDraws(prev => prev.filter(d => d.id !== id));
     await supabase.from('draws').delete().eq('id', id);
   };
@@ -96,9 +97,10 @@ export default function DrawsPage({ readOnly }: { readOnly?: boolean }) {
   return (
     <div className="space-y-3">
       {lastEdit && (
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted text-xs text-muted-foreground animate-in fade-in">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 rounded-lg bg-foreground text-background text-sm shadow-lg">
           <span>Edit saved.</span>
-          <button onClick={handleUndo} className="inline-flex items-center gap-1 font-medium text-primary hover:underline"><Undo2 size={12} /> Undo</button>
+          <button onClick={handleUndo} className="inline-flex items-center gap-1 font-semibold underline"><Undo2 size={13} /> Undo</button>
+          <button onClick={() => setLastEdit(null)} className="ml-1 opacity-60 hover:opacity-100"><X size={14} /></button>
         </div>
       )}
       <div className="flex items-center justify-between">
