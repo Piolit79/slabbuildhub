@@ -16,8 +16,9 @@ import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, MessageSquare, Loader2,
 import { BudgetItem } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 
-const fmt = (n: number) => n ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(n) : '—';
-const fmtN = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(n);
+const fmtUsd = (n: number) => { const d = n % 1 !== 0 ? 2 : 0; return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: d, maximumFractionDigits: d }).format(n); };
+const fmt = (n: number) => n ? fmtUsd(n) : '—';
+const fmtN = fmtUsd;
 
 const DEFAULT_CATEGORIES = ['Site', 'Exterior', 'Interior', 'Fixtures & Fittings', 'Landscape', 'Extras'];
 
@@ -607,33 +608,89 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
             </TableBody>
 
             <TableFooter>
-              <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
-                <TableCell /><TableCell className="font-semibold text-[11px]">{isMobile ? 'Labor / Material' : 'Labor / Material Totals'}</TableCell>
-                {!isMobile && <TableCell className="text-right font-semibold tabular-nums">{fmtN(grandLabor)}</TableCell>}
-                <TableCell className="text-right font-semibold tabular-nums pr-6">{isMobile ? fmtN(hardCostTotal) : fmtN(grandMaterial)}</TableCell>
-                <TableCell colSpan={isMobile ? 1 : 2} />
-              </TableRow>
-              <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
-                <TableCell /><TableCell className="font-semibold text-[11px]">Hard Cost Total</TableCell>
-                <TableCell colSpan={isMobile ? 1 : 2} className="text-right font-semibold tabular-nums">{fmtN(hardCostTotal)}</TableCell>
-                <TableCell colSpan={isMobile ? 1 : 2} />
-              </TableRow>
+              {/* Labor / Material Totals */}
               <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
                 <TableCell />
-                <TableCell className="font-semibold text-[11px]"><span className="flex items-center gap-1">Design Fee ({Math.round(designFeePct * 100)}%){!readOnly && <button onClick={() => openFeeEdit('design')} className="text-muted-foreground/40 hover:text-foreground"><Pencil size={9} /></button>}</span></TableCell>
-                <TableCell colSpan={isMobile ? 1 : 2} className="text-right font-semibold tabular-nums">{fmtN(designFee)}</TableCell>
+                <TableCell className="text-[11px] md:text-sm">
+                  {isMobile ? 'Labor / Material' : 'Labor / Material Totals'}
+                </TableCell>
+                {!isMobile && (
+                  <TableCell className="text-right tabular-nums text-[11px] md:text-sm">
+                    {fmtN(grandLabor)}
+                  </TableCell>
+                )}
+                <TableCell className="text-right tabular-nums text-[11px] md:text-sm pr-6">
+                  {isMobile ? fmtN(hardCostTotal) : fmtN(grandMaterial)}
+                </TableCell>
                 <TableCell colSpan={isMobile ? 1 : 2} />
               </TableRow>
+
+              {/* Hard Cost Total (overall) */}
               <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
                 <TableCell />
-                <TableCell className="font-semibold text-[11px]"><span className="flex items-center gap-1">Build Fee ({Math.round(buildFeePct * 100)}%){!readOnly && <button onClick={() => openFeeEdit('build')} className="text-muted-foreground/40 hover:text-foreground"><Pencil size={9} /></button>}</span></TableCell>
-                <TableCell colSpan={isMobile ? 1 : 2} className="text-right font-semibold tabular-nums">{fmtN(buildFee)}</TableCell>
+                <TableCell className="text-[11px] md:text-sm">Hard Cost Total</TableCell>
+                {!isMobile && <TableCell />}
+                <TableCell className="text-right tabular-nums text-[11px] md:text-sm pr-6">
+                  {fmtN(hardCostTotal)}
+                </TableCell>
                 <TableCell colSpan={isMobile ? 1 : 2} />
               </TableRow>
+
+              {/* Design Fee */}
+              <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
+                <TableCell />
+                <TableCell className="text-[11px] md:text-sm">
+                  <span className="flex items-center gap-1">
+                    Design Fee ({Math.round(designFeePct * 100)}%)
+                    {!readOnly && (
+                      <button
+                        onClick={() => openFeeEdit('design')}
+                        className="text-muted-foreground/40 hover:text-foreground"
+                      >
+                        <Pencil size={9} />
+                      </button>
+                    )}
+                  </span>
+                </TableCell>
+                {!isMobile && <TableCell />}
+                <TableCell className="text-right tabular-nums text-[11px] md:text-sm pr-6">
+                  {fmtN(designFee)}
+                </TableCell>
+                <TableCell colSpan={isMobile ? 1 : 2} />
+              </TableRow>
+
+              {/* Build Fee */}
+              <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
+                <TableCell />
+                <TableCell className="text-[11px] md:text-sm">
+                  <span className="flex items-center gap-1">
+                    Build Fee ({Math.round(buildFeePct * 100)}%)
+                    {!readOnly && (
+                      <button
+                        onClick={() => openFeeEdit('build')}
+                        className="text-muted-foreground/40 hover:text-foreground"
+                      >
+                        <Pencil size={9} />
+                      </button>
+                    )}
+                  </span>
+                </TableCell>
+                {!isMobile && <TableCell />}
+                <TableCell className="text-right tabular-nums text-[11px] md:text-sm pr-6">
+                  {fmtN(buildFee)}
+                </TableCell>
+                <TableCell colSpan={isMobile ? 1 : 2} />
+              </TableRow>
+
+              {/* Projected Grand Total (emphasized, aligned with Material column) */}
               <TableRow className="bg-accent/40">
-                <TableCell /><TableCell className="font-bold text-[11px]">Projected Grand Total</TableCell>
-                <TableCell colSpan={isMobile ? 1 : 2} className="text-right font-bold tabular-nums text-sm md:text-base">{fmtN(projectedGrandTotal)}</TableCell>
-                <TableCell colSpan={isMobile ? 1 : 2} />
+                <TableCell />
+                <TableCell className="font-bold text-[11px] md:text-sm">Projected Grand Total</TableCell>
+                {!isMobile && <TableCell />}
+                <TableCell className="text-right font-bold tabular-nums text-sm md:text-base pr-6">
+                  {fmtN(projectedGrandTotal)}
+                </TableCell>
+                <TableCell />
               </TableRow>
             </TableFooter>
           </Table>

@@ -10,7 +10,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Contract, Payment, Draw, Vendor } from '@/types';
 import { format } from 'date-fns';
 
-const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(n);
+const fmt = (n: number) => { const d = n % 1 !== 0 ? 2 : 0; return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: d, maximumFractionDigits: d }).format(n); };
 const fmt2 = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
 
 function PaymentHover({ total, payments: items }: { total: number; payments: Payment[] }) {
