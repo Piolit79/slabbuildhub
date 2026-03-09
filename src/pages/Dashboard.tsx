@@ -71,8 +71,7 @@ export default function Dashboard({ readOnly }: { readOnly?: boolean }) {
   const otherSoftHardCosts = allPaymentsTotal - contractPaid;
   const totalPaidToDate = allPaymentsTotal;
   const hardCostBudget = budget.reduce((s, b) => s + b.labor + b.material, 0);
-  const budgetFees = Math.round(hardCostBudget * (designFeePct + buildFeePct));
-  const budgetTotal = hardCostBudget + budgetFees;
+  const budgetTotal = hardCostBudget + hardCostBudget * designFeePct + hardCostBudget * buildFeePct;
   const projectedTotal = totalPaidToDate + contractBalance;
 
   const [sortKey, setSortKey] = useState('balance');

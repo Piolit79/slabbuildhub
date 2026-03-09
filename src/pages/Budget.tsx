@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -317,8 +318,8 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
             </div>
             <div className="space-y-1"><Label className="text-xs">Description</Label><Input name="description" required className="h-8 text-xs" /></div>
             <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1"><Label className="text-xs">Labor</Label><Input name="labor" type="number" step="0.01" defaultValue="0" className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Material</Label><Input name="material" type="number" step="0.01" defaultValue="0" className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">Labor</Label><CurrencyInput name="labor" defaultValue={0} className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">Material</Label><CurrencyInput name="material" defaultValue={0} className="h-8 text-xs" /></div>
             </div>
             <div className="space-y-1"><Label className="text-xs">Subcontractor</Label><Input name="subcontractor" className="h-8 text-xs" /></div>
             <div className="space-y-1"><Label className="text-xs">Status</Label>
@@ -454,7 +455,7 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
                       isMobile ? (
                         <>
                           <TableCell><Input value={editData.description || ''} onChange={e => setEditData(d => ({ ...d, description: e.target.value }))} className="h-6 text-[10px] px-1" /></TableCell>
-                          <TableCell className="pr-6"><Input value={(editData.labor || 0) + (editData.material || 0)} onChange={e => setEditData(d => ({ ...d, labor: parseFloat(e.target.value) || 0, material: 0 }))} type="number" className="h-6 text-[10px] w-full px-1 text-right" /></TableCell>
+                          <TableCell className="pr-6"><CurrencyInput value={(editData.labor || 0) + (editData.material || 0)} onChange={v => setEditData(d => ({ ...d, labor: v, material: 0 }))} className="h-6 text-[10px] w-full px-1" /></TableCell>
                           <TableCell className="pl-6">
                             <select value={editData.status} onChange={e => setEditData(d => ({ ...d, status: e.target.value }))} className="h-5 text-[9px] border rounded px-0.5 bg-background">
                               <option value="estimated">est</option><option value="proposed">prop</option><option value="contracted">cont</option><option value="complete">done</option>
@@ -473,8 +474,8 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
                               <Input value={editData.description || ''} onChange={e => setEditData(d => ({ ...d, description: e.target.value }))} className="h-6 text-xs px-1" />
                             </div>
                           </TableCell>
-                          <TableCell><Input value={editData.labor || 0} onChange={e => setEditData(d => ({ ...d, labor: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" /></TableCell>
-                          <TableCell className="pr-6"><Input value={editData.material || 0} onChange={e => setEditData(d => ({ ...d, material: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" /></TableCell>
+                          <TableCell><CurrencyInput value={editData.labor || 0} onChange={v => setEditData(d => ({ ...d, labor: v }))} className="h-6 text-xs w-24 px-1" /></TableCell>
+                          <TableCell className="pr-6"><CurrencyInput value={editData.material || 0} onChange={v => setEditData(d => ({ ...d, material: v }))} className="h-6 text-xs w-24 px-1" /></TableCell>
                           <TableCell className="pl-6">
                             <select value={editData.status} onChange={e => setEditData(d => ({ ...d, status: e.target.value }))} className="h-6 text-[10px] border rounded px-1 bg-background">
                               <option value="estimated">estimated</option><option value="proposed">proposed</option><option value="contracted">contracted</option><option value="complete">complete</option>
@@ -522,8 +523,8 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
                       </div>
                     )}
                   </TableCell>
-                  {!isMobile && <TableCell><Input value={newData.labor || ''} onChange={e => setNewData(d => ({ ...d, labor: parseFloat(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-20 px-1 text-right" placeholder="0" /></TableCell>}
-                  <TableCell className="pr-6"><Input value={isMobile ? (newData.labor || '') : (newData.material || '')} onChange={e => { const v = parseFloat(e.target.value) || 0; isMobile ? setNewData(d => ({ ...d, labor: v })) : setNewData(d => ({ ...d, material: v })); }} type="number" className="h-6 text-[10px] w-full md:w-20 px-1 text-right" placeholder="0" /></TableCell>
+                  {!isMobile && <TableCell><CurrencyInput value={newData.labor || 0} onChange={v => setNewData(d => ({ ...d, labor: v }))} className="h-6 text-xs w-24 px-1" placeholder="0" /></TableCell>}
+                  <TableCell className="pr-6"><CurrencyInput value={isMobile ? (newData.labor || 0) : (newData.material || 0)} onChange={v => { isMobile ? setNewData(d => ({ ...d, labor: v })) : setNewData(d => ({ ...d, material: v })); }} className="h-6 text-[10px] w-full md:w-24 px-1" placeholder="0" /></TableCell>
                   <TableCell className="pl-6">
                     <select value={newData.status || 'estimated'} onChange={e => setNewData(d => ({ ...d, status: e.target.value }))} className="h-5 md:h-6 text-[9px] md:text-[10px] border rounded px-0.5 md:px-1 bg-background">
                       <option value="estimated">{isMobile ? 'est' : 'estimated'}</option>

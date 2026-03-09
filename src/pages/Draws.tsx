@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
 import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Draw } from '@/types';
@@ -77,7 +78,7 @@ export default function DrawsPage({ readOnly }: { readOnly?: boolean }) {
               <form onSubmit={handleAdd} className="space-y-3">
                 <div className="space-y-1"><Label className="text-xs">Date</Label><Input name="date" type="date" required className="h-8 text-xs" /></div>
                 <div className="space-y-1"><Label className="text-xs">Draw #</Label><Input name="draw_number" type="number" defaultValue={filtered.length + 1} required className="h-8 text-xs" /></div>
-                <div className="space-y-1"><Label className="text-xs">Amount</Label><Input name="amount" type="number" step="0.01" required className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-xs">Amount</Label><CurrencyInput name="amount" required className="h-8 text-xs" /></div>
                 <Button type="submit" size="sm" className="w-full">Save</Button>
               </form>
             </DialogContent>
@@ -116,14 +117,14 @@ export default function DrawsPage({ readOnly }: { readOnly?: boolean }) {
                         <>
                           <TableCell><Input value={editData.draw_number || ''} onChange={e => setEditData(x => ({ ...x, draw_number: parseInt(e.target.value) || 0 }))} type="number" className="h-6 text-[10px] w-full px-1" /></TableCell>
                           <TableCell><Input value={editData.date || ''} onChange={e => setEditData(x => ({ ...x, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full px-1" /></TableCell>
-                          <TableCell className="text-right"><Input value={editData.amount || ''} onChange={e => setEditData(x => ({ ...x, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-[10px] w-full px-1 text-right" /></TableCell>
+                          <TableCell className="text-right"><CurrencyInput value={editData.amount || 0} onChange={v => setEditData(x => ({ ...x, amount: v }))} className="h-6 text-[10px] w-full px-1" /></TableCell>
                           <TableCell><div className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={13} /></button><button onClick={cancelEdit} className="text-destructive"><X size={13} /></button></div></TableCell>
                         </>
                       ) : (
                         <>
                           <TableCell><Input value={editData.draw_number || ''} onChange={e => setEditData(x => ({ ...x, draw_number: parseInt(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-16 px-1" /></TableCell>
                           <TableCell><Input value={editData.date || ''} onChange={e => setEditData(x => ({ ...x, date: e.target.value }))} type="date" className="h-6 text-xs w-28 px-1" /></TableCell>
-                          <TableCell className="text-right"><Input value={editData.amount || ''} onChange={e => setEditData(x => ({ ...x, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-xs w-28 px-1 text-right" /></TableCell>
+                          <TableCell className="text-right"><CurrencyInput value={editData.amount || 0} onChange={v => setEditData(x => ({ ...x, amount: v }))} className="h-6 text-xs w-28 px-1" /></TableCell>
                           <TableCell className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button><button onClick={cancelEdit} className="text-destructive"><X size={14} /></button></TableCell>
                         </>
                       )
@@ -142,7 +143,7 @@ export default function DrawsPage({ readOnly }: { readOnly?: boolean }) {
                 <TableRow className="bg-muted/30">
                   <TableCell><Input value={newData.draw_number || ''} onChange={e => setNewData(x => ({ ...x, draw_number: parseInt(e.target.value) || 0 }))} type="number" className="h-6 text-[10px] w-full md:w-16 px-1" placeholder="#" autoFocus /></TableCell>
                   <TableCell><Input value={newData.date || ''} onChange={e => setNewData(x => ({ ...x, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full md:w-28 px-1" /></TableCell>
-                  <TableCell className="text-right"><Input value={newData.amount || ''} onChange={e => setNewData(x => ({ ...x, amount: parseFloat(e.target.value) || 0 }))} type="number" step="0.01" className="h-6 text-[10px] w-full md:w-28 px-1 text-right" placeholder="0.00" /></TableCell>
+                  <TableCell className="text-right"><CurrencyInput value={newData.amount || 0} onChange={v => setNewData(x => ({ ...x, amount: v }))} className="h-6 text-[10px] w-full md:w-28 px-1" placeholder="0.00" /></TableCell>
                   <TableCell><div className="flex gap-1">
                     <button onClick={async () => { if (newData.date) { const nd: Draw = { id: Date.now().toString(), project_id: selectedProject.id, draw_number: newData.draw_number || filtered.length + 1, date: newData.date!, amount: newData.amount || 0 }; await supabase.from('draws').insert(nd); setDraws(prev => [...prev, nd]); setAdding(false); setNewData({ date: '', draw_number: 0, amount: 0 }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
                     <button onClick={() => { setAdding(false); setNewData({ date: '', draw_number: 0, amount: 0 }); }} className="text-destructive"><X size={13} /></button>
