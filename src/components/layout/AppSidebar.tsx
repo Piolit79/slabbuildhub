@@ -21,7 +21,7 @@ const clientNavItems = [
   { to: '/client/draws', label: 'Draws', icon: Landmark },
   { to: '/client/coi', label: 'Cert. Of Insurance', icon: Shield },
   { to: '/client/sub-agreements', label: 'Sub. Agreements', icon: ClipboardCheck },
-  { to: '/client/files', label: 'Design Files', icon: FolderOpen },
+  { to: '/client/files', label: 'StudioLAB Docs', icon: FolderOpen },
 ];
 
 const insuranceItems = [
@@ -124,7 +124,7 @@ export default function AppSidebar() {
             )}
             {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
             {renderNavLink('/client', 'Client Users', UserRound)}
-            {renderNavLink('/client/files', 'Design Files', FolderClosed)}
+            {renderNavLink('/client/files', 'StudioLAB Docs', FolderClosed)}
           </>
         )}
 
