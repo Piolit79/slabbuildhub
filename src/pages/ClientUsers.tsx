@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useProject } from '@/contexts/ProjectContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Loader2, Pencil, Check, X, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Profile } from '@/contexts/AuthContext';
 
@@ -19,6 +19,29 @@ export default function ClientUsers() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  // Edit
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editData, setEditData] = useState<Partial<Profile>>({});
+
+  // Undo
+  const [undoInfo, setUndoInfo] = useState<{ id: string; prev: Profile } | null>(null);
+  const undoTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showUndo = (id: string, prev: Profile) => {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setUndoInfo({ id, prev });
+    undoTimerRef.current = setTimeout(() => setUndoInfo(null), 10000);
+  };
+  const handleUndo = async () => {
+    if (!undoInfo) return;
+    const { id, prev } = undoInfo;
+    setClients(p => p.map(c => c.id === id ? prev : c));
+    await supabase.from('profiles').update({ full_name: prev.full_name, project_id: prev.project_id }).eq('id', id);
+    setUndoInfo(null);
+  };
+
+  // Delete confirmation
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     loadClients();
@@ -81,9 +104,22 @@ export default function ClientUsers() {
   };
 
   const handleDelete = async (id: string) => {
-    await supabase.from('profiles').delete().eq('id', id);
     setClients(prev => prev.filter(c => c.id !== id));
-    toast.success('Client removed');
+    await supabase.from('profiles').delete().eq('id', id);
+    setConfirmDeleteId(null);
+  };
+
+  const startEdit = (c: Profile) => { setEditId(c.id); setEditData({ ...c }); };
+  const cancelEdit = () => { setEditId(null); setEditData({}); };
+  const saveEdit = async () => {
+    const prev = clients.find(c => c.id === editId);
+    setClients(p => p.map(c => c.id === editId ? { ...c, ...editData } as Profile : c));
+    await supabase.from('profiles').update({
+      full_name: editData.full_name,
+      project_id: editData.project_id,
+    }).eq('id', editId!);
+    if (prev) showUndo(editId!, prev);
+    cancelEdit();
   };
 
   const activeProjects = projects.filter(p => p.status !== 'archived');
@@ -151,17 +187,55 @@ export default function ClientUsers() {
                 {clients.map((c, idx) => {
                   const project = projects.find(p => p.id === c.project_id);
                   return (
-                    <TableRow key={c.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
-                      <TableCell className="text-[11px] md:text-sm">{c.full_name || '—'}</TableCell>
-                      <TableCell className="text-[11px] md:text-sm">{c.email}</TableCell>
-                      <TableCell className="text-[11px] md:text-sm">
-                        {project ? <Badge variant="outline" className="text-[10px]">{project.name}</Badge> : '—'}
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => handleDelete(c.id)} className="text-destructive hover:text-destructive">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </TableCell>
+                    <TableRow key={c.id} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined} onKeyDown={editId === c.id ? (e: React.KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); saveEdit(); } else if (e.key === 'Escape') cancelEdit(); } : undefined}>
+                      {editId === c.id ? (
+                        <>
+                          <TableCell>
+                            <Input value={editData.full_name || ''} onChange={e => setEditData(d => ({ ...d, full_name: e.target.value }))} className="h-6 text-xs px-1" autoFocus />
+                          </TableCell>
+                          <TableCell className="text-[11px] md:text-sm">{c.email}</TableCell>
+                          <TableCell>
+                            <Select value={editData.project_id || ''} onValueChange={v => setEditData(d => ({ ...d, project_id: v }))}>
+                              <SelectTrigger className="h-6 text-[10px]"><SelectValue placeholder="Select" /></SelectTrigger>
+                              <SelectContent>
+                                {activeProjects.map(p => (
+                                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-1">
+                              <button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button>
+                              <button onClick={cancelEdit} className="text-destructive"><X size={14} /></button>
+                            </div>
+                          </TableCell>
+                        </>
+                      ) : (
+                        <>
+                          <TableCell className="text-[11px] md:text-sm">{c.full_name || '—'}</TableCell>
+                          <TableCell className="text-[11px] md:text-sm">{c.email}</TableCell>
+                          <TableCell className="text-[11px] md:text-sm">
+                            {project ? <Badge variant="outline" className="text-[10px]">{project.name}</Badge> : '—'}
+                          </TableCell>
+                          <TableCell>
+                            {undoInfo?.id === c.id ? (
+                              <button onClick={handleUndo} className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline whitespace-nowrap"><Undo2 size={11} /> Undo</button>
+                            ) : confirmDeleteId === c.id ? (
+                              <div className="flex items-center gap-1 whitespace-nowrap">
+                                <span className="text-[10px] text-muted-foreground">Delete?</span>
+                                <button onClick={() => handleDelete(c.id)} className="text-destructive hover:opacity-70"><Check size={13} /></button>
+                                <button onClick={() => setConfirmDeleteId(null)} className="text-muted-foreground hover:text-foreground"><X size={13} /></button>
+                              </div>
+                            ) : (
+                              <div className="flex gap-1.5">
+                                <button onClick={() => startEdit(c)} className="text-muted-foreground hover:text-foreground"><Pencil size={12} /></button>
+                                <button onClick={() => setConfirmDeleteId(c.id)} className="text-muted-foreground/40 hover:text-destructive"><Trash2 size={12} /></button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </>
+                      )}
                     </TableRow>
                   );
                 })}
