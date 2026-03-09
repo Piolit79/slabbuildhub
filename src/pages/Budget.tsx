@@ -12,7 +12,7 @@ import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, MessageSquare, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, MessageSquare, Loader2, Undo2 } from 'lucide-react';
 import { BudgetItem } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -141,21 +141,44 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
     ]);
   };
 
-  // Build table rows
+  // Build table rows (with per-subgroup add-row markers)
   const rows = useMemo(() => {
-    const result: (DbBudgetItem | { _header: string })[] = [];
+    const result: (DbBudgetItem | { _header: string } | { _addRow: string })[] = [];
     const knownCatSet = new Set(categories);
     categories.forEach(cat => {
       result.push({ _header: cat });
       orderedItems.filter(b => b.category === cat).forEach(b => result.push(b));
+      result.push({ _addRow: cat });
     });
     const orphans = orderedItems.filter(b => !knownCatSet.has(b.category));
     if (orphans.length) {
       result.push({ _header: 'Other' });
       orphans.forEach(b => result.push(b));
+      result.push({ _addRow: 'Other' });
     }
     return result;
   }, [orderedItems, categories]);
+
+  // ── Undo support ──────────────────────────────────────────────────────
+  const [lastEdit, setLastEdit] = useState<{ id: string; prev: DbBudgetItem } | null>(null);
+  const undoTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showUndo = (id: string, prev: DbBudgetItem) => {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setLastEdit({ id, prev });
+    undoTimerRef.current = setTimeout(() => setLastEdit(null), 6000);
+  };
+
+  const handleUndo = async () => {
+    if (!lastEdit) return;
+    const { id, prev } = lastEdit;
+    setItems(p => p.map(b => b.id === id ? prev : b));
+    await supabase.from('budget_items').update({
+      category: prev.category, description: prev.description,
+      labor: prev.labor, material: prev.material, status: prev.status,
+    }).eq('id', id);
+    setLastEdit(null);
+  };
 
   // ── Row edit ───────────────────────────────────────────────────────────
   const [editId, setEditId] = useState<string | null>(null);
@@ -163,17 +186,20 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
   const startEdit = (b: DbBudgetItem) => { setEditId(b.id); setEditData({ ...b }); };
   const cancelEdit = () => { setEditId(null); setEditData({}); };
   const saveEdit = async () => {
-    setItems(prev => prev.map(b => b.id === editId ? { ...b, ...editData } as DbBudgetItem : b));
+    const prev = items.find(b => b.id === editId);
+    setItems(p => p.map(b => b.id === editId ? { ...b, ...editData } as DbBudgetItem : b));
     await supabase.from('budget_items').update({
       category: editData.category, description: editData.description,
       labor: editData.labor, material: editData.material,
       status: editData.status,
     }).eq('id', editId!);
+    if (prev) showUndo(editId!, prev);
     cancelEdit();
   };
 
   // ── Add item ───────────────────────────────────────────────────────────
   const [addOpen, setAddOpen] = useState(false);
+  const [addingCatRow, setAddingCatRow] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [newData, setNewData] = useState<Partial<DbBudgetItem>>({
     category: categories[0] || 'Site', description: '', labor: 0, material: 0, status: 'estimated',
@@ -199,17 +225,20 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
     setAddOpen(false);
   };
 
-  const handleAddInline = async () => {
+  const handleAddInline = async (cat?: string) => {
     if (!newData.description) return;
+    const targetCat = cat || addingCatRow || newData.category || categories[0] || 'Site';
     const maxOrder = items.length ? Math.max(...items.map(b => b.sort_order)) : -1;
     const { data } = await supabase.from('budget_items').insert({
       project_id: selectedProject.id,
       optional: 0, subcontractor: '', notes: '',
       ...newData,
+      category: targetCat,
       sort_order: maxOrder + 1,
     }).select().single();
     if (data) setItems(prev => [...prev, data as DbBudgetItem]);
     setAdding(false);
+    setAddingCatRow(null);
     setNewData({ category: categories[0] || 'Site', description: '', labor: 0, material: 0, status: 'estimated' });
   };
 
@@ -281,6 +310,14 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
           </div>
         )}
       </div>
+
+      {/* Undo bar */}
+      {lastEdit && (
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted text-xs text-muted-foreground animate-in fade-in">
+          <span>Edit saved.</span>
+          <button onClick={handleUndo} className="inline-flex items-center gap-1 font-medium text-primary hover:underline"><Undo2 size={12} /> Undo</button>
+        </div>
+      )}
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
@@ -404,6 +441,50 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
             </TableHeader>
             <TableBody>
               {rows.map((item, idx) => {
+                if ('_addRow' in item) {
+                  const cat = item._addRow;
+                  if (readOnly) return null;
+                  if (addingCatRow === cat) {
+                    return (
+                      <TableRow key={`add-${cat}`} className="bg-muted/30">
+                        <TableCell className="px-1 w-5" />
+                        <TableCell>
+                          {isMobile ? (
+                            <AutocompleteInput value={newData.description || ''} onChange={v => setNewData(d => ({ ...d, description: v }))} suggestions={descriptionSuggestions} className="h-6 text-[10px] px-1" placeholder="Description" autoFocus />
+                          ) : (
+                            <AutocompleteInput value={newData.description || ''} onChange={v => setNewData(d => ({ ...d, description: v }))} suggestions={descriptionSuggestions} className="h-6 text-xs px-1" placeholder="Description" autoFocus />
+                          )}
+                        </TableCell>
+                        {!isMobile && <TableCell><CurrencyInput value={newData.labor || 0} onChange={v => setNewData(d => ({ ...d, labor: v }))} className="h-6 text-xs w-24 px-1" placeholder="0" /></TableCell>}
+                        <TableCell className="pr-6"><CurrencyInput value={isMobile ? (newData.labor || 0) : (newData.material || 0)} onChange={v => { isMobile ? setNewData(d => ({ ...d, labor: v })) : setNewData(d => ({ ...d, material: v })); }} className="h-6 text-[10px] w-full md:w-24 px-1" placeholder="0" /></TableCell>
+                        <TableCell className="pl-6">
+                          <select value={newData.status || 'estimated'} onChange={e => setNewData(d => ({ ...d, status: e.target.value }))} className="h-5 md:h-6 text-[9px] md:text-[10px] border rounded px-0.5 md:px-1 bg-background">
+                            <option value="estimated">{isMobile ? 'est' : 'estimated'}</option>
+                            <option value="proposed">{isMobile ? 'prop' : 'proposed'}</option>
+                            <option value="contracted">{isMobile ? 'cont' : 'contracted'}</option>
+                            <option value="complete">{isMobile ? 'done' : 'complete'}</option>
+                          </select>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <button onClick={() => handleAddInline(cat)} className="text-[hsl(var(--success))]"><Check size={13} /></button>
+                            <button onClick={() => { setAddingCatRow(null); setNewData({ category: categories[0] || 'Site', description: '', labor: 0, material: 0, status: 'estimated' }); }} className="text-destructive"><X size={13} /></button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }
+                  return (
+                    <TableRow key={`add-${cat}`}>
+                      <TableCell colSpan={totalCols}>
+                        <button onClick={() => { setAddingCatRow(cat); setNewData({ category: cat, description: '', labor: 0, material: 0, status: 'estimated' }); }} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5 pl-1">
+                          <Plus size={12} /> Add row
+                        </button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+
                 if ('_header' in item) {
                   const cat = item._header;
                   const catIdx = categories.indexOf(cat);
@@ -511,47 +592,6 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
                 );
               })}
 
-              {!readOnly && (adding ? (
-                <TableRow className="bg-muted/30">
-                  <TableCell className="px-1 w-5" />
-                  <TableCell>
-                    {isMobile ? (
-                      <AutocompleteInput value={newData.description || ''} onChange={v => setNewData(d => ({ ...d, description: v }))} suggestions={descriptionSuggestions} className="h-6 text-[10px] px-1" placeholder="Description" autoFocus />
-                    ) : (
-                      <div className="flex gap-1">
-                        <select value={newData.category || categories[0]} onChange={e => setNewData(d => ({ ...d, category: e.target.value }))} className="h-6 text-[10px] border rounded px-1 bg-background w-28">
-                          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <AutocompleteInput value={newData.description || ''} onChange={v => setNewData(d => ({ ...d, description: v }))} suggestions={descriptionSuggestions} className="h-6 text-xs px-1" placeholder="Description" autoFocus />
-                      </div>
-                    )}
-                  </TableCell>
-                  {!isMobile && <TableCell><CurrencyInput value={newData.labor || 0} onChange={v => setNewData(d => ({ ...d, labor: v }))} className="h-6 text-xs w-24 px-1" placeholder="0" /></TableCell>}
-                  <TableCell className="pr-6"><CurrencyInput value={isMobile ? (newData.labor || 0) : (newData.material || 0)} onChange={v => { isMobile ? setNewData(d => ({ ...d, labor: v })) : setNewData(d => ({ ...d, material: v })); }} className="h-6 text-[10px] w-full md:w-24 px-1" placeholder="0" /></TableCell>
-                  <TableCell className="pl-6">
-                    <select value={newData.status || 'estimated'} onChange={e => setNewData(d => ({ ...d, status: e.target.value }))} className="h-5 md:h-6 text-[9px] md:text-[10px] border rounded px-0.5 md:px-1 bg-background">
-                      <option value="estimated">{isMobile ? 'est' : 'estimated'}</option>
-                      <option value="proposed">{isMobile ? 'prop' : 'proposed'}</option>
-                      <option value="contracted">{isMobile ? 'cont' : 'contracted'}</option>
-                      <option value="complete">{isMobile ? 'done' : 'complete'}</option>
-                    </select>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <button onClick={handleAddInline} className="text-[hsl(var(--success))]"><Check size={13} /></button>
-                      <button onClick={() => { setAdding(false); setNewData({ category: categories[0] || 'Site', description: '', labor: 0, material: 0, status: 'estimated' }); }} className="text-destructive"><X size={13} /></button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={totalCols}>
-                    <button onClick={() => setAdding(true)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground py-0.5">
-                      <Plus size={12} /> Add row
-                    </button>
-                  </TableCell>
-                </TableRow>
-              ))}
             </TableBody>
 
             <TableFooter>

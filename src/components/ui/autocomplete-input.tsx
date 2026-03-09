@@ -1,4 +1,5 @@
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 interface AutocompleteInputProps {
@@ -19,7 +20,8 @@ const AutocompleteInput = React.forwardRef<HTMLInputElement, AutocompleteInputPr
     const display = value !== undefined ? value : internal;
     const [open, setOpen] = React.useState(false);
     const [selectedIdx, setSelectedIdx] = React.useState(-1);
-    const wrapperRef = React.useRef<HTMLDivElement>(null);
+    const inputRef = React.useRef<HTMLInputElement | null>(null);
+    const [dropdownStyle, setDropdownStyle] = React.useState<React.CSSProperties>({});
 
     const filtered = React.useMemo(() => {
       if (!display) return suggestions.slice(0, 8);
@@ -29,12 +31,26 @@ const AutocompleteInput = React.forwardRef<HTMLInputElement, AutocompleteInputPr
         .slice(0, 8);
     }, [display, suggestions]);
 
+    function updatePosition() {
+      const el = inputRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setDropdownStyle({
+        position: "fixed",
+        top: rect.bottom + 2,
+        left: rect.left,
+        width: rect.width,
+        zIndex: 9999,
+      });
+    }
+
     function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
       const v = e.target.value;
       if (value === undefined) setInternal(v);
       onChange?.(v);
       setOpen(true);
       setSelectedIdx(-1);
+      updatePosition();
     }
 
     function select(s: string) {
@@ -57,30 +73,39 @@ const AutocompleteInput = React.forwardRef<HTMLInputElement, AutocompleteInputPr
         select(filtered[selectedIdx]);
       } else if (e.key === "Escape") {
         setOpen(false);
+      } else if (e.key === "Tab") {
+        setOpen(false);
       }
     }
 
-    React.useEffect(() => {
-      function handleClick(e: MouseEvent) {
-        if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-          setOpen(false);
-        }
-      }
-      document.addEventListener("mousedown", handleClick);
-      return () => document.removeEventListener("mousedown", handleClick);
-    }, []);
+    function handleFocus() {
+      updatePosition();
+      setOpen(true);
+    }
+
+    function handleBlur() {
+      // Small delay to allow click on dropdown items
+      setTimeout(() => setOpen(false), 150);
+    }
+
+    function setRefs(el: HTMLInputElement | null) {
+      inputRef.current = el;
+      if (typeof ref === "function") ref(el);
+      else if (ref) (ref as React.MutableRefObject<HTMLInputElement | null>).current = el;
+    }
 
     return (
-      <div ref={wrapperRef} className="relative">
+      <>
         {name && <input type="hidden" name={name} value={display} />}
         <input
-          ref={ref}
+          ref={setRefs}
           type="text"
           autoFocus={autoFocus}
           required={required}
           value={display}
           onChange={handleChange}
-          onFocus={() => setOpen(true)}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className={cn(
@@ -88,8 +113,11 @@ const AutocompleteInput = React.forwardRef<HTMLInputElement, AutocompleteInputPr
             className,
           )}
         />
-        {open && filtered.length > 0 && (
-          <div className="absolute z-50 mt-0.5 w-full rounded-md border border-input bg-background shadow-md max-h-40 overflow-y-auto">
+        {open && filtered.length > 0 && createPortal(
+          <div
+            style={dropdownStyle}
+            className="rounded-md border border-input bg-background shadow-lg max-h-40 overflow-y-auto"
+          >
             {filtered.map((s, i) => (
               <button
                 key={s}
@@ -103,9 +131,10 @@ const AutocompleteInput = React.forwardRef<HTMLInputElement, AutocompleteInputPr
                 {s}
               </button>
             ))}
-          </div>
+          </div>,
+          document.body
         )}
-      </div>
+      </>
     );
   },
 );

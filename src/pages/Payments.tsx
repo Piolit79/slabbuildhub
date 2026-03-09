@@ -11,7 +11,8 @@ import { CurrencyInput } from '@/components/ui/currency-input';
 import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { SmartDateInput } from '@/components/ui/smart-date-input';
+import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown, Undo2 } from 'lucide-react';
 import { Payment, PaymentCategory } from '@/types';
 import { format } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -59,9 +60,30 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
   }), [filtered, sortKey, sortDir]);
   const tabTotal = filtered.reduce((s, p) => s + p.amount, 0);
 
+  const [lastEdit, setLastEdit] = useState<{ id: string; prev: Payment } | null>(null);
+  const undoTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showUndo = (id: string, prev: Payment) => {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setLastEdit({ id, prev });
+    undoTimerRef.current = setTimeout(() => setLastEdit(null), 6000);
+  };
+  const handleUndo = async () => {
+    if (!lastEdit) return;
+    const { id, prev } = lastEdit;
+    setPayments(p => p.map(x => x.id === id ? prev : x));
+    await supabase.from('payments').update(prev).eq('id', id);
+    setLastEdit(null);
+  };
+
   const startEdit = (p: Payment) => { setEditId(p.id); setEditData({ ...p }); };
   const cancelEdit = () => { setEditId(null); setEditData({}); };
-  const saveEdit = async () => { await supabase.from('payments').update(editData).eq('id', editId!); setPayments(prev => prev.map(p => p.id === editId ? { ...p, ...editData } as Payment : p)); cancelEdit(); };
+  const saveEdit = async () => {
+    const prev = payments.find(p => p.id === editId);
+    await supabase.from('payments').update(editData).eq('id', editId!);
+    setPayments(p => p.map(x => x.id === editId ? { ...x, ...editData } as Payment : x));
+    if (prev) showUndo(editId!, prev);
+    cancelEdit();
+  };
 
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -82,6 +104,12 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
 
   return (
     <div className="space-y-3">
+      {lastEdit && (
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted text-xs text-muted-foreground animate-in fade-in">
+          <span>Edit saved.</span>
+          <button onClick={handleUndo} className="inline-flex items-center gap-1 font-medium text-primary hover:underline"><Undo2 size={12} /> Undo</button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Payments</h1>
         {!readOnly && <Dialog open={open} onOpenChange={setOpen}>
@@ -89,7 +117,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
           <DialogContent>
             <DialogHeader><DialogTitle>Add Payment</DialogTitle></DialogHeader>
             <form onSubmit={handleAdd} className="space-y-3">
-              <div className="space-y-1"><Label className="text-xs">Date</Label><Input name="date" type="date" required className="h-8 text-xs" /></div>
+              <div className="space-y-1"><Label className="text-xs">Date</Label><SmartDateInput name="date" required className="h-8 text-xs" /></div>
               <div className="space-y-1"><Label className="text-xs">Name</Label><AutocompleteInput name="name" required suggestions={nameSuggestions} className="h-8 text-xs" /></div>
               <div className="space-y-1"><Label className="text-xs">Amount</Label><CurrencyInput name="amount" required className="h-8 text-xs" /></div>
               <div className="space-y-1"><Label className="text-xs">Category</Label>
@@ -142,14 +170,14 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                         {editId === p.id ? (
                           isMobile ? (
                             <>
-                              <TableCell className="pr-6"><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full px-1" /></TableCell>
+                              <TableCell className="pr-6"><SmartDateInput value={editData.date || ''} onChange={v => setEditData(d => ({ ...d, date: v }))} className="h-6 text-[10px] w-full px-1" /></TableCell>
                               <TableCell className="pl-6"><AutocompleteInput value={editData.name || ''} onChange={v => setEditData(d => ({ ...d, name: v }))} suggestions={nameSuggestions} className="h-6 text-[10px] px-1" /></TableCell>
                               <TableCell className="text-right"><CurrencyInput value={editData.amount || 0} onChange={v => setEditData(d => ({ ...d, amount: v }))} className="h-6 text-[10px] w-full px-1" /></TableCell>
                               <TableCell><div className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={13} /></button><button onClick={cancelEdit} className="text-destructive"><X size={13} /></button></div></TableCell>
                             </>
                           ) : (
                             <>
-                              <TableCell className="pr-6"><Input value={editData.date || ''} onChange={e => setEditData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-xs w-28 px-1" /></TableCell>
+                              <TableCell className="pr-6"><SmartDateInput value={editData.date || ''} onChange={v => setEditData(d => ({ ...d, date: v }))} className="h-6 text-xs w-28 px-1" /></TableCell>
                               <TableCell className="pl-6"><AutocompleteInput value={editData.name || ''} onChange={v => setEditData(d => ({ ...d, name: v }))} suggestions={nameSuggestions} className="h-6 text-xs px-1" /></TableCell>
                               <TableCell className="text-right pr-6"><CurrencyInput value={editData.amount || 0} onChange={v => setEditData(d => ({ ...d, amount: v }))} className="h-6 text-xs w-28 px-1" /></TableCell>
                               <TableCell className="pl-6"><AutocompleteInput value={editData.form || ''} onChange={v => setEditData(d => ({ ...d, form: v }))} suggestions={formSuggestions} className="h-6 text-xs w-20 px-1" /></TableCell>
@@ -171,7 +199,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                     ))}
                     {!readOnly && (adding ? (
                       <TableRow className="bg-muted/30">
-                        <TableCell className="pr-6"><Input value={newData.date || ''} onChange={e => setNewData(d => ({ ...d, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full md:w-28 px-1" autoFocus /></TableCell>
+                        <TableCell className="pr-6"><SmartDateInput value={newData.date || ''} onChange={v => setNewData(d => ({ ...d, date: v }))} className="h-6 text-[10px] w-full md:w-28 px-1" autoFocus /></TableCell>
                         <TableCell className="pl-6"><AutocompleteInput value={newData.name || ''} onChange={v => setNewData(d => ({ ...d, name: v }))} suggestions={nameSuggestions} className="h-6 text-[10px] px-1" placeholder="Name" /></TableCell>
                         <TableCell className="text-right pr-6"><CurrencyInput value={newData.amount || 0} onChange={v => setNewData(d => ({ ...d, amount: v }))} className="h-6 text-[10px] w-full md:w-28 px-1" placeholder="0.00" /></TableCell>
                         {!isMobile && <TableCell className="pl-6"><AutocompleteInput value={newData.form || ''} onChange={v => setNewData(d => ({ ...d, form: v }))} suggestions={formSuggestions} className="h-6 text-xs w-20 px-1" placeholder="Form" /></TableCell>}

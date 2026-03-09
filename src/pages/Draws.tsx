@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
-import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { SmartDateInput } from '@/components/ui/smart-date-input';
+import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown, Undo2 } from 'lucide-react';
 import { Draw } from '@/types';
 import { format } from 'date-fns';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -47,9 +48,30 @@ export default function DrawsPage({ readOnly }: { readOnly?: boolean }) {
   }), [filtered, sortKey, sortDir]);
   const total = filtered.reduce((s, d) => s + d.amount, 0);
 
+  const [lastEdit, setLastEdit] = useState<{ id: string; prev: Draw } | null>(null);
+  const undoTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showUndo = (id: string, prev: Draw) => {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setLastEdit({ id, prev });
+    undoTimerRef.current = setTimeout(() => setLastEdit(null), 6000);
+  };
+  const handleUndo = async () => {
+    if (!lastEdit) return;
+    const { id, prev } = lastEdit;
+    setDraws(p => p.map(x => x.id === id ? prev : x));
+    await supabase.from('draws').update(prev).eq('id', id);
+    setLastEdit(null);
+  };
+
   const startEdit = (d: Draw) => { setEditId(d.id); setEditData({ ...d }); };
   const cancelEdit = () => { setEditId(null); setEditData({}); };
-  const saveEdit = async () => { await supabase.from('draws').update(editData).eq('id', editId!); setDraws(prev => prev.map(d => d.id === editId ? { ...d, ...editData } as Draw : d)); cancelEdit(); };
+  const saveEdit = async () => {
+    const prev = draws.find(d => d.id === editId);
+    await supabase.from('draws').update(editData).eq('id', editId!);
+    setDraws(p => p.map(d => d.id === editId ? { ...d, ...editData } as Draw : d));
+    if (prev) showUndo(editId!, prev);
+    cancelEdit();
+  };
 
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -68,6 +90,12 @@ export default function DrawsPage({ readOnly }: { readOnly?: boolean }) {
 
   return (
     <div className="space-y-3">
+      {lastEdit && (
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted text-xs text-muted-foreground animate-in fade-in">
+          <span>Edit saved.</span>
+          <button onClick={handleUndo} className="inline-flex items-center gap-1 font-medium text-primary hover:underline"><Undo2 size={12} /> Undo</button>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Draws</h1>
         {!readOnly && (
@@ -76,7 +104,7 @@ export default function DrawsPage({ readOnly }: { readOnly?: boolean }) {
             <DialogContent>
               <DialogHeader><DialogTitle>Add Draw Request</DialogTitle></DialogHeader>
               <form onSubmit={handleAdd} className="space-y-3">
-                <div className="space-y-1"><Label className="text-xs">Date</Label><Input name="date" type="date" required className="h-8 text-xs" /></div>
+                <div className="space-y-1"><Label className="text-xs">Date</Label><SmartDateInput name="date" required className="h-8 text-xs" /></div>
                 <div className="space-y-1"><Label className="text-xs">Draw #</Label><Input name="draw_number" type="number" defaultValue={filtered.length + 1} required className="h-8 text-xs" /></div>
                 <div className="space-y-1"><Label className="text-xs">Amount</Label><CurrencyInput name="amount" required className="h-8 text-xs" /></div>
                 <Button type="submit" size="sm" className="w-full">Save</Button>
@@ -116,14 +144,14 @@ export default function DrawsPage({ readOnly }: { readOnly?: boolean }) {
                       isMobile ? (
                         <>
                           <TableCell><Input value={editData.draw_number || ''} onChange={e => setEditData(x => ({ ...x, draw_number: parseInt(e.target.value) || 0 }))} type="number" className="h-6 text-[10px] w-full px-1" /></TableCell>
-                          <TableCell><Input value={editData.date || ''} onChange={e => setEditData(x => ({ ...x, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full px-1" /></TableCell>
+                          <TableCell><SmartDateInput value={editData.date || ''} onChange={v => setEditData(x => ({ ...x, date: v }))} className="h-6 text-[10px] w-full px-1" /></TableCell>
                           <TableCell className="text-right"><CurrencyInput value={editData.amount || 0} onChange={v => setEditData(x => ({ ...x, amount: v }))} className="h-6 text-[10px] w-full px-1" /></TableCell>
                           <TableCell><div className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={13} /></button><button onClick={cancelEdit} className="text-destructive"><X size={13} /></button></div></TableCell>
                         </>
                       ) : (
                         <>
                           <TableCell><Input value={editData.draw_number || ''} onChange={e => setEditData(x => ({ ...x, draw_number: parseInt(e.target.value) || 0 }))} type="number" className="h-6 text-xs w-16 px-1" /></TableCell>
-                          <TableCell><Input value={editData.date || ''} onChange={e => setEditData(x => ({ ...x, date: e.target.value }))} type="date" className="h-6 text-xs w-28 px-1" /></TableCell>
+                          <TableCell><SmartDateInput value={editData.date || ''} onChange={v => setEditData(x => ({ ...x, date: v }))} className="h-6 text-xs w-28 px-1" /></TableCell>
                           <TableCell className="text-right"><CurrencyInput value={editData.amount || 0} onChange={v => setEditData(x => ({ ...x, amount: v }))} className="h-6 text-xs w-28 px-1" /></TableCell>
                           <TableCell className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button><button onClick={cancelEdit} className="text-destructive"><X size={14} /></button></TableCell>
                         </>
@@ -142,7 +170,7 @@ export default function DrawsPage({ readOnly }: { readOnly?: boolean }) {
               {!readOnly && (adding ? (
                 <TableRow className="bg-muted/30">
                   <TableCell><Input value={newData.draw_number || ''} onChange={e => setNewData(x => ({ ...x, draw_number: parseInt(e.target.value) || 0 }))} type="number" className="h-6 text-[10px] w-full md:w-16 px-1" placeholder="#" autoFocus /></TableCell>
-                  <TableCell><Input value={newData.date || ''} onChange={e => setNewData(x => ({ ...x, date: e.target.value }))} type="date" className="h-6 text-[10px] w-full md:w-28 px-1" /></TableCell>
+                  <TableCell><SmartDateInput value={newData.date || ''} onChange={v => setNewData(x => ({ ...x, date: v }))} className="h-6 text-[10px] w-full md:w-28 px-1" /></TableCell>
                   <TableCell className="text-right"><CurrencyInput value={newData.amount || 0} onChange={v => setNewData(x => ({ ...x, amount: v }))} className="h-6 text-[10px] w-full md:w-28 px-1" placeholder="0.00" /></TableCell>
                   <TableCell><div className="flex gap-1">
                     <button onClick={async () => { if (newData.date) { const nd: Draw = { id: Date.now().toString(), project_id: selectedProject.id, draw_number: newData.draw_number || filtered.length + 1, date: newData.date!, amount: newData.amount || 0 }; await supabase.from('draws').insert(nd); setDraws(prev => [...prev, nd]); setAdding(false); setNewData({ date: '', draw_number: 0, amount: 0 }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
