@@ -12,6 +12,29 @@ import { Plus, Search, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown,
 import { Vendor } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 
+/** Dice coefficient — bigram similarity, 0..1 */
+function nameSimilarity(a: string, b: string): number {
+  const s1 = a.toLowerCase().trim(), s2 = b.toLowerCase().trim();
+  if (s1 === s2) return 1;
+  if (s1.length < 2 || s2.length < 2) return 0;
+  const bg = new Map<string, number>();
+  for (let i = 0; i < s1.length - 1; i++) { const k = s1.slice(i, i + 2); bg.set(k, (bg.get(k) || 0) + 1); }
+  let hit = 0;
+  for (let i = 0; i < s2.length - 1; i++) { const k = s2.slice(i, i + 2); const c = bg.get(k) || 0; if (c > 0) { bg.set(k, c - 1); hit++; } }
+  return (2 * hit) / (s1.length - 1 + s2.length - 1);
+}
+
+function findFuzzyMatch(name: string, vendors: Vendor[]): Vendor | null {
+  if (!name.trim()) return null;
+  let best: Vendor | null = null, bestScore = 0;
+  for (const v of vendors) {
+    if (v.name.toLowerCase() === name.toLowerCase()) return null; // exact match = not fuzzy
+    const score = nameSimilarity(name, v.name);
+    if (score >= 0.8 && score > bestScore) { best = v; bestScore = score; }
+  }
+  return best;
+}
+
 function SortBtn({ label, active, dir, onClick, className }: { label: string; active: boolean; dir: string; onClick: () => void; className?: string }) {
   return <button onClick={onClick} className={`inline-flex items-center gap-0.5 hover:text-foreground ${className || ''}`}>{label}{active ? (dir === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />) : <ChevronsUpDown size={11} className="opacity-30" />}</button>;
 }
@@ -28,10 +51,14 @@ export default function VendorDirectoryPage() {
   }, []);
 
   const [open, setOpen] = useState(false);
+  const [dialogName, setDialogName] = useState('');
+  const [dialogFuzzySkip, setDialogFuzzySkip] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Vendor>>({});
   const [adding, setAdding] = useState(false);
   const [newData, setNewData] = useState<Partial<Vendor>>({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' });
+  const [inlineFuzzyMatch, setInlineFuzzyMatch] = useState<Vendor | null>(null);
+  const [inlineFuzzySkip, setInlineFuzzySkip] = useState(false);
   const [sortKey, setSortKey] = useState('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
@@ -79,8 +106,14 @@ export default function VendorDirectoryPage() {
     cancelEdit();
   };
 
+  const dialogFuzzyVendor = useMemo(() => {
+    if (dialogFuzzySkip || !dialogName.trim()) return null;
+    return findFuzzyMatch(dialogName, vendors);
+  }, [dialogName, vendors, dialogFuzzySkip]);
+
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (dialogFuzzyVendor) return; // block submit while fuzzy suggestion is showing
     const fd = new FormData(e.currentTarget);
     const nv: Vendor = {
       id: Date.now().toString(), name: fd.get('name') as string, detail: fd.get('detail') as string,
@@ -90,6 +123,8 @@ export default function VendorDirectoryPage() {
     await supabase.from('vendors').insert(nv);
     setVendors(prev => [...prev, nv]);
     setOpen(false);
+    setDialogName('');
+    setDialogFuzzySkip(false);
   };
 
   const typeBadge = (type: string) => {
@@ -102,22 +137,36 @@ export default function VendorDirectoryPage() {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Vendor Directory</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={o => { setOpen(o); if (!o) { setDialogName(''); setDialogFuzzySkip(false); } }}>
           <DialogTrigger asChild><Button size="sm"><Plus size={14} /> Add</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Add Vendor</DialogTitle></DialogHeader>
             <form onSubmit={handleAdd} className="space-y-3">
-              <div className="space-y-1"><Label className="text-xs">Name</Label><Input name="name" required className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Detail / Trade</Label><Input name="detail" required className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Type</Label>
-                <Select name="type" defaultValue="Subcontractor"><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="Subcontractor">Subcontractor</SelectItem><SelectItem value="Vendor">Vendor</SelectItem><SelectItem value="Consultant">Consultant</SelectItem></SelectContent>
-                </Select>
+              <div className="space-y-1">
+                <Label className="text-xs">Name</Label>
+                <Input name="name" required className="h-8 text-xs" value={dialogName} onChange={e => { setDialogName(e.target.value); setDialogFuzzySkip(false); }} />
+                {dialogFuzzyVendor && (
+                  <div className="rounded border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-2 space-y-1.5">
+                    <p className="text-[11px] font-medium text-amber-800 dark:text-amber-300">Similar vendor already exists:</p>
+                    <p className="text-[11px] text-amber-700 dark:text-amber-400">{dialogFuzzyVendor.name} — {dialogFuzzyVendor.detail} ({dialogFuzzyVendor.type})</p>
+                    <Button type="button" size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setDialogFuzzySkip(true)}>Create Anyway</Button>
+                  </div>
+                )}
               </div>
-              <div className="space-y-1"><Label className="text-xs">Contact</Label><Input name="contact" className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Email</Label><Input name="email" type="email" className="h-8 text-xs" /></div>
-              <div className="space-y-1"><Label className="text-xs">Phone</Label><Input name="phone" className="h-8 text-xs" /></div>
-              <Button type="submit" size="sm" className="w-full">Save</Button>
+              {!dialogFuzzyVendor && (
+                <>
+                  <div className="space-y-1"><Label className="text-xs">Detail / Trade</Label><Input name="detail" required className="h-8 text-xs" /></div>
+                  <div className="space-y-1"><Label className="text-xs">Type</Label>
+                    <Select name="type" defaultValue="Subcontractor"><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent><SelectItem value="Subcontractor">Subcontractor</SelectItem><SelectItem value="Vendor">Vendor</SelectItem><SelectItem value="Consultant">Consultant</SelectItem></SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1"><Label className="text-xs">Contact</Label><Input name="contact" className="h-8 text-xs" /></div>
+                  <div className="space-y-1"><Label className="text-xs">Email</Label><Input name="email" type="email" className="h-8 text-xs" /></div>
+                  <div className="space-y-1"><Label className="text-xs">Phone</Label><Input name="phone" className="h-8 text-xs" /></div>
+                  <Button type="submit" size="sm" className="w-full">Save</Button>
+                </>
+              )}
             </form>
           </DialogContent>
         </Dialog>
@@ -196,8 +245,9 @@ export default function VendorDirectoryPage() {
                 </TableRow>
               ))}
               {adding ? (
-                <TableRow className="bg-muted/30" onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); if (newData.name) { const nv = { id: Date.now().toString(), ...newData } as Vendor; supabase.from('vendors').insert(nv); setVendors(prev => [...prev, nv]); setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); } } else if (e.key === 'Escape') { setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); } }}>
-                  <TableCell><Input value={newData.name || ''} onChange={e => setNewData(d => ({ ...d, name: e.target.value }))} className="h-6 text-[10px] px-1" placeholder="Name" autoFocus /></TableCell>
+                <>
+                <TableRow className="bg-muted/30" onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); if (newData.name && !inlineFuzzyMatch) { const nv = { id: Date.now().toString(), ...newData } as Vendor; supabase.from('vendors').insert(nv); setVendors(prev => [...prev, nv]); setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); setInlineFuzzyMatch(null); setInlineFuzzySkip(false); } } else if (e.key === 'Escape') { setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); setInlineFuzzyMatch(null); setInlineFuzzySkip(false); } }}>
+                  <TableCell><Input value={newData.name || ''} onChange={e => { setNewData(d => ({ ...d, name: e.target.value })); setInlineFuzzySkip(false); const m = findFuzzyMatch(e.target.value, vendors); setInlineFuzzyMatch(m); }} className="h-6 text-[10px] px-1" placeholder="Name" autoFocus /></TableCell>
                   <TableCell><Input value={newData.detail || ''} onChange={e => setNewData(d => ({ ...d, detail: e.target.value }))} className="h-6 text-[10px] px-1" placeholder="Detail" /></TableCell>
                   {!isMobile && (
                     <TableCell>
@@ -210,10 +260,21 @@ export default function VendorDirectoryPage() {
                   {!isMobile && <TableCell><Input value={newData.email || ''} onChange={e => setNewData(d => ({ ...d, email: e.target.value }))} className="h-6 text-xs px-1" placeholder="Email" /></TableCell>}
                   {!isMobile && <TableCell><Input value={newData.phone || ''} onChange={e => setNewData(d => ({ ...d, phone: e.target.value }))} className="h-6 text-xs px-1" placeholder="Phone" /></TableCell>}
                   <TableCell><div className="flex gap-1">
-                    <button onClick={async () => { if (newData.name) { const nv = { id: Date.now().toString(), ...newData } as Vendor; await supabase.from('vendors').insert(nv); setVendors(prev => [...prev, nv]); setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
-                    <button onClick={() => { setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); }} className="text-destructive"><X size={13} /></button>
+                    <button onClick={async () => { if (newData.name && (!inlineFuzzyMatch || inlineFuzzySkip)) { const nv = { id: Date.now().toString(), ...newData } as Vendor; await supabase.from('vendors').insert(nv); setVendors(prev => [...prev, nv]); setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); setInlineFuzzyMatch(null); setInlineFuzzySkip(false); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
+                    <button onClick={() => { setAdding(false); setNewData({ name: '', detail: '', type: 'Subcontractor', contact: '', email: '', phone: '' }); setInlineFuzzyMatch(null); setInlineFuzzySkip(false); }} className="text-destructive"><X size={13} /></button>
                   </div></TableCell>
                 </TableRow>
+                {inlineFuzzyMatch && !inlineFuzzySkip && (
+                  <TableRow>
+                    <TableCell colSpan={isMobile ? 3 : 7} className="py-1 px-2">
+                      <div className="rounded border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-2 flex items-center gap-3 text-[11px]">
+                        <span className="text-amber-800 dark:text-amber-300">Similar vendor exists: <strong>{inlineFuzzyMatch.name}</strong> — {inlineFuzzyMatch.detail}</span>
+                        <Button type="button" size="sm" variant="ghost" className="h-5 text-[10px] px-2" onClick={() => setInlineFuzzySkip(true)}>Create Anyway</Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+                </>
               ) : (
                 <TableRow>
                   <TableCell colSpan={isMobile ? 3 : 7}>

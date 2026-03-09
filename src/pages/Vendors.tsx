@@ -14,6 +14,18 @@ import { Plus, Search, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown,
 import { Vendor } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 
+/** Dice coefficient — bigram similarity, 0..1 */
+function nameSimilarity(a: string, b: string): number {
+  const s1 = a.toLowerCase().trim(), s2 = b.toLowerCase().trim();
+  if (s1 === s2) return 1;
+  if (s1.length < 2 || s2.length < 2) return 0;
+  const bg = new Map<string, number>();
+  for (let i = 0; i < s1.length - 1; i++) { const k = s1.slice(i, i + 2); bg.set(k, (bg.get(k) || 0) + 1); }
+  let hit = 0;
+  for (let i = 0; i < s2.length - 1; i++) { const k = s2.slice(i, i + 2); const c = bg.get(k) || 0; if (c > 0) { bg.set(k, c - 1); hit++; } }
+  return (2 * hit) / (s1.length - 1 + s2.length - 1);
+}
+
 function SortBtn({ label, active, dir, onClick, className }: { label: string; active: boolean; dir: string; onClick: () => void; className?: string }) {
   return <button onClick={onClick} className={`inline-flex items-center gap-0.5 hover:text-foreground ${className || ''}`}>{label}{active ? (dir === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />) : <ChevronsUpDown size={11} className="opacity-30" />}</button>;
 }
@@ -100,42 +112,65 @@ export default function VendorsPage() {
     cancelEdit();
   };
 
+  const linkExistingVendor = async (vendor: Vendor) => {
+    const alreadyLinked = vendors.find(v => v.id === vendor.id);
+    if (!alreadyLinked) {
+      await supabase.from('project_vendors').insert({ project_id: selectedProject.id, vendor_id: vendor.id });
+      setVendors(prev => [...prev, vendor]);
+    }
+    setOpen(false);
+    setAddName('');
+    setSkipFuzzy(false);
+  };
+
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const name = fd.get('name') as string;
 
-    // Check if vendor exists in directory
+    // Exact match in directory → link
     const existing = directory.find(v => v.name.toLowerCase() === name.toLowerCase());
-
     if (existing) {
-      // Link existing vendor to project
-      const alreadyLinked = vendors.find(v => v.id === existing.id);
-      if (!alreadyLinked) {
-        await supabase.from('project_vendors').insert({ project_id: selectedProject.id, vendor_id: existing.id });
-        setVendors(prev => [...prev, existing]);
-      }
-    } else {
-      // Create new vendor in directory + link to project
-      const nv: Vendor = {
-        id: Date.now().toString(), name,
-        detail: fd.get('detail') as string,
-        type: fd.get('type') as Vendor['type'],
-        contact: fd.get('contact') as string,
-        email: fd.get('email') as string,
-        phone: fd.get('phone') as string,
-      };
-      await supabase.from('vendors').insert(nv);
-      await supabase.from('project_vendors').insert({ project_id: selectedProject.id, vendor_id: nv.id });
-      setVendors(prev => [...prev, nv]);
-      setDirectory(prev => [...prev, nv]);
+      await linkExistingVendor(existing);
+      return;
     }
+
+    // Fuzzy match found and user hasn't skipped → don't submit (UI shows suggestion)
+    if (fuzzyDirVendor) return;
+
+    // Create new vendor in directory + link to project
+    const nv: Vendor = {
+      id: Date.now().toString(), name,
+      detail: fd.get('detail') as string,
+      type: fd.get('type') as Vendor['type'],
+      contact: fd.get('contact') as string,
+      email: fd.get('email') as string,
+      phone: fd.get('phone') as string,
+    };
+    await supabase.from('vendors').insert(nv);
+    await supabase.from('project_vendors').insert({ project_id: selectedProject.id, vendor_id: nv.id });
+    setVendors(prev => [...prev, nv]);
+    setDirectory(prev => [...prev, nv]);
     setOpen(false);
     setAddName('');
+    setSkipFuzzy(false);
   };
 
-  // When user picks a name from directory, pre-fill the form
+  const [skipFuzzy, setSkipFuzzy] = useState(false);
+
+  // When user picks a name from directory, pre-fill the form (exact or fuzzy)
   const selectedDirVendor = useMemo(() => directory.find(v => v.name.toLowerCase() === addName.toLowerCase()), [addName, directory]);
+
+  // Fuzzy match: find best match ≥80% similarity (but not exact)
+  const fuzzyDirVendor = useMemo(() => {
+    if (!addName.trim() || selectedDirVendor || skipFuzzy) return null;
+    let best: Vendor | null = null, bestScore = 0;
+    for (const v of directory) {
+      const score = nameSimilarity(addName, v.name);
+      if (score >= 0.8 && score > bestScore) { best = v; bestScore = score; }
+    }
+    return best;
+  }, [addName, directory, selectedDirVendor, skipFuzzy]);
 
   const typeBadge = (type: string) => {
     return <Badge className="text-[9px] px-1 py-0 text-white" style={{ backgroundColor: '#c37e87' }}>{type}</Badge>;
@@ -151,18 +186,28 @@ export default function VendorsPage() {
       </div>
 
       {/* Add vendor dialog */}
-      <Dialog open={open} onOpenChange={o => { setOpen(o); if (!o) setAddName(''); }}>
+      <Dialog open={open} onOpenChange={o => { setOpen(o); if (!o) { setAddName(''); setSkipFuzzy(false); } }}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add Vendor to Project</DialogTitle></DialogHeader>
           <form onSubmit={handleAdd} className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">Name</Label>
-              <AutocompleteInput name="name" required suggestions={directorySuggestions} value={addName} onChange={setAddName} className="h-8 text-xs" placeholder="Search directory or enter new..." />
+              <AutocompleteInput name="name" required suggestions={directorySuggestions} value={addName} onChange={v => { setAddName(v); setSkipFuzzy(false); }} className="h-8 text-xs" placeholder="Search directory or enter new..." />
               {selectedDirVendor && (
                 <p className="text-[10px] text-muted-foreground">Found in directory: {selectedDirVendor.detail} ({selectedDirVendor.type})</p>
               )}
+              {fuzzyDirVendor && (
+                <div className="rounded border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-2 space-y-1.5">
+                  <p className="text-[11px] font-medium text-amber-800 dark:text-amber-300">Similar vendor found in directory:</p>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400">{fuzzyDirVendor.name} — {fuzzyDirVendor.detail} ({fuzzyDirVendor.type})</p>
+                  <div className="flex gap-2">
+                    <Button type="button" size="sm" variant="outline" className="h-6 text-[10px]" onClick={() => linkExistingVendor(fuzzyDirVendor)}>Use This Vendor</Button>
+                    <Button type="button" size="sm" variant="ghost" className="h-6 text-[10px]" onClick={() => setSkipFuzzy(true)}>Create New Instead</Button>
+                  </div>
+                </div>
+              )}
             </div>
-            {!selectedDirVendor && (
+            {!selectedDirVendor && !fuzzyDirVendor && (
               <>
                 <div className="space-y-1"><Label className="text-xs">Detail / Trade</Label><Input name="detail" required className="h-8 text-xs" /></div>
                 <div className="space-y-1"><Label className="text-xs">Type</Label>
@@ -175,7 +220,7 @@ export default function VendorsPage() {
                 <div className="space-y-1"><Label className="text-xs">Phone</Label><Input name="phone" className="h-8 text-xs" /></div>
               </>
             )}
-            <Button type="submit" size="sm" className="w-full">{selectedDirVendor ? 'Link to Project' : 'Save & Link'}</Button>
+            {!fuzzyDirVendor && <Button type="submit" size="sm" className="w-full">{selectedDirVendor ? 'Link to Project' : 'Save & Link'}</Button>}
           </form>
         </DialogContent>
       </Dialog>
