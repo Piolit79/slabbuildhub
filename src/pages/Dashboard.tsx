@@ -295,7 +295,7 @@ export default function Dashboard({ readOnly }: { readOnly?: boolean }) {
                               <stop offset={`${pct}%`} stopColor="#fff" stopOpacity="0.22" />
                               <stop offset={`${(+pct + 13).toFixed(1)}%`} stopColor="#000" stopOpacity="0" />
                               <stop offset="80%" stopColor="#000" stopOpacity="0" />
-                              <stop offset="100%" stopColor="#000" stopOpacity="0.28" />
+                              <stop offset="100%" stopColor="#000" stopOpacity="0.10" />
                             </radialGradient>
                             <clipPath id="donutClip">
                               <path d={`${op} ${ip}`} fillRule="evenodd" />
