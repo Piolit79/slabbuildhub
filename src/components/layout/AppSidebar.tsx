@@ -28,7 +28,7 @@ const clientNavItems = [
 
 const insuranceItems = [
   { to: '/insurance', label: 'COI Tracker', icon: Shield, exact: true },
-  { to: '/insurance/projects', label: 'COI Insert', icon: FolderKanban, exact: false },
+  { to: '/insurance/projects', label: "Insert COI's", icon: FolderKanban, exact: false },
 ];
 
 export default function AppSidebar() {
