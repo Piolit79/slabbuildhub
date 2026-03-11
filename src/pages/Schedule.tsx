@@ -81,7 +81,8 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
 
   const saveTaskName = async (id: string) => {
     if (!editTaskName.trim()) return;
-    await supabase.from('schedule_tasks').update({ name: editTaskName.trim() }).eq('id', id);
+    const { error } = await supabase.from('schedule_tasks').update({ name: editTaskName.trim() }).eq('id', id);
+    if (error) { console.error('saveTaskName error:', error); alert(error.message); return; }
     setTasks(prev => prev.map(t => t.id === id ? { ...t, name: editTaskName.trim() } : t));
     setEditingTaskId(null);
   };
