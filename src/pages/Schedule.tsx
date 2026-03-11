@@ -4,14 +4,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Plus, Trash2, ChevronLeft, ChevronRight, Check, X, Link2, Loader2 } from 'lucide-react';
+import { Plus, Trash2, ChevronLeft, ChevronRight, Check, X, Link2, Loader2, Undo2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Task = { id: string; project_id: string; name: string; color: string; sort_order: number };
 type Bar = { id: string; task_id: string; project_id: string; start_date: string; end_date: string; depends_on: string[] };
 
-const COLORS = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#84cc16'];
+const COLORS = ['#7BAFD4','#D47878','#8BAFC4','#C47878','#A89BC4','#7ABFBF','#D4A07A','#9BB4D4'];
 const ROW_H = 48;
 const LABEL_W = 220;
 const CELL_W = 80; // px per week in week view, per ~4 weeks in month view
@@ -32,6 +32,8 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
   const { selectedProject } = useProject();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [bars, setBars] = useState<Bar[]>([]);
+  const barsRef = useRef<Bar[]>([]);
+  useEffect(() => { barsRef.current = bars; }, [bars]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'week' | 'month'>('week');
 
@@ -61,6 +63,9 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
   const [newTaskName, setNewTaskName] = useState('');
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editTaskName, setEditTaskName] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ task: Task; bars: Bar[] } | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const addTask = async () => {
     if (!newTaskName.trim()) return;
@@ -81,11 +86,27 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
     setEditingTaskId(null);
   };
 
-  const deleteTask = async (id: string) => {
-    await supabase.from('schedule_bars').delete().eq('task_id', id);
-    await supabase.from('schedule_tasks').delete().eq('id', id);
+  const confirmDelete = (id: string) => {
+    const task = tasks.find(t => t.id === id)!;
+    const taskBars = bars.filter(b => b.task_id === id);
     setTasks(prev => prev.filter(t => t.id !== id));
     setBars(prev => prev.filter(b => b.task_id !== id));
+    setConfirmDeleteId(null);
+    setPendingDelete({ task, bars: taskBars });
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    undoTimerRef.current = setTimeout(async () => {
+      await supabase.from('schedule_bars').delete().eq('task_id', id);
+      await supabase.from('schedule_tasks').delete().eq('id', id);
+      setPendingDelete(null);
+    }, 10000);
+  };
+
+  const handleUndoDelete = () => {
+    if (!pendingDelete) return;
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setTasks(prev => [...prev, pendingDelete.task].sort((a, b) => a.sort_order - b.sort_order));
+    setBars(prev => [...prev, ...pendingDelete.bars]);
+    setPendingDelete(null);
   };
 
   // ── Bar creation (click on empty cell) ────────────────────────────────────
@@ -154,22 +175,27 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
     if (!resizeRef.current) return;
     const { barId, edge } = resizeRef.current;
     resizeRef.current = null;
-    const bar = bars.find(b => b.id === barId);
+    // Use barsRef.current to get the latest state after drag
+    const currentBars = barsRef.current;
+    const bar = currentBars.find(b => b.id === barId);
     if (!bar) return;
+    let finalBar = bar;
     // Ensure start <= end
     if (parseDate(bar.start_date) > parseDate(bar.end_date)) {
-      setBars(prev => prev.map(b => b.id === barId ? { ...b, start_date: b.end_date, end_date: b.start_date } : b));
+      const swapped = { ...bar, start_date: bar.end_date, end_date: bar.start_date };
+      setBars(prev => prev.map(b => b.id === barId ? swapped : b));
+      finalBar = swapped;
     }
-    const finalBar = bars.find(b => b.id === barId)!;
     await supabase.from('schedule_bars').update({ start_date: finalBar.start_date, end_date: finalBar.end_date }).eq('id', barId);
     // Cascade dependents if end date changed
-    if (edge === 'end') cascadeFrom(barId, finalBar.end_date);
+    if (edge === 'end') cascadeFrom(barId, finalBar.end_date, currentBars);
   };
 
   // ── Dependency cascade ─────────────────────────────────────────────────────
-  // BFS: for every bar that depends on barId, shift it forward by delta days
-  const cascadeFrom = async (sourceId: string, newEndDate: string) => {
-    const sourceBar = bars.find(b => b.id === sourceId);
+  // BFS: for every bar that depends on sourceId, shift it by the same delta days.
+  // currentBars is passed explicitly to avoid stale closure reads.
+  const cascadeFrom = async (sourceId: string, newEndDate: string, currentBars: Bar[]) => {
+    const sourceBar = currentBars.find(b => b.id === sourceId);
     if (!sourceBar) return;
     const origEnd = sourceBar.end_date;
     const delta = diffDays(parseDate(origEnd), parseDate(newEndDate));
@@ -178,19 +204,18 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
     const visited = new Set<string>();
     const queue = [sourceId];
     const updates: Bar[] = [];
+    // Work on a mutable copy so cascaded bars also cascade their own dependents
+    const workingBars = currentBars.map(b => ({ ...b }));
 
     while (queue.length) {
       const cur = queue.shift()!;
       if (visited.has(cur)) continue;
       visited.add(cur);
-      const dependents = bars.filter(b => b.depends_on.includes(cur));
+      const dependents = workingBars.filter(b => b.depends_on.includes(cur));
       for (const dep of dependents) {
-        const shifted: Bar = {
-          ...dep,
-          start_date: isoDate(addDays(parseDate(dep.start_date), delta)),
-          end_date: isoDate(addDays(parseDate(dep.end_date), delta)),
-        };
-        updates.push(shifted);
+        dep.start_date = isoDate(addDays(parseDate(dep.start_date), delta));
+        dep.end_date = isoDate(addDays(parseDate(dep.end_date), delta));
+        updates.push({ ...dep });
         queue.push(dep.id);
       }
     }
@@ -216,8 +241,8 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
     const newDeps = [...bar.depends_on, linkSource];
     await supabase.from('schedule_bars').update({ depends_on: newDeps }).eq('id', barId);
     setBars(prev => prev.map(b => b.id === barId ? { ...b, depends_on: newDeps } : b));
+    // Stay in link mode so more links can be created; reset source for next pair
     setLinkSource(null);
-    setLinkMode(false);
   };
 
   const deleteBar = async (barId: string) => {
@@ -273,9 +298,19 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
 
   return (
     <div className="flex flex-col h-full p-4 gap-3 select-none">
+      {/* Undo banner */}
+      {pendingDelete && (
+        <div className="flex items-center gap-2 bg-muted/60 border border-border rounded px-3 py-1.5 text-sm">
+          <span className="text-muted-foreground flex-1">"{pendingDelete.task.name}" deleted</span>
+          <button onClick={handleUndoDelete} className="inline-flex items-center gap-1 text-primary font-medium hover:underline">
+            <Undo2 className="h-3.5 w-3.5" /> Undo
+          </button>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
-        <h1 className="text-xl font-semibold flex-1">Schedule</h1>
+        <h1 className="text-xl font-semibold flex-1">Construction Schedule</h1>
         <Button variant="outline" size="sm" onClick={() => navigate(-1)}><ChevronLeft className="h-4 w-4" /></Button>
         <Button variant="outline" size="sm" onClick={goToday}>Today</Button>
         <Button variant="outline" size="sm" onClick={() => navigate(1)}><ChevronRight className="h-4 w-4" /></Button>
@@ -348,12 +383,20 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
                     >{task.name}</span>
                   )}
                   {!readOnly && (
-                    <button
-                      className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                      onClick={() => deleteTask(task.id)}
-                    >
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </button>
+                    confirmDeleteId === task.id ? (
+                      <div className="flex items-center gap-1 whitespace-nowrap">
+                        <span className="text-[10px] text-muted-foreground">Delete?</span>
+                        <button onClick={() => confirmDelete(task.id)} className="text-destructive hover:opacity-70"><Check className="h-3 w-3" /></button>
+                        <button onClick={() => setConfirmDeleteId(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
+                      </div>
+                    ) : (
+                      <button
+                        className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        onClick={() => setConfirmDeleteId(task.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground/40 hover:text-destructive" />
+                      </button>
+                    )
                   )}
                 </div>
 
@@ -469,7 +512,7 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
 
       {/* Legend */}
       <p className="text-xs text-muted-foreground">
-        Drag across cells to create a bar · Drag bar edges to resize · Double-click category name to rename · Right-click bar to delete · Use "Link Bars" to set dependencies (cascades on resize)
+        Drag across cells to create a bar · Drag bar edges to resize · Double-click category name to rename · Right-click bar to delete · Use "Link Bars" to chain bars — resizing a source bar shifts all linked bars
       </p>
     </div>
   );
