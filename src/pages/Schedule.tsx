@@ -40,9 +40,10 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
   // Grid origin: leftmost column = this week's Sunday
   const [originDate, setOriginDate] = useState<Date>(() => startOfWeek(new Date()));
 
-  // How many columns to show
-  const COLS = view === 'week' ? 24 : view === '2week' ? 16 : 18;
+  // Enough columns to always cover at least 2 years from today
   const colSpan = view === 'week' ? 7 : view === '2week' ? 14 : 30; // days per column
+  const minCols = Math.ceil(diffDays(originDate, addDays(new Date(), 730)) / colSpan) + 4;
+  const COLS = Math.max(view === 'week' ? 24 : view === '2week' ? 16 : 18, minCols);
 
   // ── Load ────────────────────────────────────────────────────────────────────
   const load = useCallback(async (pid: string) => {
@@ -452,7 +453,7 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
                       <div
                         key={bar.id}
                         className={cn(
-                          'absolute top-2 bottom-2 rounded flex items-center cursor-pointer group/bar transition-opacity',
+                          'absolute top-2 bottom-2 rounded flex items-center cursor-pointer group/bar transition-opacity overflow-hidden',
                           linkMode && 'ring-2 ring-offset-1',
                           isLinkSrc && 'ring-primary',
                         )}
@@ -469,12 +470,16 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
                         )}
                         {/* Dep indicator */}
                         {hasDeps && <div className="absolute left-1 top-1 h-1.5 w-1.5 rounded-full bg-white/70" />}
-                        {/* Bar label */}
-                        <span className="text-white text-xs px-2 truncate pointer-events-none select-none w-full">
+                        {/* Date label (left side) */}
+                        <span className="text-white/80 text-[10px] px-2 pointer-events-none select-none whitespace-nowrap overflow-hidden shrink-0">
                           {view === 'week'
                             ? `${MONTH_NAMES[parseDate(bar.start_date).getMonth()]} ${parseDate(bar.start_date).getDate()} – ${MONTH_NAMES[parseDate(bar.end_date).getMonth()]} ${parseDate(bar.end_date).getDate()}`
                             : `${diffDays(parseDate(bar.start_date), parseDate(bar.end_date)) + 1}d`
                           }
+                        </span>
+                        {/* Category name (right side, only if bar is wide enough) */}
+                        <span className="text-white text-[11px] font-medium pr-3 ml-auto pointer-events-none select-none whitespace-nowrap overflow-hidden">
+                          {task.name}
                         </span>
                         {/* Resize right */}
                         {!readOnly && (
