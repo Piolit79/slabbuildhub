@@ -87,26 +87,30 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
     setEditingTaskId(null);
   };
 
-  const confirmDelete = (id: string) => {
+  const confirmDelete = async (id: string) => {
     const task = tasks.find(t => t.id === id)!;
     const taskBars = bars.filter(b => b.task_id === id);
+    // Remove from UI and delete from DB immediately
     setTasks(prev => prev.filter(t => t.id !== id));
     setBars(prev => prev.filter(b => b.task_id !== id));
     setConfirmDeleteId(null);
+    await supabase.from('schedule_bars').delete().eq('task_id', id);
+    await supabase.from('schedule_tasks').delete().eq('id', id);
+    // Store for undo (re-insert if undone)
     setPendingDelete({ task, bars: taskBars });
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-    undoTimerRef.current = setTimeout(async () => {
-      await supabase.from('schedule_bars').delete().eq('task_id', id);
-      await supabase.from('schedule_tasks').delete().eq('id', id);
-      setPendingDelete(null);
-    }, 10000);
+    undoTimerRef.current = setTimeout(() => setPendingDelete(null), 10000);
   };
 
-  const handleUndoDelete = () => {
+  const handleUndoDelete = async () => {
     if (!pendingDelete) return;
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
-    setTasks(prev => [...prev, pendingDelete.task].sort((a, b) => a.sort_order - b.sort_order));
-    setBars(prev => [...prev, ...pendingDelete.bars]);
+    const { task, bars: taskBars } = pendingDelete;
+    // Re-insert task and bars into DB
+    await supabase.from('schedule_tasks').insert(task);
+    if (taskBars.length) await supabase.from('schedule_bars').insert(taskBars);
+    setTasks(prev => [...prev, task].sort((a, b) => a.sort_order - b.sort_order));
+    setBars(prev => [...prev, ...taskBars]);
     setPendingDelete(null);
   };
 
