@@ -46,12 +46,14 @@ export function DropZone({ projectId, className }: DropZoneProps) {
     formData.append('file', file);
     formData.append('project_id', projectId);
 
+    const coiUrl = import.meta.env.VITE_COI_SUPABASE_URL || 'https://rmgzjnmyvowdhhrdssdx.supabase.co';
+    const coiKey = import.meta.env.VITE_COI_SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtZ3pqbm15dm93ZGhocmRzc2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNzg3NTksImV4cCI6MjA4Nzk1NDc1OX0.-1ysf7NkBGu3MP-R6mkKYB7cJgGWs1Q4_NEf_Qmy_bQ';
     const resp = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/extract-coi`,
+      `${coiUrl}/functions/v1/extract-coi`,
       {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${coiKey}`,
         },
         body: formData,
       }
