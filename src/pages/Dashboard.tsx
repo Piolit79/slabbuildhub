@@ -266,19 +266,14 @@ export default function Dashboard({ readOnly }: { readOnly?: boolean }) {
               <div className="h-56 md:h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    {/* 3D depth layers — darkest at bottom, lighten toward top */}
-                    {[18, 16, 14, 12, 10, 8, 6, 4, 2].map((offset, idx) => {
-                      const t = idx / 8; // 0 = bottom-most (darkest), 1 = top (lightest)
-                      const blue = `hsl(210, ${30 + t * 15}%, ${20 + t * 18}%)`;
-                      const red  = `hsl(350, ${30 + t * 15}%, ${22 + t * 18}%)`;
-                      return (
-                        <Pie key={offset} data={budgetChartData} cx="50%" cy={`calc(50% + ${offset}px)`} innerRadius="30%" outerRadius="85%" paddingAngle={0} dataKey="total" isAnimationActive={false} labelLine={false}>
-                          {budgetChartData.map((_, i) => (
-                            <Cell key={i} fill={i === 0 ? blue : red} stroke="none" />
-                          ))}
-                        </Pie>
-                      );
-                    })}
+                    {/* 3D depth layers */}
+                    {[8, 6, 4, 2].map(offset => (
+                      <Pie key={offset} data={budgetChartData} cx="50%" cy={`calc(50% + ${offset}px)`} innerRadius="30%" outerRadius="85%" paddingAngle={0} dataKey="total" isAnimationActive={false} labelLine={false}>
+                        {budgetChartData.map((_, i) => (
+                          <Cell key={i} fill={i === 0 ? '#3a6190' : '#9c6068'} stroke="none" />
+                        ))}
+                      </Pie>
+                    ))}
                     {/* Main pie */}
                     <Pie data={budgetChartData} cx="50%" cy="50%" innerRadius="30%" outerRadius="85%" paddingAngle={0} dataKey="total" stroke="hsl(var(--background))" strokeWidth={2} label={({ cx, cy, midAngle, innerRadius, outerRadius, value }: any) => {
                       const RADIAN = Math.PI / 180;
