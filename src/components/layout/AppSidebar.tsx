@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderOpen, UserRound, MessageSquare, Settings2, FolderClosed, Store, ClipboardCheck, CalendarDays } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderClosed, UserRound, MessageSquare, Store, ClipboardCheck, CalendarDays, Layers, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -28,9 +28,7 @@ const clientNavItems = [
 
 const insuranceItems = [
   { to: '/insurance', label: 'COI Tracker', icon: Shield, exact: true },
-  { to: '/insurance/projects', label: 'Projects', icon: FolderKanban, exact: false },
-  { to: '/insurance/files', label: 'Files', icon: FolderOpen, exact: false },
-  { to: '/insurance/settings', label: 'COI Settings', icon: Settings, exact: false },
+  { to: '/insurance/projects', label: 'COI Insert', icon: FolderKanban, exact: false },
 ];
 
 export default function AppSidebar() {
@@ -139,10 +137,21 @@ export default function AppSidebar() {
               </span>
             )}
             {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
-            {[
-              { to: '/code', label: 'Code Questions', icon: MessageSquare, exact: true },
-              { to: '/code/admin', label: 'Manage Sources', icon: Settings2, exact: false },
-            ].map(({ to, label, icon, exact }) => renderNavLink(to, label, icon, exact))}
+            {renderNavLink('/code', 'Code Questions', MessageSquare, true)}
+          </>
+        )}
+
+        {/* Interiors Hub Section — company only */}
+        {!isClient && (
+          <>
+            {!(collapsed && !isMobile) && (
+              <span className="block text-base font-semibold uppercase tracking-widest text-muted-foreground px-3 pb-2 pt-4">
+                Interiors Hub
+              </span>
+            )}
+            {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
+            {renderNavLink('/interiors', 'Ledger', LayoutDashboard, true)}
+            {renderNavLink('/interiors/package-track', 'Package Track', Package, false)}
           </>
         )}
       </nav>

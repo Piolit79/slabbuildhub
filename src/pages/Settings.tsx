@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useProject } from '@/contexts/ProjectContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Archive, Trash2, Plus, Loader2 } from 'lucide-react';
+import { Archive, Trash2, Plus, Loader2, FolderOpen, SlidersHorizontal, Database } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Profile } from '@/contexts/AuthContext';
 
@@ -86,6 +87,24 @@ export default function Settings() {
   return (
     <div className="space-y-4">
       <h1 className="text-lg md:text-xl font-bold tracking-tight text-muted-foreground">Settings</h1>
+
+      {/* Admin Tools */}
+      <Card>
+        <CardHeader className="pb-1 pt-3 px-4">
+          <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Admin Tools</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-3 flex flex-wrap gap-2">
+          <Link to="/insurance/files">
+            <Button variant="outline" size="sm" className="flex items-center gap-2"><FolderOpen className="h-3.5 w-3.5" /> COI Files</Button>
+          </Link>
+          <Link to="/insurance/settings">
+            <Button variant="outline" size="sm" className="flex items-center gap-2"><SlidersHorizontal className="h-3.5 w-3.5" /> COI Settings</Button>
+          </Link>
+          <Link to="/code/admin">
+            <Button variant="outline" size="sm" className="flex items-center gap-2"><Database className="h-3.5 w-3.5" /> Manage Sources</Button>
+          </Link>
+        </CardContent>
+      </Card>
 
       {/* Company Users */}
       <Card>

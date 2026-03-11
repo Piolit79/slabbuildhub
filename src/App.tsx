@@ -30,6 +30,8 @@ import COISettings from "./coi-tracker/pages/Settings";
 import AskCodes from "./code-hub/pages/AskCodes";
 import ManageSources from "./code-hub/pages/ManageSources";
 import VendorDirectoryPage from "./pages/VendorDirectory";
+import InteriorsLedger from "./pages/InteriorsLedger";
+import PackageTrack from "./pages/PackageTrack";
 import ClientCOI from "./pages/ClientCOI";
 import ClientSubAgreements from "./pages/ClientSubAgreements";
 
@@ -91,6 +93,10 @@ const App = () => {
                 {/* Code Hub routes (company only) */}
                 <Route path="/code" element={<ClientRedirect><AskCodes /></ClientRedirect>} />
                 <Route path="/code/admin" element={<ClientRedirect><ManageSources /></ClientRedirect>} />
+
+                {/* Interiors Hub routes (company only) */}
+                <Route path="/interiors" element={<ClientRedirect><InteriorsLedger /></ClientRedirect>} />
+                <Route path="/interiors/package-track" element={<ClientRedirect><PackageTrack /></ClientRedirect>} />
 
                 {/* Client Hub routes (company: admin views, client: read-only project views) */}
                 <Route path="/client" element={<ClientRedirect><ClientUsers /></ClientRedirect>} />
