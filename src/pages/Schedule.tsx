@@ -35,14 +35,14 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
   const barsRef = useRef<Bar[]>([]);
   useEffect(() => { barsRef.current = bars; }, [bars]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<'week' | 'month'>('week');
+  const [view, setView] = useState<'week' | '2week' | 'month'>('week');
 
   // Grid origin: leftmost column = this week's Sunday
   const [originDate, setOriginDate] = useState<Date>(() => startOfWeek(new Date()));
 
   // How many columns to show
-  const COLS = view === 'week' ? 24 : 18;
-  const colSpan = view === 'week' ? 7 : 30; // days per column
+  const COLS = view === 'week' ? 24 : view === '2week' ? 16 : 18;
+  const colSpan = view === 'week' ? 7 : view === '2week' ? 14 : 30; // days per column
 
   // ── Load ────────────────────────────────────────────────────────────────────
   const load = useCallback(async (pid: string) => {
@@ -276,7 +276,9 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
   };
 
   const navigate = (dir: number) => {
-    setOriginDate(prev => view === 'week' ? addWeeks(prev, dir * 4) : addDays(prev, dir * 120));
+    if (view === 'week') setOriginDate(prev => addWeeks(prev, dir * 4));
+    else if (view === '2week') setOriginDate(prev => addWeeks(prev, dir * 8));
+    else setOriginDate(prev => addDays(prev, dir * 120));
   };
 
   const goToday = () => setOriginDate(startOfWeek(new Date()));
@@ -284,6 +286,7 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
   // ── Column header label ────────────────────────────────────────────────────
   const colLabel = (d: Date) => {
     if (view === 'week') return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
+    if (view === '2week') return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
     return `${MONTH_NAMES[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
   };
 
@@ -320,6 +323,10 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
             className={cn('px-3 py-1.5 text-sm', view === 'week' ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground hover:bg-muted')}
             onClick={() => setView('week')}
           >Week</button>
+          <button
+            className={cn('px-3 py-1.5 text-sm', view === '2week' ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground hover:bg-muted')}
+            onClick={() => setView('2week')}
+          >2 Week</button>
           <button
             className={cn('px-3 py-1.5 text-sm', view === 'month' ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground hover:bg-muted')}
             onClick={() => setView('month')}
