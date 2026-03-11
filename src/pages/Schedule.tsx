@@ -66,9 +66,10 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
     if (!newTaskName.trim()) return;
     const color = COLORS[tasks.length % COLORS.length];
     const sort_order = tasks.length;
-    const { data } = await supabase.from('schedule_tasks').insert({
+    const { data, error } = await supabase.from('schedule_tasks').insert({
       project_id: selectedProject.id, name: newTaskName.trim(), color, sort_order,
     }).select().single();
+    if (error) { console.error('addTask error:', error); alert(error.message); return; }
     if (data) setTasks(prev => [...prev, data as Task]);
     setNewTaskName(''); setAddingTask(false);
   };
@@ -112,11 +113,12 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
       parseDate(b.start_date) <= parseDate(end_date) &&
       parseDate(b.end_date) >= parseDate(start_date));
     if (!overlap) {
-      const { data } = await supabase.from('schedule_bars').insert({
+      const { data, error } = await supabase.from('schedule_bars').insert({
         task_id: dragging.taskId, project_id: selectedProject.id,
         start_date, end_date, depends_on: [],
       }).select().single();
-      if (data) setBars(prev => [...prev, data as Bar]);
+      if (error) { console.error('addBar error:', error); alert(error.message); }
+      else if (data) setBars(prev => [...prev, data as Bar]);
     }
     setDragging(null); setDragEndCol(null);
   };
