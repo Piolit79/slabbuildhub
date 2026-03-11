@@ -88,6 +88,20 @@ export default function AppSidebar() {
         )}
         {navItems.map(({ to, label, icon }) => renderNavLink(to, label, icon))}
 
+        {/* Interiors Hub Section — company only */}
+        {!isClient && (
+          <>
+            {!(collapsed && !isMobile) && (
+              <span className="block text-base font-semibold uppercase tracking-widest text-muted-foreground px-3 pb-2 pt-4">
+                Interiors Hub
+              </span>
+            )}
+            {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
+            {renderNavLink('/interiors', 'Ledger', LayoutDashboard, true)}
+            {renderNavLink('/interiors/package-track', 'Package Track', Package, false)}
+          </>
+        )}
+
         {/* Insurance Hub Section — company only */}
         {!isClient && (
           <>
@@ -141,19 +155,6 @@ export default function AppSidebar() {
           </>
         )}
 
-        {/* Interiors Hub Section — company only */}
-        {!isClient && (
-          <>
-            {!(collapsed && !isMobile) && (
-              <span className="block text-base font-semibold uppercase tracking-widest text-muted-foreground px-3 pb-2 pt-4">
-                Interiors Hub
-              </span>
-            )}
-            {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
-            {renderNavLink('/interiors', 'Ledger', LayoutDashboard, true)}
-            {renderNavLink('/interiors/package-track', 'Package Track', Package, false)}
-          </>
-        )}
       </nav>
 
       <div className="mt-auto border-t border-sidebar-border">
