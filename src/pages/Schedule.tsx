@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Plus, Trash2, ChevronLeft, ChevronRight, Check, X, Link2, Loader2, Undo2, Pencil, GripVertical } from 'lucide-react';
+import { Plus, Trash2, ChevronLeft, ChevronRight, Check, X, Link2, Loader2, Undo2, Pencil, GripVertical, Unlink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -14,18 +14,31 @@ type Bar = { id: string; task_id: string; project_id: string; start_date: string
 const COLORS = ['#7BAFD4','#D47878','#8BAFC4','#C47878','#A89BC4','#7ABFBF','#D4A07A','#9BB4D4'];
 const ROW_H = 48;
 const LABEL_W = 220;
-const CELL_W = 80; // px per week in week view, per ~4 weeks in month view
+const CELL_W = 80;
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 const startOfWeek = (d: Date) => { const r = new Date(d); r.setDate(r.getDate() - r.getDay()); r.setHours(0,0,0,0); return r; };
 const addDays = (d: Date, n: number) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
 const addWeeks = (d: Date, n: number) => addDays(d, n * 7);
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
-const parseDate = (s: string) => { const d = new Date(s + 'T00:00:00'); return d; };
-const diffWeeks = (a: Date, b: Date) => Math.round((b.getTime() - a.getTime()) / (7 * 86400000));
+const parseDate = (s: string) => new Date(s + 'T00:00:00');
 const diffDays = (a: Date, b: Date) => Math.round((b.getTime() - a.getTime()) / 86400000);
-
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// ── Link group BFS (bidirectional) ────────────────────────────────────────────
+const getLinkGroup = (barId: string, allBars: Bar[]): string[] => {
+  const visited = new Set<string>();
+  const queue = [barId];
+  while (queue.length) {
+    const cur = queue.shift()!;
+    if (visited.has(cur)) continue;
+    visited.add(cur);
+    const curBar = allBars.find(b => b.id === cur);
+    curBar?.depends_on.forEach(id => { if (!visited.has(id)) queue.push(id); });
+    allBars.forEach(b => { if (b.depends_on.includes(cur) && !visited.has(b.id)) queue.push(b.id); });
+  }
+  return [...visited];
+};
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
@@ -36,16 +49,13 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
   useEffect(() => { barsRef.current = bars; }, [bars]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<'week' | '2week' | 'month'>('week');
-
-  // Grid origin: leftmost column = this week's Sunday
   const [originDate, setOriginDate] = useState<Date>(() => startOfWeek(new Date()));
 
-  // Enough columns to always cover at least 2 years from today
-  const colSpan = view === 'week' ? 7 : view === '2week' ? 14 : 30; // days per column
+  const colSpan = view === 'week' ? 7 : view === '2week' ? 14 : 30;
   const minCols = Math.ceil(diffDays(originDate, addDays(new Date(), 730)) / colSpan) + 4;
   const COLS = Math.max(view === 'week' ? 24 : view === '2week' ? 16 : 18, minCols);
 
-  // ── Load ────────────────────────────────────────────────────────────────────
+  // ── Load ─────────────────────────────────────────────────────────────────────
   const load = useCallback(async (pid: string) => {
     setLoading(true);
     const [{ data: t }, { data: b }] = await Promise.all([
@@ -59,7 +69,7 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
 
   useEffect(() => { load(selectedProject.id); }, [selectedProject.id, load]);
 
-  // ── Task actions ────────────────────────────────────────────────────────────
+  // ── Task actions ──────────────────────────────────────────────────────────────
   const [addingTask, setAddingTask] = useState(false);
   const [newTaskName, setNewTaskName] = useState('');
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -68,7 +78,7 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
   const [pendingDelete, setPendingDelete] = useState<{ task: Task; bars: Bar[] } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Row drag-to-reorder ─────────────────────────────────────────────────────
+  // ── Row drag-to-reorder ───────────────────────────────────────────────────────
   const [rowDraggingId, setRowDraggingId] = useState<string | null>(null);
   const [rowDragOverId, setRowDragOverId] = useState<string | null>(null);
 
@@ -121,13 +131,11 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
   const confirmDelete = async (id: string) => {
     const task = tasks.find(t => t.id === id)!;
     const taskBars = bars.filter(b => b.task_id === id);
-    // Remove from UI and delete from DB immediately
     setTasks(prev => prev.filter(t => t.id !== id));
     setBars(prev => prev.filter(b => b.task_id !== id));
     setConfirmDeleteId(null);
     await supabase.from('schedule_bars').delete().eq('task_id', id);
     await supabase.from('schedule_tasks').delete().eq('id', id);
-    // Store for undo (re-insert if undone)
     setPendingDelete({ task, bars: taskBars });
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     undoTimerRef.current = setTimeout(() => setPendingDelete(null), 10000);
@@ -137,7 +145,6 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
     if (!pendingDelete) return;
     if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
     const { task, bars: taskBars } = pendingDelete;
-    // Re-insert task and bars into DB
     await supabase.from('schedule_tasks').insert(task);
     if (taskBars.length) await supabase.from('schedule_bars').insert(taskBars);
     setTasks(prev => [...prev, task].sort((a, b) => a.sort_order - b.sort_order));
@@ -145,48 +152,66 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
     setPendingDelete(null);
   };
 
-  // ── Bar creation (click on empty cell) ────────────────────────────────────
-  const [dragging, setDragging] = useState<{ taskId: string; startCol: number } | null>(null);
-  const [dragEndCol, setDragEndCol] = useState<number | null>(null);
+  // ── Bar creation (drag on empty cell) ────────────────────────────────────────
+  const [cellDragging, setCellDragging] = useState<{ taskId: string; startCol: number } | null>(null);
+  const [cellDragEndCol, setCellDragEndCol] = useState<number | null>(null);
 
   const colToDate = (col: number) => addDays(originDate, col * colSpan);
 
   const handleCellMouseDown = (taskId: string, col: number) => {
     if (readOnly) return;
-    setDragging({ taskId, startCol: col });
-    setDragEndCol(col);
+    setCellDragging({ taskId, startCol: col });
+    setCellDragEndCol(col);
   };
   const handleCellMouseEnter = (col: number) => {
-    if (dragging) setDragEndCol(col);
+    if (cellDragging) setCellDragEndCol(col);
   };
-  const handleMouseUp = async () => {
-    if (!dragging || dragEndCol === null) { setDragging(null); setDragEndCol(null); return; }
-    const s = Math.min(dragging.startCol, dragEndCol);
-    const e = Math.max(dragging.startCol, dragEndCol);
+  const handleCellMouseUp = async () => {
+    if (!cellDragging || cellDragEndCol === null) { setCellDragging(null); setCellDragEndCol(null); return; }
+    const s = Math.min(cellDragging.startCol, cellDragEndCol);
+    const e = Math.max(cellDragging.startCol, cellDragEndCol);
     const start_date = isoDate(colToDate(s));
     const end_date = isoDate(addDays(colToDate(e), colSpan - 1));
-    // check overlap on same task
-    const overlap = bars.some(b => b.task_id === dragging.taskId &&
+    const overlap = bars.some(b => b.task_id === cellDragging.taskId &&
       parseDate(b.start_date) <= parseDate(end_date) &&
       parseDate(b.end_date) >= parseDate(start_date));
     if (!overlap) {
       const { data, error } = await supabase.from('schedule_bars').insert({
-        task_id: dragging.taskId, project_id: selectedProject.id,
+        task_id: cellDragging.taskId, project_id: selectedProject.id,
         start_date, end_date, depends_on: [],
       }).select().single();
       if (error) { console.error('addBar error:', error); alert(error.message); }
       else if (data) setBars(prev => [...prev, data as Bar]);
     }
-    setDragging(null); setDragEndCol(null);
+    setCellDragging(null); setCellDragEndCol(null);
   };
 
-  // ── Bar resize ─────────────────────────────────────────────────────────────
+  // ── Cascade linked bars by delta ──────────────────────────────────────────────
+  const cascadeLinked = async (sourceId: string, deltaDays: number, currentBars: Bar[]) => {
+    if (deltaDays === 0) return;
+    const group = getLinkGroup(sourceId, currentBars).filter(id => id !== sourceId);
+    if (!group.length) return;
+    const updates = group.map(id => {
+      const bar = currentBars.find(b => b.id === id)!;
+      return {
+        ...bar,
+        start_date: isoDate(addDays(parseDate(bar.start_date), deltaDays)),
+        end_date: isoDate(addDays(parseDate(bar.end_date), deltaDays)),
+      };
+    });
+    setBars(prev => prev.map(b => updates.find(u => u.id === b.id) || b));
+    for (const u of updates) {
+      await supabase.from('schedule_bars').update({ start_date: u.start_date, end_date: u.end_date }).eq('id', u.id);
+    }
+  };
+
+  // ── Bar resize ────────────────────────────────────────────────────────────────
   const resizeRef = useRef<{ barId: string; edge: 'start' | 'end'; startX: number; origDate: string } | null>(null);
 
   const startResize = (e: React.MouseEvent, barId: string, edge: 'start' | 'end') => {
     if (readOnly) return;
     e.stopPropagation(); e.preventDefault();
-    const bar = bars.find(b => b.id === barId)!;
+    const bar = barsRef.current.find(b => b.id === barId)!;
     resizeRef.current = { barId, edge, startX: e.clientX, origDate: edge === 'start' ? bar.start_date : bar.end_date };
     window.addEventListener('mousemove', onResizeMove);
     window.addEventListener('mouseup', onResizeUp);
@@ -195,13 +220,11 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
   const onResizeMove = (e: MouseEvent) => {
     if (!resizeRef.current) return;
     const { barId, edge, startX, origDate } = resizeRef.current;
-    const deltaX = e.clientX - startX;
-    const deltaDays = Math.round(deltaX / CELL_W * colSpan);
+    const deltaDays = Math.round((e.clientX - startX) / CELL_W * colSpan);
     const newDate = isoDate(addDays(parseDate(origDate), deltaDays));
     setBars(prev => prev.map(b => {
       if (b.id !== barId) return b;
-      if (edge === 'start') return { ...b, start_date: newDate };
-      return { ...b, end_date: newDate };
+      return edge === 'start' ? { ...b, start_date: newDate } : { ...b, end_date: newDate };
     }));
   };
 
@@ -209,81 +232,108 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
     window.removeEventListener('mousemove', onResizeMove);
     window.removeEventListener('mouseup', onResizeUp);
     if (!resizeRef.current) return;
-    const { barId, edge } = resizeRef.current;
+    const { barId, edge, origDate } = resizeRef.current;
     resizeRef.current = null;
-    // Use barsRef.current to get the latest state after drag
     const currentBars = barsRef.current;
     const bar = currentBars.find(b => b.id === barId);
     if (!bar) return;
     let finalBar = bar;
-    // Ensure start <= end
     if (parseDate(bar.start_date) > parseDate(bar.end_date)) {
-      const swapped = { ...bar, start_date: bar.end_date, end_date: bar.start_date };
-      setBars(prev => prev.map(b => b.id === barId ? swapped : b));
-      finalBar = swapped;
+      finalBar = { ...bar, start_date: bar.end_date, end_date: bar.start_date };
+      setBars(prev => prev.map(b => b.id === barId ? finalBar : b));
     }
     await supabase.from('schedule_bars').update({ start_date: finalBar.start_date, end_date: finalBar.end_date }).eq('id', barId);
-    // Cascade dependents if end date changed
-    if (edge === 'end') cascadeFrom(barId, finalBar.end_date, currentBars);
+    const newDate = edge === 'end' ? finalBar.end_date : finalBar.start_date;
+    const delta = diffDays(parseDate(origDate), parseDate(newDate));
+    if (delta !== 0) await cascadeLinked(barId, delta, currentBars);
   };
 
-  // ── Dependency cascade ─────────────────────────────────────────────────────
-  // BFS: for every bar that depends on sourceId, shift it by the same delta days.
-  // currentBars is passed explicitly to avoid stale closure reads.
-  const cascadeFrom = async (sourceId: string, newEndDate: string, currentBars: Bar[]) => {
-    const sourceBar = currentBars.find(b => b.id === sourceId);
-    if (!sourceBar) return;
-    const origEnd = sourceBar.end_date;
-    const delta = diffDays(parseDate(origEnd), parseDate(newEndDate));
-    if (delta === 0) return;
+  // ── Bar move (drag whole bar) ─────────────────────────────────────────────────
+  const barMoveRef = useRef<{ barId: string; startX: number; origStart: string; origEnd: string; moved: boolean } | null>(null);
 
-    const visited = new Set<string>();
-    const queue = [sourceId];
-    const updates: Bar[] = [];
-    // Work on a mutable copy so cascaded bars also cascade their own dependents
-    const workingBars = currentBars.map(b => ({ ...b }));
+  const startBarMove = (e: React.MouseEvent, barId: string) => {
+    if (readOnly) return;
+    e.stopPropagation(); e.preventDefault();
+    const bar = barsRef.current.find(b => b.id === barId)!;
+    barMoveRef.current = { barId, startX: e.clientX, origStart: bar.start_date, origEnd: bar.end_date, moved: false };
+    window.addEventListener('mousemove', onBarMoveMove);
+    window.addEventListener('mouseup', onBarMoveUp);
+  };
 
-    while (queue.length) {
-      const cur = queue.shift()!;
-      if (visited.has(cur)) continue;
-      visited.add(cur);
-      const dependents = workingBars.filter(b => b.depends_on.includes(cur));
-      for (const dep of dependents) {
-        dep.start_date = isoDate(addDays(parseDate(dep.start_date), delta));
-        dep.end_date = isoDate(addDays(parseDate(dep.end_date), delta));
-        updates.push({ ...dep });
-        queue.push(dep.id);
-      }
+  const onBarMoveMove = (e: MouseEvent) => {
+    if (!barMoveRef.current) return;
+    const { barId, startX, origStart, origEnd } = barMoveRef.current;
+    const deltaX = e.clientX - startX;
+    if (Math.abs(deltaX) > 4) barMoveRef.current.moved = true;
+    const deltaDays = Math.round(deltaX / CELL_W * colSpan);
+    if (deltaDays === 0) return;
+    setBars(prev => prev.map(b => b.id !== barId ? b : {
+      ...b,
+      start_date: isoDate(addDays(parseDate(origStart), deltaDays)),
+      end_date: isoDate(addDays(parseDate(origEnd), deltaDays)),
+    }));
+  };
+
+  const onBarMoveUp = async () => {
+    window.removeEventListener('mousemove', onBarMoveMove);
+    window.removeEventListener('mouseup', onBarMoveUp);
+    if (!barMoveRef.current) return;
+    const { barId, origStart, moved } = barMoveRef.current;
+    barMoveRef.current = null;
+    if (!moved) {
+      // Treat as click: toggle selection
+      setSelectedBarIds(prev =>
+        prev.includes(barId) ? prev.filter(id => id !== barId) : [...prev, barId]
+      );
+      return;
     }
+    const currentBars = barsRef.current;
+    const bar = currentBars.find(b => b.id === barId);
+    if (!bar) return;
+    const delta = diffDays(parseDate(origStart), parseDate(bar.start_date));
+    await supabase.from('schedule_bars').update({ start_date: bar.start_date, end_date: bar.end_date }).eq('id', barId);
+    if (delta !== 0) await cascadeLinked(barId, delta, currentBars);
+  };
 
-    if (!updates.length) return;
-    setBars(prev => prev.map(b => updates.find(u => u.id === b.id) || b));
-    for (const u of updates) {
-      await supabase.from('schedule_bars').update({ start_date: u.start_date, end_date: u.end_date }).eq('id', u.id);
+  // ── Bar selection & link/unlink ───────────────────────────────────────────────
+  const [selectedBarIds, setSelectedBarIds] = useState<string[]>([]);
+
+  const allSelectedLinked = selectedBarIds.length >= 2 && (() => {
+    const group = new Set(getLinkGroup(selectedBarIds[0], bars));
+    return selectedBarIds.every(id => group.has(id));
+  })();
+
+  const handleLinkSelected = async () => {
+    if (selectedBarIds.length < 2) return;
+    // Chain: each bar (after the first) depends on the previous selected bar
+    const updated = bars.map(b => {
+      const idx = selectedBarIds.indexOf(b.id);
+      if (idx <= 0) return b;
+      const prevId = selectedBarIds[idx - 1];
+      if (b.depends_on.includes(prevId)) return b;
+      return { ...b, depends_on: [...b.depends_on, prevId] };
+    });
+    setBars(updated);
+    setSelectedBarIds([]);
+    for (const b of updated.filter(b => selectedBarIds.includes(b.id))) {
+      await supabase.from('schedule_bars').update({ depends_on: b.depends_on }).eq('id', b.id);
     }
   };
 
-  // ── Dependency linking UI ──────────────────────────────────────────────────
-  const [linkMode, setLinkMode] = useState(false);
-  const [linkSource, setLinkSource] = useState<string | null>(null); // bar id
-
-  const handleBarClick = async (barId: string) => {
-    if (!linkMode) return;
-    if (!linkSource) { setLinkSource(barId); return; }
-    if (linkSource === barId) { setLinkSource(null); return; }
-    // add dependency: barId depends on linkSource
-    const bar = bars.find(b => b.id === barId)!;
-    if (bar.depends_on.includes(linkSource)) { setLinkSource(null); return; }
-    const newDeps = [...bar.depends_on, linkSource];
-    await supabase.from('schedule_bars').update({ depends_on: newDeps }).eq('id', barId);
-    setBars(prev => prev.map(b => b.id === barId ? { ...b, depends_on: newDeps } : b));
-    // Stay in link mode so more links can be created; reset source for next pair
-    setLinkSource(null);
+  const handleUnlinkSelected = async () => {
+    const updated = bars.map(b => {
+      if (!selectedBarIds.includes(b.id)) return b;
+      return { ...b, depends_on: b.depends_on.filter(id => !selectedBarIds.includes(id)) };
+    });
+    setBars(updated);
+    setSelectedBarIds([]);
+    for (const b of updated.filter(b => selectedBarIds.includes(b.id))) {
+      await supabase.from('schedule_bars').update({ depends_on: b.depends_on }).eq('id', b.id);
+    }
   };
 
   const deleteBar = async (barId: string) => {
     if (readOnly) return;
-    // remove from depends_on of others
     const updated = bars.filter(b => b.id !== barId).map(b => ({
       ...b, depends_on: b.depends_on.filter(d => d !== barId)
     }));
@@ -292,22 +342,20 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
       await supabase.from('schedule_bars').update({ depends_on: b.depends_on }).eq('id', b.id);
     }
     setBars(updated);
+    setSelectedBarIds(prev => prev.filter(id => id !== barId));
   };
 
-  // ── Render helpers ─────────────────────────────────────────────────────────
+  // ── Render helpers ────────────────────────────────────────────────────────────
   const colHeaders = Array.from({ length: COLS }, (_, i) => colToDate(i));
 
-  // Bar pixel position within the grid
   const barGeometry = (bar: Bar) => {
-    const gridStart = originDate;
-    const barStart = parseDate(bar.start_date);
-    const barEnd = parseDate(bar.end_date);
     const totalDays = COLS * colSpan;
-    const startDay = diffDays(gridStart, barStart);
-    const endDay = diffDays(gridStart, barEnd) + 1;
-    const left = (startDay / totalDays) * 100;
-    const width = ((endDay - startDay) / totalDays) * 100;
-    return { left: `${left}%`, width: `${width}%` };
+    const startDay = diffDays(originDate, parseDate(bar.start_date));
+    const endDay = diffDays(originDate, parseDate(bar.end_date)) + 1;
+    return {
+      left: `${(startDay / totalDays) * 100}%`,
+      width: `${((endDay - startDay) / totalDays) * 100}%`,
+    };
   };
 
   const navigate = (dir: number) => {
@@ -315,19 +363,12 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
     else if (view === '2week') setOriginDate(prev => addWeeks(prev, dir * 8));
     else setOriginDate(prev => addDays(prev, dir * 120));
   };
-
   const goToday = () => setOriginDate(startOfWeek(new Date()));
 
-  // ── Column header label ────────────────────────────────────────────────────
   const colLabel = (d: Date) => {
-    if (view === 'week') return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
-    if (view === '2week') return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
-    return `${MONTH_NAMES[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
+    if (view === 'month') return `${MONTH_NAMES[d.getMonth()]} '${String(d.getFullYear()).slice(2)}`;
+    return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}`;
   };
-
-  // ── Dependency lines (SVG overlay) ────────────────────────────────────────
-  // We skip SVG arrows for now — a simple colored indicator on the bar is enough
-  // and avoids complex coordinate math across rows.
 
   if (loading) return (
     <div className="flex items-center justify-center h-64 text-muted-foreground">
@@ -354,27 +395,29 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
         <Button variant="outline" size="sm" onClick={goToday}>Today</Button>
         <Button variant="outline" size="sm" onClick={() => navigate(1)}><ChevronRight className="h-4 w-4" /></Button>
         <div className="flex rounded-md border border-border overflow-hidden">
-          <button
-            className={cn('px-3 py-1.5 text-sm', view === 'week' ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground hover:bg-muted')}
-            onClick={() => setView('week')}
-          >Week</button>
-          <button
-            className={cn('px-3 py-1.5 text-sm', view === '2week' ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground hover:bg-muted')}
-            onClick={() => setView('2week')}
-          >2 Week</button>
-          <button
-            className={cn('px-3 py-1.5 text-sm', view === 'month' ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground hover:bg-muted')}
-            onClick={() => setView('month')}
-          >Month</button>
+          {(['week', '2week', 'month'] as const).map(v => (
+            <button key={v}
+              className={cn('px-3 py-1.5 text-sm', view === v ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground hover:bg-muted')}
+              onClick={() => setView(v)}
+            >{v === '2week' ? '2 Week' : v.charAt(0).toUpperCase() + v.slice(1)}</button>
+          ))}
         </div>
-        {!readOnly && (
-          <Button
-            variant={linkMode ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => { setLinkMode(l => !l); setLinkSource(null); }}
-          >
-            <Link2 className="h-4 w-4 mr-1" />
-            {linkMode ? (linkSource ? 'Click target bar' : 'Click source bar') : 'Link Bars'}
+        {/* Link / Unlink button — appears when 2+ bars selected */}
+        {!readOnly && selectedBarIds.length >= 2 && (
+          allSelectedLinked ? (
+            <Button variant="outline" size="sm" onClick={handleUnlinkSelected} className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground">
+              <Unlink className="h-4 w-4 mr-1" /> Unlink ({selectedBarIds.length})
+            </Button>
+          ) : (
+            <Button size="sm" onClick={handleLinkSelected}>
+              <Link2 className="h-4 w-4 mr-1" /> Link ({selectedBarIds.length})
+            </Button>
+          )
+        )}
+        {/* Clear selection button when 1+ bars selected */}
+        {!readOnly && selectedBarIds.length > 0 && (
+          <Button variant="ghost" size="sm" onClick={() => setSelectedBarIds([])}>
+            <X className="h-4 w-4 mr-1" /> Clear
           </Button>
         )}
       </div>
@@ -384,8 +427,8 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
         <div
           className="relative"
           style={{ minWidth: LABEL_W + COLS * CELL_W }}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
+          onMouseUp={handleCellMouseUp}
+          onMouseLeave={handleCellMouseUp}
         >
           {/* Header row */}
           <div className="flex sticky top-0 z-10 bg-card border-b border-border">
@@ -436,9 +479,7 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
                       <button onClick={() => setEditingTaskId(null)}><X className="h-3.5 w-3.5 text-muted-foreground" /></button>
                     </div>
                   ) : (
-                    <span
-                      className="text-sm flex-1 truncate"
-                    >{task.name}</span>
+                    <span className="text-sm flex-1 truncate">{task.name}</span>
                   )}
                   {!readOnly && !editingTaskId && (
                     confirmDeleteId === task.id ? (
@@ -462,7 +503,6 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
 
                 {/* Gantt cells */}
                 <div className="relative flex-1 flex">
-                  {/* Background cells (click to start drawing) */}
                   {Array.from({ length: COLS }, (_, i) => (
                     <div
                       key={i}
@@ -473,17 +513,16 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
                     />
                   ))}
 
-                  {/* Ghost bar while dragging */}
-                  {dragging?.taskId === task.id && dragEndCol !== null && (() => {
-                    const s = Math.min(dragging.startCol, dragEndCol);
-                    const e = Math.max(dragging.startCol, dragEndCol);
-                    const totalCols = COLS;
+                  {/* Ghost bar while drawing */}
+                  {cellDragging?.taskId === task.id && cellDragEndCol !== null && (() => {
+                    const s = Math.min(cellDragging.startCol, cellDragEndCol);
+                    const e = Math.max(cellDragging.startCol, cellDragEndCol);
                     return (
                       <div
                         className="absolute top-2 bottom-2 rounded opacity-40 pointer-events-none"
                         style={{
-                          left: `${(s / totalCols) * 100}%`,
-                          width: `${((e - s + 1) / totalCols) * 100}%`,
+                          left: `${(s / COLS) * 100}%`,
+                          width: `${((e - s + 1) / COLS) * 100}%`,
                           backgroundColor: task.color,
                         }}
                       />
@@ -493,46 +532,40 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
                   {/* Existing bars */}
                   {taskBars.map(bar => {
                     const geo = barGeometry(bar);
-                    const isLinkSrc = linkSource === bar.id;
-                    const hasDeps = bar.depends_on.length > 0;
+                    const isSelected = selectedBarIds.includes(bar.id);
+                    const isLinked = getLinkGroup(bar.id, bars).length > 1;
                     return (
                       <div
                         key={bar.id}
                         className={cn(
-                          'absolute top-2 bottom-2 rounded flex items-center cursor-pointer group/bar transition-opacity overflow-hidden',
-                          linkMode && 'ring-2 ring-offset-1',
-                          isLinkSrc && 'ring-primary',
+                          'absolute top-2 bottom-2 rounded flex items-center overflow-hidden transition-all',
+                          readOnly ? 'cursor-default' : 'cursor-grab active:cursor-grabbing',
+                          isSelected && 'ring-2 ring-white ring-offset-1',
                         )}
                         style={{ left: geo.left, width: geo.width, backgroundColor: task.color, minWidth: 8 }}
-                        onClick={() => handleBarClick(bar.id)}
+                        onMouseDown={e => startBarMove(e, bar.id)}
                         onContextMenu={e => { e.preventDefault(); deleteBar(bar.id); }}
                       >
                         {/* Resize left */}
                         {!readOnly && (
-                          <div
-                            className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize"
-                            onMouseDown={e => startResize(e, bar.id, 'start')}
-                          />
+                          <div className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize" onMouseDown={e => startResize(e, bar.id, 'start')} />
                         )}
-                        {/* Dep indicator */}
-                        {hasDeps && <div className="absolute left-1 top-1 h-1.5 w-1.5 rounded-full bg-white/70" />}
-                        {/* Date label (left side) */}
+                        {/* Linked indicator dot */}
+                        {isLinked && <div className="absolute left-1 top-1 h-1.5 w-1.5 rounded-full bg-white/80 shrink-0" />}
+                        {/* Date label */}
                         <span className="text-white/80 text-[10px] px-2 pointer-events-none select-none whitespace-nowrap overflow-hidden shrink-0">
-                          {view === 'week'
-                            ? `${MONTH_NAMES[parseDate(bar.start_date).getMonth()]} ${parseDate(bar.start_date).getDate()} – ${MONTH_NAMES[parseDate(bar.end_date).getMonth()]} ${parseDate(bar.end_date).getDate()}`
-                            : `${diffDays(parseDate(bar.start_date), parseDate(bar.end_date)) + 1}d`
+                          {view === 'month'
+                            ? `${diffDays(parseDate(bar.start_date), parseDate(bar.end_date)) + 1}d`
+                            : `${MONTH_NAMES[parseDate(bar.start_date).getMonth()]} ${parseDate(bar.start_date).getDate()} – ${MONTH_NAMES[parseDate(bar.end_date).getMonth()]} ${parseDate(bar.end_date).getDate()}`
                           }
                         </span>
-                        {/* Category name (right side, only if bar is wide enough) */}
+                        {/* Category name at right end */}
                         <span className="text-white text-[11px] font-medium pr-3 ml-auto pointer-events-none select-none whitespace-nowrap overflow-hidden">
                           {task.name}
                         </span>
                         {/* Resize right */}
                         {!readOnly && (
-                          <div
-                            className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize"
-                            onMouseDown={e => startResize(e, bar.id, 'end')}
-                          />
+                          <div className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize" onMouseDown={e => startResize(e, bar.id, 'end')} />
                         )}
                       </div>
                     );
@@ -542,7 +575,7 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
             );
           })}
 
-          {/* Add task row */}
+          {/* Add category row */}
           {!readOnly && (
             <div className="flex border-b border-border" style={{ height: ROW_H }}>
               <div style={{ width: LABEL_W, minWidth: LABEL_W }} className="shrink-0 border-r border-border flex items-center px-2">
@@ -560,10 +593,7 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
                     <button onClick={() => setAddingTask(false)}><X className="h-3.5 w-3.5 text-muted-foreground" /></button>
                   </div>
                 ) : (
-                  <button
-                    className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-                    onClick={() => setAddingTask(true)}
-                  >
+                  <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground" onClick={() => setAddingTask(true)}>
                     <Plus className="h-4 w-4" /> Add category
                   </button>
                 )}
@@ -576,7 +606,7 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
 
       {/* Legend */}
       <p className="text-xs text-muted-foreground">
-        Drag across cells to create a bar · Drag bar edges to resize · Double-click category name to rename · Right-click bar to delete · Use "Link Bars" to chain bars — resizing a source bar shifts all linked bars
+        Drag cells to create a bar · Drag bar body to move · Drag edges to resize · Click bars to select · Select 2+ bars to Link/Unlink · Right-click bar to delete
       </p>
     </div>
   );
