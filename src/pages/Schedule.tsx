@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Plus, Trash2, ChevronLeft, ChevronRight, Check, X, Link2, Loader2, Undo2 } from 'lucide-react';
+import { Plus, Trash2, ChevronLeft, ChevronRight, Check, X, Link2, Loader2, Undo2, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -378,11 +378,10 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
                     </div>
                   ) : (
                     <span
-                      className="text-sm flex-1 truncate cursor-pointer hover:text-primary"
-                      onDoubleClick={() => { if (!readOnly) { setEditingTaskId(task.id); setEditTaskName(task.name); } }}
+                      className="text-sm flex-1 truncate"
                     >{task.name}</span>
                   )}
-                  {!readOnly && (
+                  {!readOnly && !editingTaskId && (
                     confirmDeleteId === task.id ? (
                       <div className="flex items-center gap-1 whitespace-nowrap">
                         <span className="text-[10px] text-muted-foreground">Delete?</span>
@@ -390,12 +389,14 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
                         <button onClick={() => setConfirmDeleteId(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
                       </div>
                     ) : (
-                      <button
-                        className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                        onClick={() => setConfirmDeleteId(task.id)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground/40 hover:text-destructive" />
-                      </button>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <button onClick={() => { setEditingTaskId(task.id); setEditTaskName(task.name); }} className="text-muted-foreground hover:text-foreground">
+                          <Pencil className="h-3 w-3" />
+                        </button>
+                        <button onClick={() => setConfirmDeleteId(task.id)} className="text-muted-foreground/40 hover:text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     )
                   )}
                 </div>
