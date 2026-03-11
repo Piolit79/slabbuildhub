@@ -123,7 +123,7 @@ export default function AppSidebar() {
               </span>
             )}
             {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
-            {renderNavLink('/interiors', 'Ledger', LayoutDashboard, true)}
+            {renderNavLink('/interiors', 'Dashboard', LayoutDashboard, true)}
             {renderNavLink('/interiors/package-track', 'Package Track', Package, false)}
           </>
         )}
