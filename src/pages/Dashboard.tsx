@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DollarSign, TrendingDown, Landmark, Calculator, FileText, Wallet, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Rectangle } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Rectangle, Customized } from 'recharts';
 import { Contract, Payment, Draw, Vendor } from '@/types';
 import { format } from 'date-fns';
 
@@ -280,6 +280,31 @@ export default function Dashboard({ readOnly }: { readOnly?: boolean }) {
                       {budgetChartData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                     </Pie>
                     <Tooltip formatter={(val: number) => fmt(val)} />
+                    <Customized component={({ width, height }: any) => {
+                      const cx = width / 2;
+                      const cy = height / 2;
+                      const outerR = Math.min(width, height) * 0.425;
+                      const innerR = outerR * (30 / 85);
+                      const op = `M ${cx - outerR} ${cy} a ${outerR} ${outerR} 0 1 0 ${outerR * 2} 0 a ${outerR} ${outerR} 0 1 0 ${-outerR * 2} 0`;
+                      const ip = `M ${cx - innerR} ${cy} a ${innerR} ${innerR} 0 1 0 ${innerR * 2} 0 a ${innerR} ${innerR} 0 1 0 ${-innerR * 2} 0`;
+                      const pct = (innerR / outerR * 100).toFixed(1);
+                      return (
+                        <g pointerEvents="none">
+                          <defs>
+                            <radialGradient id="pieBevel" cx="50%" cy="50%" r="50%">
+                              <stop offset={`${pct}%`} stopColor="#fff" stopOpacity="0.22" />
+                              <stop offset={`${(+pct + 13).toFixed(1)}%`} stopColor="#000" stopOpacity="0" />
+                              <stop offset="80%" stopColor="#000" stopOpacity="0" />
+                              <stop offset="100%" stopColor="#000" stopOpacity="0.28" />
+                            </radialGradient>
+                            <clipPath id="donutClip">
+                              <path d={`${op} ${ip}`} fillRule="evenodd" />
+                            </clipPath>
+                          </defs>
+                          <circle cx={cx} cy={cy} r={outerR} fill="url(#pieBevel)" clipPath="url(#donutClip)" />
+                        </g>
+                      );
+                    }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
