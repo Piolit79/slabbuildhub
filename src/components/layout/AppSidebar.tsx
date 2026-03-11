@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderOpen, UserRound, MessageSquare, Settings2, FolderClosed, Store, ClipboardCheck } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderOpen, UserRound, MessageSquare, Settings2, FolderClosed, Store, ClipboardCheck, CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -11,6 +11,7 @@ const companyNavItems = [
   { to: '/budget', label: 'Budget', icon: Calculator },
   { to: '/payments', label: 'Payments', icon: CreditCard },
   { to: '/contracts', label: 'Contracts', icon: FileText },
+  { to: '/schedule', label: 'Schedule', icon: CalendarDays },
   { to: '/draws', label: 'Draws', icon: Landmark },
   { to: '/vendors', label: 'Vendors', icon: Users },
 ];
@@ -18,6 +19,7 @@ const companyNavItems = [
 const clientNavItems = [
   { to: '/client/dashboard', label: 'Ledger', icon: LayoutDashboard },
   { to: '/client/budget', label: 'Budget', icon: Calculator },
+  { to: '/client/schedule', label: 'Schedule', icon: CalendarDays },
   { to: '/client/draws', label: 'Draws', icon: Landmark },
   { to: '/client/coi', label: 'Cert. Of Insurance', icon: Shield },
   { to: '/client/sub-agreements', label: 'Sub. Agreements', icon: ClipboardCheck },

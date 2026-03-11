@@ -13,6 +13,7 @@ import PaymentsPage from "./pages/Payments";
 import BudgetPage from "./pages/Budget";
 import VendorsPage from "./pages/Vendors";
 import DrawsPage from "./pages/Draws";
+import SchedulePage from "./pages/Schedule";
 import SettingsPage from "./pages/Settings";
 import ClientUsers from "./pages/ClientUsers";
 import ClientFiles from "./pages/ClientFiles";
@@ -73,6 +74,7 @@ const App = () => {
                 <Route path="/payments" element={<ClientRedirect><PaymentsPage /></ClientRedirect>} />
                 <Route path="/budget" element={<ClientRedirect><BudgetPage /></ClientRedirect>} />
                 <Route path="/vendors" element={<ClientRedirect><VendorsPage /></ClientRedirect>} />
+                <Route path="/schedule" element={<ClientRedirect><SchedulePage /></ClientRedirect>} />
                 <Route path="/draws" element={<ClientRedirect><DrawsPage /></ClientRedirect>} />
                 <Route path="/settings" element={<ClientRedirect><SettingsPage /></ClientRedirect>} />
 
@@ -96,6 +98,7 @@ const App = () => {
                 <Route path="/client/dashboard" element={<Dashboard readOnly />} />
                 <Route path="/client/budget" element={<BudgetPage readOnly />} />
                 <Route path="/client/draws" element={<DrawsPage readOnly />} />
+                <Route path="/client/schedule" element={<SchedulePage readOnly />} />
                 <Route path="/client/coi" element={<ClientCOI />} />
                 <Route path="/client/sub-agreements" element={<ClientSubAgreements />} />
               </Route>
