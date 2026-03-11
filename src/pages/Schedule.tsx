@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Plus, Trash2, ChevronLeft, ChevronRight, Check, X, Link2, Loader2, Undo2, Pencil } from 'lucide-react';
+import { Plus, Trash2, ChevronLeft, ChevronRight, Check, X, Link2, Loader2, Undo2, Pencil, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -67,6 +67,36 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ task: Task; bars: Bar[] } | null>(null);
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Row drag-to-reorder ─────────────────────────────────────────────────────
+  const [rowDraggingId, setRowDraggingId] = useState<string | null>(null);
+  const [rowDragOverId, setRowDragOverId] = useState<string | null>(null);
+
+  const handleRowDragStart = (e: React.DragEvent, taskId: string) => {
+    setRowDraggingId(taskId);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+  const handleRowDragOver = (e: React.DragEvent, taskId: string) => {
+    e.preventDefault();
+    if (taskId !== rowDraggingId) setRowDragOverId(taskId);
+  };
+  const handleRowDrop = async (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    setRowDragOverId(null);
+    if (!rowDraggingId || rowDraggingId === targetId) { setRowDraggingId(null); return; }
+    const fromIdx = tasks.findIndex(t => t.id === rowDraggingId);
+    const toIdx = tasks.findIndex(t => t.id === targetId);
+    const reordered = [...tasks];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+    const updated = reordered.map((t, i) => ({ ...t, sort_order: i }));
+    setTasks(updated);
+    setRowDraggingId(null);
+    for (const t of updated) {
+      await supabase.from('schedule_tasks').update({ sort_order: t.sort_order }).eq('id', t.id);
+    }
+  };
+  const handleRowDragEnd = () => { setRowDraggingId(null); setRowDragOverId(null); };
 
   const addTask = async () => {
     if (!newTaskName.trim()) return;
@@ -373,9 +403,25 @@ export default function SchedulePage({ readOnly }: { readOnly?: boolean }) {
           {tasks.map(task => {
             const taskBars = bars.filter(b => b.task_id === task.id);
             return (
-              <div key={task.id} className="flex border-b border-border group" style={{ height: ROW_H }}>
+              <div
+                key={task.id}
+                className={cn('flex border-b border-border group transition-colors', rowDragOverId === task.id && 'border-t-2 border-t-primary')}
+                style={{ height: ROW_H, opacity: rowDraggingId === task.id ? 0.4 : 1 }}
+                onDragOver={e => handleRowDragOver(e, task.id)}
+                onDrop={e => handleRowDrop(e, task.id)}
+                onDragEnd={handleRowDragEnd}
+              >
                 {/* Label cell */}
                 <div style={{ width: LABEL_W, minWidth: LABEL_W }} className="shrink-0 border-r border-border flex items-center gap-1 px-2">
+                  {!readOnly && (
+                    <div
+                      className="opacity-0 group-hover:opacity-40 hover:!opacity-100 cursor-grab active:cursor-grabbing shrink-0 transition-opacity"
+                      draggable
+                      onDragStart={e => handleRowDragStart(e, task.id)}
+                    >
+                      <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
+                  )}
                   <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: task.color }} />
                   {editingTaskId === task.id ? (
                     <div className="flex items-center gap-1 flex-1">
