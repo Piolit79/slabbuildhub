@@ -266,13 +266,15 @@ export default function Dashboard({ readOnly }: { readOnly?: boolean }) {
               <div className="h-56 md:h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={budgetChartData} cx="50%" cy="50%" innerRadius="30%" outerRadius="85%" paddingAngle={0} dataKey="total" isAnimationActive={false} stroke="hsl(var(--background))" strokeWidth={2} label={({ cx, cy, midAngle, innerRadius, outerRadius, value }: any) => {
+                    <Pie data={budgetChartData} cx="50%" cy="50%" innerRadius="30%" outerRadius="85%" paddingAngle={0} dataKey="total" isAnimationActive={false} stroke="hsl(var(--background))" strokeWidth={1} label={({ cx, cy, midAngle, innerRadius, outerRadius, value, viewBox }: any) => {
                       const RADIAN = Math.PI / 180;
                       const radius = (innerRadius + outerRadius) / 2;
                       const x = cx + radius * Math.cos(-midAngle * RADIAN);
                       const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                      const ringWidth = outerRadius - innerRadius;
+                      const fontSize = Math.max(8, Math.min(12, ringWidth * 0.22));
                       return (
-                        <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize={12} fill="#fff" fontWeight={600}>
+                        <text x={x} y={y} textAnchor="middle" dominantBaseline="central" fontSize={fontSize} fill="#fff" fontWeight={600}>
                           {fmt(value)}
                         </text>
                       );
