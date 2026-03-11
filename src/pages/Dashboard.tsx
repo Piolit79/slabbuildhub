@@ -266,15 +266,6 @@ export default function Dashboard({ readOnly }: { readOnly?: boolean }) {
               <div className="h-56 md:h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    {/* 3D depth layers */}
-                    {[8, 6, 4, 2].map(offset => (
-                      <Pie key={offset} data={budgetChartData} cx="50%" cy={`calc(50% + ${offset}px)`} innerRadius="30%" outerRadius="85%" paddingAngle={0} dataKey="total" isAnimationActive={false} labelLine={false}>
-                        {budgetChartData.map((_, i) => (
-                          <Cell key={i} fill={i === 0 ? '#3a6190' : '#9c6068'} stroke="none" />
-                        ))}
-                      </Pie>
-                    ))}
-                    {/* Main pie */}
                     <Pie data={budgetChartData} cx="50%" cy="50%" innerRadius="30%" outerRadius="85%" paddingAngle={0} dataKey="total" stroke="hsl(var(--background))" strokeWidth={2} label={({ cx, cy, midAngle, innerRadius, outerRadius, value }: any) => {
                       const RADIAN = Math.PI / 180;
                       const radius = (innerRadius + outerRadius) / 2;
