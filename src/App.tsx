@@ -12,6 +12,7 @@ import ContractsPage from "./pages/Contracts";
 import PaymentsPage from "./pages/Payments";
 import BudgetPage from "./pages/Budget";
 import VendorsPage from "./pages/Vendors";
+import InvoicesPage from "./pages/Invoices";
 import DrawsPage from "./pages/Draws";
 import SchedulePage from "./pages/Schedule";
 import SettingsPage from "./pages/Settings";
@@ -76,6 +77,7 @@ const App = () => {
                 <Route path="/payments" element={<ClientRedirect><PaymentsPage /></ClientRedirect>} />
                 <Route path="/budget" element={<ClientRedirect><BudgetPage /></ClientRedirect>} />
                 <Route path="/vendors" element={<ClientRedirect><VendorsPage /></ClientRedirect>} />
+                <Route path="/invoices" element={<ClientRedirect><InvoicesPage /></ClientRedirect>} />
                 <Route path="/schedule" element={<ClientRedirect><SchedulePage /></ClientRedirect>} />
                 <Route path="/draws" element={<ClientRedirect><DrawsPage /></ClientRedirect>} />
                 <Route path="/settings" element={<ClientRedirect><SettingsPage /></ClientRedirect>} />
