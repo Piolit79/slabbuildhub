@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
   Plus, Pencil, Check, X, ChevronUp, ChevronDown, Trash2,
@@ -13,12 +12,6 @@ import {
 } from 'lucide-react';
 import JSZip from 'jszip';
 import * as pdfjsLib from 'pdfjs-dist';
-
-// pdfjs worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -349,6 +342,10 @@ export default function InteriorsLedger() {
   };
 
   const renderPdfToBase64 = async (pdf: File): Promise<string> => {
+    // Set worker lazily via CDN to avoid module-level crashes
+    if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+    }
     const arrayBuffer = await pdf.arrayBuffer();
     const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const page = await pdfDoc.getPage(1);
