@@ -42,6 +42,60 @@ function extractTextOps(content: string): string[] {
   return texts;
 }
 
+// ── PDF image extractor ───────────────────────────────────────────────────────
+// Extracts JPEG (DCTDecode) and PNG-like (FlateDecode) image XObjects from PDF
+
+function extractImagesFromPdf(buffer: Buffer): string[] {
+  const raw = buffer.toString('binary');
+  const images: string[] = [];
+
+  let pos = 0;
+  while (pos < raw.length) {
+    const streamStart = raw.indexOf('stream', pos);
+    if (streamStart === -1) break;
+
+    const nl = raw[streamStart + 6] === '\r' ? 8 : 7;
+    const dataStart = streamStart + nl;
+    const streamEnd = raw.indexOf('endstream', dataStart);
+    if (streamEnd === -1) break;
+
+    const preStream = raw.slice(Math.max(0, streamStart - 800), streamStart);
+    const isImage = /\/Subtype\s*\/Image/.test(preStream);
+
+    if (isImage) {
+      const streamData = Buffer.from(raw.slice(dataStart, streamEnd), 'binary');
+
+      // JPEG images stored with DCTDecode — extract directly as JPEG
+      if (/\/Filter\s*\/DCTDecode|\/DCTDecode/.test(preStream)) {
+        // Verify it looks like a JPEG (starts with FFD8)
+        if (streamData[0] === 0xff && streamData[1] === 0xd8) {
+          images.push(`data:image/jpeg;base64,${streamData.toString('base64')}`);
+        }
+      }
+      // FlateDecode images — decompress and try to use as-is or detect format
+      else if (/\/Filter\s*\/FlateDecode|\/FlateDecode/.test(preStream)) {
+        try {
+          const decompressed = inflateSync(streamData);
+          // Check if decompressed data is actually a JPEG or PNG
+          if (decompressed[0] === 0xff && decompressed[1] === 0xd8) {
+            images.push(`data:image/jpeg;base64,${decompressed.toString('base64')}`);
+          } else if (decompressed[0] === 0x89 && decompressed[1] === 0x50) {
+            images.push(`data:image/png;base64,${decompressed.toString('base64')}`);
+          }
+        } catch { /* skip undecompressable streams */ }
+      }
+    }
+
+    pos = streamEnd + 9;
+  }
+
+  // Filter out very small images (icons, bullets, etc.) — keep only reasonably sized ones
+  return images.filter(img => {
+    const b64 = img.split(',')[1];
+    return b64 && b64.length > 2000; // ~1.5KB minimum
+  });
+}
+
 function tryDecompress(data: Buffer): string | null {
   try { return inflateSync(data).toString('latin1'); } catch { /* try raw */ }
   try { return inflateRawSync(data).toString('latin1'); } catch { /* not compressed */ }
@@ -112,6 +166,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const buffer = Buffer.from(pdfBase64, 'base64');
     const text = extractTextFromPdf(buffer);
+    const pdfImages = extractImagesFromPdf(buffer);
 
     if (!text || text.trim().length < 10) {
       return res.status(400).json({
@@ -179,7 +234,7 @@ Return ONLY valid JSON, nothing else:
     }
 
     const parsed = JSON.parse(match[0]);
-    return res.status(200).json(parsed);
+    return res.status(200).json({ ...parsed, pdfImages });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     return res.status(500).json({ error: message });

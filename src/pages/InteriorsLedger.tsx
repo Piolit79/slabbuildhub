@@ -395,15 +395,30 @@ export default function InteriorsLedger() {
         body: JSON.stringify({ pdfBase64: base64 }),
       });
       if (!resp.ok) throw new Error(await resp.text());
-      const { items: aiItems, room } = await resp.json();
+      const { items: aiItems, room, pdfImages } = await resp.json();
 
-      // Auto-match images by fuzzy score
-      const matched: ScannedItem[] = (aiItems || []).map((ai: ScannedItem) => {
+      // Merge PDF-extracted images with ZIP images (ZIP takes precedence if both provided)
+      const allImages: ZipImage[] = [
+        ...extracted,
+        ...(pdfImages || []).map((dataUrl: string, i: number) => ({
+          name: `image-${i + 1}.jpg`,
+          dataUrl,
+        })),
+      ];
+      if (allImages.length > 0) setZipImages(allImages);
+
+      // Auto-match: try ZIP first (by filename), then PDF images by index order
+      const matched: ScannedItem[] = (aiItems || []).map((ai: ScannedItem, idx: number) => {
+        // Try fuzzy filename match against ZIP images
         let best: ZipImage | null = null;
         let bestScore = 0;
         for (const img of extracted) {
-          const score = fuzzyScore(img.name, ai.image_hint, ai.vendor, ai.item);
+          const score = fuzzyScore(img.name, ai.image_hint ?? '', ai.vendor ?? '', ai.item ?? '');
           if (score > bestScore) { bestScore = score; best = img; }
+        }
+        // Fall back to matching PDF images by position
+        if (!best && pdfImages && pdfImages[idx]) {
+          best = allImages.find(img => img.name === `image-${idx + 1}.jpg`) || null;
         }
         return { ...ai, assigned_image: best ? best.name : undefined, image_url: best ? best.dataUrl : undefined };
       });
