@@ -340,22 +340,17 @@ export default function InteriorsLedger() {
     return images;
   };
 
-  const renderPdfToBase64 = async (pdf: File): Promise<string> => {
-    // Dynamic import so pdfjs never loads at app startup
-    const pdfjsLib = await import('pdfjs-dist');
-    if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-    }
-    const arrayBuffer = await pdf.arrayBuffer();
-    const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    const page = await pdfDoc.getPage(1);
-    const viewport = page.getViewport({ scale: 2 });
-    const canvas = document.createElement('canvas');
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    const ctx = canvas.getContext('2d')!;
-    await page.render({ canvasContext: ctx, viewport }).promise;
-    return canvas.toDataURL('image/png').split(',')[1];
+  const readPdfAsBase64 = (pdf: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Strip the data URL prefix to get raw base64
+        resolve(result.includes(',') ? result.split(',')[1] : result);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(pdf);
+    });
   };
 
   const handleScan = async () => {
@@ -369,14 +364,14 @@ export default function InteriorsLedger() {
         setZipImages(extracted);
       }
 
-      // Render PDF to image
-      const base64 = await renderPdfToBase64(pdfFile);
+      // Read PDF as base64 (server will extract text)
+      const base64 = await readPdfAsBase64(pdfFile);
 
       // Call scan API
       const resp = await fetch('/api/interiors-scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ boardImageBase64: base64 }),
+        body: JSON.stringify({ pdfBase64: base64 }),
       });
       if (!resp.ok) throw new Error(await resp.text());
       const { items: aiItems, room } = await resp.json();

@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import pdfParse from 'pdf-parse';
 
 export const maxDuration = 60;
 
@@ -9,19 +10,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!OPENAI_API_KEY) return res.status(500).json({ error: 'OPENAI_API_KEY not set' });
 
   try {
-    const { boardImageBase64 } = req.body;
-    if (!boardImageBase64) return res.status(400).json({ error: 'boardImageBase64 required' });
+    const { pdfBase64 } = req.body;
+    if (!pdfBase64) return res.status(400).json({ error: 'pdfBase64 required' });
 
-    const prompt = `You are analyzing an interior design board. Extract every furniture and lighting item shown.
+    // Extract text from PDF
+    const buffer = Buffer.from(pdfBase64, 'base64');
+    const pdfData = await pdfParse(buffer);
+    const text = pdfData.text;
 
-For each item, return:
-- vendor: the brand/vendor name (e.g. "RH Modern", "A.Rudin", "Lumens")
-- item: the item type (e.g. "Sofa", "Lounge Chair", "Floor Lamp", "Rug", "Side Table")
-- description: the full product name/model (e.g. "Custom 2735 Sectional", "Quill Drink Table")
-- finish_color: any finish, color, or material mentioned (e.g. "COM", "Bronze", "Walnut")
-- image_hint: a short keyword from the label that could help match a filename (e.g. "sectional", "quill", "comtesse")
+    if (!text || text.trim().length < 10) {
+      return res.status(400).json({ error: 'Could not extract text from PDF. Make sure the PDF is an InDesign-exported file, not a scanned image.' });
+    }
 
-Return ONLY valid JSON in this exact format:
+    const prompt = `You are analyzing text extracted from an interior design board PDF. The text contains furniture and lighting items in the format "VENDOR - PRODUCT NAME" or similar.
+
+Here is the extracted text:
+---
+${text}
+---
+
+Extract every furniture and lighting item. For each item return:
+- vendor: the brand/vendor name (e.g. "RH Modern", "A.Rudin", "Lumens", "Visual Comfort")
+- item: the item type (e.g. "Sofa", "Lounge Chair", "Floor Lamp", "Rug", "Side Table", "Pendant", "Sconce")
+- description: the full product name/model as written (e.g. "Custom 2735 Sectional, COM")
+- finish_color: any finish, color, material, or fabric mentioned (e.g. "COM", "Bronze", "Walnut", "Performance Linen Weave, Fog")
+- image_hint: one or two short keywords from the product name useful for matching a filename (e.g. "sectional", "quill drink", "comtesse")
+
+Also identify the room name if it appears (e.g. "LIVING ROOM", "PRIMARY BEDROOM").
+
+Return ONLY valid JSON in this exact format, no other text:
 {
   "room": "Living Room",
   "items": [
@@ -33,10 +50,7 @@ Return ONLY valid JSON in this exact format:
       "image_hint": "sectional"
     }
   ]
-}
-
-If a room name appears on the board, include it in the "room" field. Otherwise use empty string.
-Extract ALL items visible on the board. Do not skip any.`;
+}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -47,18 +61,7 @@ Extract ALL items visible on the board. Do not skip any.`;
       body: JSON.stringify({
         model: 'gpt-4o',
         max_tokens: 2000,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image_url',
-                image_url: { url: `data:image/png;base64,${boardImageBase64}`, detail: 'high' },
-              },
-              { type: 'text', text: prompt },
-            ],
-          },
-        ],
+        messages: [{ role: 'user', content: prompt }],
       }),
     });
 
@@ -70,7 +73,6 @@ Extract ALL items visible on the board. Do not skip any.`;
     const json = await response.json();
     const content = json.choices?.[0]?.message?.content || '';
 
-    // Extract JSON from the response
     const match = content.match(/\{[\s\S]*\}/);
     if (!match) return res.status(500).json({ error: 'Could not parse AI response', raw: content });
 
