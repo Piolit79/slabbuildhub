@@ -67,6 +67,7 @@ interface ScannedItem {
   description: string;
   finish_color: string;
   image_hint: string;
+  image_filename?: string; // exact filename from IDML scan
   image_url?: string;
   assigned_image?: string; // filename from zip
 }
@@ -154,6 +155,7 @@ export default function InteriorsLedger() {
   const [editValue, setEditValue] = useState('');
 
   // Upload/scan state
+  const [idmlFile, setIdmlFile] = useState<File | null>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [scanning, setScanning] = useState(false);
@@ -167,6 +169,7 @@ export default function InteriorsLedger() {
   const [showImagePicker, setShowImagePicker] = useState<{ itemId: string } | null>(null);
   const [showZipPicker, setShowZipPicker] = useState<{ index: number } | null>(null);
 
+  const idmlInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const zipInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -363,7 +366,9 @@ export default function InteriorsLedger() {
 
 
   const handleScan = async () => {
-    if (!pdfFile) { toast.error('Please select a PDF file'); return; }
+    const sourceFile = idmlFile || pdfFile;
+    if (!sourceFile) { toast.error('Please select an IDML or PDF file'); return; }
+    const isIdml = !!idmlFile;
     setScanning(true);
     try {
       // Extract ZIP images if provided
@@ -373,47 +378,83 @@ export default function InteriorsLedger() {
         setZipImages(extracted);
       }
 
-      // Upload PDF to Supabase Storage (avoids Vercel 4.5MB payload limit)
-      const tempPath = `temp/${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`;
+      // Upload source file to Supabase Storage (avoids Vercel 4.5MB payload limit)
+      const ext = isIdml ? 'idml' : 'pdf';
+      const contentType = isIdml ? 'application/zip' : 'application/pdf';
+      const tempPath = `temp/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
       const { error: upErr } = await supabase.storage
         .from('interiors-images')
-        .upload(tempPath, pdfFile, { contentType: 'application/pdf', upsert: true });
-      if (upErr) throw new Error(`PDF upload failed: ${upErr.message}`);
+        .upload(tempPath, sourceFile, { contentType, upsert: true });
+      if (upErr) throw new Error(`Upload failed: ${upErr.message}`);
       const { data: urlData } = supabase.storage.from('interiors-images').getPublicUrl(tempPath);
 
-      // Call scan API with the storage URL
-      const resp = await fetch('/api/interiors-scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdfUrl: urlData.publicUrl }),
-      });
+      let aiItems: ScannedItem[] = [];
+      let room = '';
+      let docImageFilenames: string[] = [];
 
-      // Clean up temp PDF from storage (non-blocking)
-      supabase.storage.from('interiors-images').remove([tempPath]).catch(() => {});
-      if (!resp.ok) throw new Error(await resp.text());
-      const { items: aiItems, room, pdfImages } = await resp.json();
-
-      // Merge PDF-extracted images with ZIP images (ZIP takes precedence if both provided)
-      const allImages: ZipImage[] = [
-        ...extracted,
-        ...(pdfImages || []).map((dataUrl: string, i: number) => ({
+      if (isIdml) {
+        // ── IDML path: clean XML text + exact image filenames ──────────────
+        const resp = await fetch('/api/interiors-scan-idml', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idmlUrl: urlData.publicUrl }),
+        });
+        supabase.storage.from('interiors-images').remove([tempPath]).catch(() => {});
+        if (!resp.ok) throw new Error(await resp.text());
+        const data = await resp.json();
+        aiItems = data.items || [];
+        room = data.room || '';
+        docImageFilenames = data.imageFilenames || [];
+      } else {
+        // ── PDF path (fallback) ────────────────────────────────────────────
+        const resp = await fetch('/api/interiors-scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pdfUrl: urlData.publicUrl }),
+        });
+        supabase.storage.from('interiors-images').remove([tempPath]).catch(() => {});
+        if (!resp.ok) throw new Error(await resp.text());
+        const data = await resp.json();
+        aiItems = data.items || [];
+        room = data.room || '';
+        // Merge PDF-extracted images with ZIP images
+        const pdfImages: ZipImage[] = (data.pdfImages || []).map((dataUrl: string, i: number) => ({
           name: `image-${i + 1}.jpg`,
           dataUrl,
-        })),
-      ];
-      if (allImages.length > 0) setZipImages(allImages);
+        }));
+        if (pdfImages.length > 0) {
+          const merged = [...extracted, ...pdfImages];
+          setZipImages(merged);
+          extracted = merged;
+        }
+      }
 
-      // Auto-match by fuzzy filename score against ZIP images only
-      // PDF images cannot be reliably matched by position — user assigns via picker
-      const matched: ScannedItem[] = (aiItems || []).map((ai: ScannedItem) => {
+      // ── Image matching ─────────────────────────────────────────────────────
+      // Build a lookup from filename → ZipImage for exact matching (IDML path)
+      const zipByName = new Map<string, ZipImage>(extracted.map(img => [img.name.toLowerCase(), img]));
+
+      const matched: ScannedItem[] = aiItems.map((ai: ScannedItem) => {
+        // 1. Exact filename match (IDML gives us this via image_filename)
+        if (ai.image_filename) {
+          const exact = zipByName.get(ai.image_filename.toLowerCase());
+          if (exact) return { ...ai, assigned_image: exact.name, image_url: exact.dataUrl };
+        }
+
+        // 2. Fuzzy fallback (used for PDF path or when exact match fails)
         let best: ZipImage | null = null;
         let bestScore = 0;
         for (const img of extracted) {
-          const score = fuzzyScore(img.name, ai.image_hint ?? '', ai.vendor ?? '', ai.item ?? '');
+          const score = fuzzyScore(img.name, ai.image_hint ?? ai.image_filename ?? '', ai.vendor ?? '', ai.item ?? '');
           if (score > bestScore) { bestScore = score; best = img; }
         }
         return { ...ai, assigned_image: best ? best.name : undefined, image_url: best ? best.dataUrl : undefined };
       });
+
+      // If IDML gave us filenames but user didn't upload the Links ZIP,
+      // show a note about what filenames were expected
+      if (isIdml && docImageFilenames.length > 0 && extracted.length === 0) {
+        toast.info(`Found ${docImageFilenames.length} image file(s) in the IDML. Upload the InDesign Links ZIP to auto-attach photos.`);
+      }
 
       setScannedItems(matched);
       setScannedRoom(room || '');
@@ -498,6 +539,7 @@ export default function InteriorsLedger() {
 
       setItems(prev => [...prev, ...newItems]);
       setShowScanModal(false);
+      setIdmlFile(null);
       setPdfFile(null);
       setZipFile(null);
       setZipImages([]);
@@ -577,38 +619,52 @@ export default function InteriorsLedger() {
           <Scan className="h-4 w-4" /> Import from Design Board
         </div>
         <div className="flex flex-wrap gap-3 items-end">
+
+          {/* IDML — primary (recommended) */}
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Design Board PDF</p>
+            <p className="text-xs font-medium">Design Board <span className="text-primary">.idml</span> <span className="text-muted-foreground font-normal">(recommended)</span></p>
             <div className="flex gap-2 items-center">
-              <Button variant="outline" size="sm" onClick={() => pdfInputRef.current?.click()} className="gap-1.5 text-xs">
+              <Button variant="outline" size="sm" onClick={() => idmlInputRef.current?.click()} className={`gap-1.5 text-xs ${idmlFile ? 'border-primary text-primary' : ''}`}>
                 <Upload className="h-3.5 w-3.5" />
-                {pdfFile ? pdfFile.name.slice(0, 24) + (pdfFile.name.length > 24 ? '…' : '') : 'Choose PDF'}
+                {idmlFile ? idmlFile.name.slice(0, 26) + (idmlFile.name.length > 26 ? '…' : '') : 'Choose IDML'}
               </Button>
-              {pdfFile && <button onClick={() => setPdfFile(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>}
+              {idmlFile && <button onClick={() => setIdmlFile(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>}
             </div>
-            <input ref={pdfInputRef} type="file" accept=".pdf" className="hidden" onChange={e => setPdfFile(e.target.files?.[0] || null)} />
+            <input ref={idmlInputRef} type="file" accept=".idml" className="hidden" onChange={e => { setIdmlFile(e.target.files?.[0] || null); setPdfFile(null); }} />
           </div>
 
+          {/* Links ZIP */}
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">InDesign Links Folder (ZIP)</p>
+            <p className="text-xs font-medium">InDesign Links Folder <span className="text-muted-foreground font-normal">(.zip)</span></p>
             <div className="flex gap-2 items-center">
               <Button variant="outline" size="sm" onClick={() => zipInputRef.current?.click()} className="gap-1.5 text-xs">
                 <Upload className="h-3.5 w-3.5" />
-                {zipFile ? zipFile.name.slice(0, 24) + (zipFile.name.length > 24 ? '…' : '') : 'Choose ZIP'}
+                {zipFile ? zipFile.name.slice(0, 26) + (zipFile.name.length > 26 ? '…' : '') : 'Choose ZIP'}
               </Button>
               {zipFile && <button onClick={() => setZipFile(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>}
             </div>
             <input ref={zipInputRef} type="file" accept=".zip" className="hidden" onChange={e => setZipFile(e.target.files?.[0] || null)} />
           </div>
 
-          <Button size="sm" onClick={handleScan} disabled={!pdfFile || scanning} className="gap-1.5">
+          {/* Scan button */}
+          <Button size="sm" onClick={handleScan} disabled={(!idmlFile && !pdfFile) || scanning} className="gap-1.5">
             {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Scan className="h-4 w-4" />}
             {scanning ? 'Scanning…' : 'Scan with AI'}
           </Button>
         </div>
-        {!zipFile && (
-          <p className="text-xs text-muted-foreground">Tip: adding the InDesign Links ZIP lets the app auto-match product photos to each item.</p>
-        )}
+
+        {/* PDF fallback */}
+        <div className="flex flex-wrap gap-3 items-center pt-1 border-t border-dashed">
+          <p className="text-xs text-muted-foreground">Or use PDF (less accurate):</p>
+          <div className="flex gap-2 items-center">
+            <Button variant="ghost" size="sm" onClick={() => pdfInputRef.current?.click()} className="gap-1.5 text-xs h-7">
+              <Upload className="h-3 w-3" />
+              {pdfFile ? pdfFile.name.slice(0, 24) + (pdfFile.name.length > 24 ? '…' : '') : 'Choose PDF'}
+            </Button>
+            {pdfFile && <button onClick={() => setPdfFile(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>}
+          </div>
+          <input ref={pdfInputRef} type="file" accept=".pdf" className="hidden" onChange={e => { setPdfFile(e.target.files?.[0] || null); setIdmlFile(null); }} />
+        </div>
       </div>
 
       {/* Loading */}
