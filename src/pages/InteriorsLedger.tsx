@@ -11,7 +11,6 @@ import {
   Upload, Loader2, Link2, Package, ImageIcon, Scan, RefreshCw
 } from 'lucide-react';
 import JSZip from 'jszip';
-import * as pdfjsLib from 'pdfjs-dist';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -342,7 +341,8 @@ export default function InteriorsLedger() {
   };
 
   const renderPdfToBase64 = async (pdf: File): Promise<string> => {
-    // Set worker lazily via CDN to avoid module-level crashes
+    // Dynamic import so pdfjs never loads at app startup
+    const pdfjsLib = await import('pdfjs-dist');
     if (!pdfjsLib.GlobalWorkerOptions.workerSrc) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
     }

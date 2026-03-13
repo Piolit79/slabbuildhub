@@ -31,8 +31,8 @@ import COISettings from "./coi-tracker/pages/Settings";
 import AskCodes from "./code-hub/pages/AskCodes";
 import ManageSources from "./code-hub/pages/ManageSources";
 import VendorDirectoryPage from "./pages/VendorDirectory";
-import InteriorsLedger from "./pages/InteriorsLedger";
 import PackageTrack from "./pages/PackageTrack";
+const InteriorsLedger = React.lazy(() => import("./pages/InteriorsLedger"));
 import ClientCOI from "./pages/ClientCOI";
 import ClientSubAgreements from "./pages/ClientSubAgreements";
 import TrelloPage from "./pages/Trello";
@@ -103,7 +103,7 @@ const App = () => {
                 <Route path="/code/admin" element={<ClientRedirect><ManageSources /></ClientRedirect>} />
 
                 {/* Interiors Hub routes (company only) */}
-                <Route path="/interiors" element={<ClientRedirect><InteriorsLedger /></ClientRedirect>} />
+                <Route path="/interiors" element={<ClientRedirect><React.Suspense fallback={null}><InteriorsLedger /></React.Suspense></ClientRedirect>} />
                 <Route path="/interiors/package-track" element={<ClientRedirect><PackageTrack /></ClientRedirect>} />
 
                 {/* Client Hub routes (company: admin views, client: read-only project views) */}
