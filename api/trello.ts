@@ -9,6 +9,15 @@ function auth() {
   return `key=${key}&token=${token}`;
 }
 
+async function trelloJson(r: Response) {
+  const text = await r.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(text || `Trello error ${r.status}`);
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const a = auth();
@@ -17,7 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // GET /api/trello?action=boards
     if (req.method === 'GET' && action === 'boards') {
       const r = await fetch(`${TRELLO_BASE}/members/me/boards?fields=id,name,url,closed&filter=open&${a}`);
-      const data = await r.json();
+      const data = await trelloJson(r);
       return res.status(r.status).json(data);
     }
 
@@ -29,7 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         fetch(`${TRELLO_BASE}/boards/${boardId}/lists?fields=id,name,pos,closed&filter=open&${a}`),
         fetch(`${TRELLO_BASE}/boards/${boardId}/cards?fields=id,name,desc,idList,pos,due,url&filter=open&${a}`),
       ]);
-      const [lists, cards] = await Promise.all([listsR.json(), cardsR.json()]);
+      const [lists, cards] = await Promise.all([trelloJson(listsR), trelloJson(cardsR)]);
       return res.status(200).json({ lists, cards });
     }
 
@@ -42,7 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, idList, desc: desc || '', pos: 'bottom' }),
       });
-      const data = await r.json();
+      const data = await trelloJson(r);
       return res.status(r.status).json(data);
     }
 
@@ -60,7 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const data = await r.json();
+      const data = await trelloJson(r);
       return res.status(r.status).json(data);
     }
 
@@ -81,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, idBoard, pos: 'bottom' }),
       });
-      const data = await r.json();
+      const data = await trelloJson(r);
       return res.status(r.status).json(data);
     }
 
