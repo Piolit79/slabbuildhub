@@ -403,18 +403,14 @@ export default function InteriorsLedger() {
       ];
       if (allImages.length > 0) setZipImages(allImages);
 
-      // Auto-match: try ZIP first (by filename), then PDF images by index order
-      const matched: ScannedItem[] = (aiItems || []).map((ai: ScannedItem, idx: number) => {
-        // Try fuzzy filename match against ZIP images
+      // Auto-match by fuzzy filename score against ZIP images only
+      // PDF images cannot be reliably matched by position — user assigns via picker
+      const matched: ScannedItem[] = (aiItems || []).map((ai: ScannedItem) => {
         let best: ZipImage | null = null;
         let bestScore = 0;
         for (const img of extracted) {
           const score = fuzzyScore(img.name, ai.image_hint ?? '', ai.vendor ?? '', ai.item ?? '');
           if (score > bestScore) { bestScore = score; best = img; }
-        }
-        // Fall back to matching PDF images by position
-        if (!best && pdfImages && pdfImages[idx]) {
-          best = allImages.find(img => img.name === `image-${idx + 1}.jpg`) || null;
         }
         return { ...ai, assigned_image: best ? best.name : undefined, image_url: best ? best.dataUrl : undefined };
       });

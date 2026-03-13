@@ -176,41 +176,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!text || text.trim().length < 10) {
       return res.status(400).json({
         error: 'Could not extract text from this PDF.',
-        hint: 'Raw byte count: ' + buffer.length,
+        hint: `Raw byte count: ${buffer.length}, extracted text length: ${text?.length ?? 0}`,
       });
     }
 
-    const prompt = `You are analyzing text extracted from an interior design board PDF.
-The text contains furniture and lighting items, typically in formats like:
-"VENDOR - PRODUCT NAME, FINISH"  or  "VENDOR - MODEL NAME"
+    // Use up to 10000 chars to capture all items across multi-page PDFs
+    const truncatedText = text.slice(0, 10000);
+
+    const prompt = `You are analyzing raw text extracted from an interior design board or furniture schedule PDF.
+
+IMPORTANT: Only extract items that actually appear in the text below. Do NOT invent or guess items. Do NOT use example items.
+
+The text contains furniture/lighting items, often in formats like:
+- "VENDOR - PRODUCT NAME"
+- "VENDOR - PRODUCT NAME, FINISH/COLOR"
+- Room headers like "LIVING ROOM", "DINING ROOM", "FOYER", "PRIMARY BEDROOM 105"
 
 Extracted text:
 ---
-${text.slice(0, 4000)}
+${truncatedText}
 ---
 
-Extract every distinct furniture and lighting item. For each return:
-- vendor: brand name (e.g. "RH Modern", "A.Rudin", "Lumens", "Visual Comfort", "Urban Electric Co.")
-- item: item type (e.g. "Sofa", "Sectional", "Lounge Chair", "Floor Lamp", "Rug", "Side Table", "Pendant", "Sconce", "Ottoman", "Drink Table")
-- description: full product name/model as written
-- finish_color: finish, color, or material if mentioned (empty string if not)
-- image_hint: 1-2 short keywords from the product name for filename matching
+For EACH item found, return:
+- vendor: the brand/vendor name exactly as written
+- item: the item category (Sofa, Chair, Rug, Table, Pendant, Lamp, Sconce, Ottoman, Bed, Nightstand, etc.)
+- description: the full product name as written in the text
+- finish_color: finish/color/material if mentioned, otherwise empty string
+- image_hint: 1-2 keywords from the product name useful for image filename matching
 
-Detect the room name if present (e.g. "LIVING ROOM", "PRIMARY BEDROOM").
+Also return the room name if present (first room section header found).
 
-Return ONLY valid JSON, nothing else:
-{
-  "room": "Living Room",
-  "items": [
-    {
-      "vendor": "A.Rudin",
-      "item": "Sectional",
-      "description": "Custom 2735 Sectional, COM",
-      "finish_color": "COM",
-      "image_hint": "sectional"
-    }
-  ]
-}`;
+Return ONLY a JSON object, no markdown, no explanation:
+{"room":"","items":[{"vendor":"","item":"","description":"","finish_color":"","image_hint":""}]}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -220,7 +217,7 @@ Return ONLY valid JSON, nothing else:
       },
       body: JSON.stringify({
         model: 'gpt-4o',
-        max_tokens: 2000,
+        max_tokens: 3000,
         messages: [{ role: 'user', content: prompt }],
       }),
     });
