@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderClosed, FolderOpen, UserRound, MessageSquare, Store, ClipboardCheck, CalendarDays, Layers, Package, Receipt, Kanban } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderClosed, FolderOpen, UserRound, MessageSquare, Store, ClipboardCheck, CalendarDays, Layers, Package, Receipt, Kanban, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -99,6 +99,7 @@ export default function AppSidebar() {
             )}
             {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
             {renderNavLink('/trello', 'Trello', Kanban)}
+            {renderNavLink('/calendar', 'Calendar', Calendar)}
           </>
         )}
 
