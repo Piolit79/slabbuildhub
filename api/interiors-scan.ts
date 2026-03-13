@@ -161,10 +161,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!OPENAI_API_KEY) return res.status(500).json({ error: 'OPENAI_API_KEY not set' });
 
   try {
-    const { pdfBase64 } = req.body;
-    if (!pdfBase64) return res.status(400).json({ error: 'pdfBase64 required' });
+    const { pdfUrl } = req.body;
+    if (!pdfUrl) return res.status(400).json({ error: 'pdfUrl required' });
 
-    const buffer = Buffer.from(pdfBase64, 'base64');
+    // Fetch the PDF from Supabase Storage
+    const pdfResp = await fetch(pdfUrl);
+    if (!pdfResp.ok) throw new Error(`Failed to fetch PDF: ${pdfResp.status}`);
+    const arrayBuffer = await pdfResp.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
     const text = extractTextFromPdf(buffer);
     const pdfImages = extractImagesFromPdf(buffer);
 
@@ -234,6 +239,7 @@ Return ONLY valid JSON, nothing else:
     }
 
     const parsed = JSON.parse(match[0]);
+
     return res.status(200).json({ ...parsed, pdfImages });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);

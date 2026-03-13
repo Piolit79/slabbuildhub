@@ -361,18 +361,6 @@ export default function InteriorsLedger() {
     return images;
   };
 
-  const readPdfAsBase64 = (pdf: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        // Strip the data URL prefix to get raw base64
-        resolve(result.includes(',') ? result.split(',')[1] : result);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(pdf);
-    });
-  };
 
   const handleScan = async () => {
     if (!pdfFile) { toast.error('Please select a PDF file'); return; }
@@ -385,15 +373,23 @@ export default function InteriorsLedger() {
         setZipImages(extracted);
       }
 
-      // Read PDF as base64 (server will extract text)
-      const base64 = await readPdfAsBase64(pdfFile);
+      // Upload PDF to Supabase Storage (avoids Vercel 4.5MB payload limit)
+      const tempPath = `temp/${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`;
+      const { error: upErr } = await supabase.storage
+        .from('interiors-images')
+        .upload(tempPath, pdfFile, { contentType: 'application/pdf', upsert: true });
+      if (upErr) throw new Error(`PDF upload failed: ${upErr.message}`);
+      const { data: urlData } = supabase.storage.from('interiors-images').getPublicUrl(tempPath);
 
-      // Call scan API
+      // Call scan API with the storage URL
       const resp = await fetch('/api/interiors-scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdfBase64: base64 }),
+        body: JSON.stringify({ pdfUrl: urlData.publicUrl }),
       });
+
+      // Clean up temp PDF from storage (non-blocking)
+      supabase.storage.from('interiors-images').remove([tempPath]).catch(() => {});
       if (!resp.ok) throw new Error(await resp.text());
       const { items: aiItems, room, pdfImages } = await resp.json();
 
