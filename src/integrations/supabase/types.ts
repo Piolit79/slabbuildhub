@@ -146,6 +146,90 @@ export type Database = {
         }
         Relationships: []
       }
+      interiors_rooms: {
+        Row: {
+          id: string
+          project_id: string
+          name: string
+          sort_order: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          name: string
+          sort_order?: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          name?: string
+          sort_order?: number
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      interiors_items: {
+        Row: {
+          id: string
+          project_id: string
+          room_id: string
+          key: string
+          item: string
+          vendor: string
+          finish_color: string
+          description: string
+          qty: number
+          image_url: string
+          product_link: string
+          tracking_number: string
+          carrier: string
+          delivery_status: string
+          eta: string | null
+          sort_order: number
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          room_id: string
+          key?: string
+          item?: string
+          vendor?: string
+          finish_color?: string
+          description?: string
+          qty?: number
+          image_url?: string
+          product_link?: string
+          tracking_number?: string
+          carrier?: string
+          delivery_status?: string
+          eta?: string | null
+          sort_order?: number
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          room_id?: string
+          key?: string
+          item?: string
+          vendor?: string
+          finish_color?: string
+          description?: string
+          qty?: number
+          image_url?: string
+          product_link?: string
+          tracking_number?: string
+          carrier?: string
+          delivery_status?: string
+          eta?: string | null
+          sort_order?: number
+          created_at?: string | null
+        }
+        Relationships: []
+      }
       coi_files: {
         Row: {
           coi_id: string | null
