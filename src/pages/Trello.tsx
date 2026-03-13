@@ -300,14 +300,23 @@ export default function TrelloPage() {
         </div>
       ) : (
         <div className="flex gap-4 p-6 overflow-x-auto flex-1 items-start">
-          {lists.map(list => {
+          {lists.map((list, idx) => {
             const listCards = cards.filter(c => c.idList === list.id);
+            const palette = [
+              { bg: '#4f81bd', light: 'rgba(79,129,189,0.10)', border: 'rgba(79,129,189,0.25)' },
+              { bg: '#c37e87', light: 'rgba(195,126,135,0.10)', border: 'rgba(195,126,135,0.25)' },
+              { bg: '#3d6594', light: 'rgba(61,101,148,0.10)', border: 'rgba(61,101,148,0.25)' },
+              { bg: '#a6636b', light: 'rgba(166,99,107,0.10)', border: 'rgba(166,99,107,0.25)' },
+              { bg: '#6a8fbf', light: 'rgba(106,143,191,0.10)', border: 'rgba(106,143,191,0.25)' },
+              { bg: '#b87e8a', light: 'rgba(184,126,138,0.10)', border: 'rgba(184,126,138,0.25)' },
+            ];
+            const color = palette[idx % palette.length];
             return (
-              <div key={list.id} className="flex flex-col w-64 shrink-0 bg-muted/40 rounded-xl border border-border">
+              <div key={list.id} className="flex flex-col w-64 shrink-0 rounded-xl overflow-hidden" style={{ border: `1px solid ${color.border}`, background: color.light }}>
                 {/* List header */}
-                <div className="px-3 py-3 font-semibold text-sm text-foreground border-b border-border">
+                <div className="px-3 py-3 font-semibold text-sm text-white" style={{ backgroundColor: color.bg }}>
                   {list.name}
-                  <span className="ml-2 text-xs text-muted-foreground font-normal">({listCards.length})</span>
+                  <span className="ml-2 text-xs font-normal opacity-75">({listCards.length})</span>
                 </div>
 
                 {/* Cards */}
