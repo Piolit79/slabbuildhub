@@ -1,4 +1,25 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Component } from 'react';
+
+// ─── Error Boundary ───────────────────────────────────────────────────────────
+class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: string | null }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error) { return { error: error.message }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="p-6 border border-red-200 rounded-lg bg-red-50 text-red-800">
+          <p className="font-semibold mb-1">Something went wrong rendering this page.</p>
+          <p className="text-xs font-mono">{this.state.error}</p>
+          <button className="mt-3 text-xs underline" onClick={() => this.setState({ error: null })}>Try again</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { useProject } from '@/contexts/ProjectContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -527,6 +548,7 @@ export default function InteriorsLedger() {
   const sortedRooms = [...rooms].sort((a, b) => a.sort_order - b.sort_order);
 
   return (
+    <ErrorBoundary>
     <div className="p-4 md:p-6 space-y-6 max-w-full">
       {/* Hidden inputs */}
       <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageFileChange} />
@@ -968,28 +990,28 @@ export default function InteriorsLedger() {
                       </td>
                       <td className="px-2 py-1.5">
                         <Input
-                          value={si.item}
+                          value={si.item ?? ''}
                           onChange={e => setScannedItems(prev => prev.map((s, i) => i === idx ? { ...s, item: e.target.value } : s))}
                           className="h-7 text-xs px-1"
                         />
                       </td>
                       <td className="px-2 py-1.5">
                         <Input
-                          value={si.vendor}
+                          value={si.vendor ?? ''}
                           onChange={e => setScannedItems(prev => prev.map((s, i) => i === idx ? { ...s, vendor: e.target.value } : s))}
                           className="h-7 text-xs px-1"
                         />
                       </td>
                       <td className="px-2 py-1.5">
                         <Input
-                          value={si.finish_color}
+                          value={si.finish_color ?? ''}
                           onChange={e => setScannedItems(prev => prev.map((s, i) => i === idx ? { ...s, finish_color: e.target.value } : s))}
                           className="h-7 text-xs px-1"
                         />
                       </td>
                       <td className="px-2 py-1.5">
                         <Input
-                          value={si.description}
+                          value={si.description ?? ''}
                           onChange={e => setScannedItems(prev => prev.map((s, i) => i === idx ? { ...s, description: e.target.value } : s))}
                           className="h-7 text-xs px-1"
                         />
@@ -1048,5 +1070,6 @@ export default function InteriorsLedger() {
         </Dialog>
       )}
     </div>
+    </ErrorBoundary>
   );
 }
