@@ -940,12 +940,12 @@ export default function InteriorsLedger() {
             <div className="flex flex-wrap gap-3 items-end pb-4 border-b">
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground font-medium">Add to room</p>
-                <Select value={targetRoomId} onValueChange={setTargetRoomId}>
+                <Select value={targetRoomId || '__new__'} onValueChange={v => setTargetRoomId(v === '__new__' ? '' : v)}>
                   <SelectTrigger className="h-8 text-sm w-48">
-                    <SelectValue placeholder="— Create new room —" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">— Create new room —</SelectItem>
+                    <SelectItem value="__new__">— Create new room —</SelectItem>
                     {sortedRooms.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
