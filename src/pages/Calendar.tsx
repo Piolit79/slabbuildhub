@@ -352,8 +352,13 @@ export default function CalendarPage() {
 
   function eventsOnDay(day: Date) {
     return events.filter(e => {
-      const s = e.allDay ? parseISO(e.start) : new Date(e.start);
-      return isSameDay(s, day) && calMap[e.calendarId]?.active !== false;
+      if (calMap[e.calendarId]?.active === false) return false;
+      if (e.allDay) {
+        const s = parseISO(e.start);
+        const end = parseISO(e.end); // DTEND is exclusive for all-day
+        return day >= s && day < end;
+      }
+      return isSameDay(new Date(e.start), day);
     });
   }
 

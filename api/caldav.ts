@@ -5,7 +5,7 @@ const SUPABASE_URL = 'https://nlusfndskgdcottasfdy.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdXNmbmRza2dkY290dGFzZmR5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3NTY0NDYsImV4cCI6MjA4ODMzMjQ0Nn0.sGSdCsQl0wgAHk5L-xi6ZdrLkuAEaHcdhJ8uazjTjbA';
 const CALDAV_BASE = 'https://caldav.icloud.com';
 
-const PALETTE = ['#4f81bd','#c37e87','#3d6594','#a6636b','#5a9e6f','#6a8fbf','#b87e8a','#7b9ec3'];
+const PALETTE = ['#4f81bd','#c37e87','#5a9e6f','#8b7cc8','#c9834e','#4a9b8e','#c46b9a','#8fa84a'];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
