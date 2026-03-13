@@ -3,8 +3,38 @@ import { inflateSync, inflateRawSync } from 'zlib';
 
 export const maxDuration = 60;
 
-// ── PDF text extractor with zlib decompression ────────────────────────────────
-// InDesign PDFs use FlateDecode (zlib) on content streams — must decompress first
+// ── ASCII85 decoder ───────────────────────────────────────────────────────────
+// InDesign PDFs commonly use [/ASCII85Decode /FlateDecode] filter chains.
+// ASCII85 encodes 4 bytes as 5 printable chars (33–117). 'z' = 4 zero bytes.
+
+function decodeAscii85(buf: Buffer): Buffer | null {
+  try {
+    let s = buf.toString('binary').replace(/\s/g, '');
+    const end = s.indexOf('~>');
+    if (end !== -1) s = s.slice(0, end);
+    if (s.length === 0) return null;
+
+    const out: number[] = [];
+    let i = 0;
+    while (i < s.length) {
+      if (s[i] === 'z') { out.push(0, 0, 0, 0); i++; continue; }
+      const chunk = s.slice(i, i + 5);
+      i += 5;
+      if (chunk.length === 0) break;
+      let val = 0;
+      for (let j = 0; j < 5; j++) {
+        val = val * 85 + ((j < chunk.length ? chunk.charCodeAt(j) : 84) - 33);
+      }
+      out.push((val >>> 24) & 0xff);
+      if (chunk.length > 1) out.push((val >>> 16) & 0xff);
+      if (chunk.length > 2) out.push((val >>> 8) & 0xff);
+      if (chunk.length > 3) out.push(val & 0xff);
+    }
+    return Buffer.from(out);
+  } catch { return null; }
+}
+
+// ── PDF string decoder ────────────────────────────────────────────────────────
 
 function decodePdfString(s: string): string {
   return s
@@ -14,9 +44,11 @@ function decodePdfString(s: string): string {
     .replace(/\\(.)/g, '$1');
 }
 
+// ── PDF text op extractor (BT/ET blocks) ──────────────────────────────────────
+
 function extractTextOps(content: string): string[] {
   const texts: string[] = [];
-  const btEt = /BT([\s\S]{1,10000}?)ET/g;
+  const btEt = /BT([\s\S]{1,20000}?)ET/g;
   let btMatch;
   while ((btMatch = btEt.exec(content)) !== null) {
     const block = btMatch[1];
@@ -42,8 +74,96 @@ function extractTextOps(content: string): string[] {
   return texts;
 }
 
+// ── Stream decompressor — tries all known filter combos ───────────────────────
+
+function decompressStream(data: Buffer): string[] {
+  const results: string[] = [];
+
+  // 1. Raw zlib inflate (standard FlateDecode)
+  try {
+    const txt = inflateSync(data).toString('latin1');
+    results.push(txt);
+  } catch { /* try next */ }
+
+  // 2. Raw deflate (no zlib header)
+  try {
+    const txt = inflateRawSync(data).toString('latin1');
+    results.push(txt);
+  } catch { /* try next */ }
+
+  // 3. ASCII85 then zlib inflate (InDesign's typical filter chain)
+  const a85 = decodeAscii85(data);
+  if (a85) {
+    try {
+      const txt = inflateSync(a85).toString('latin1');
+      results.push(txt);
+    } catch { /* try raw inflate */ }
+    try {
+      const txt = inflateRawSync(a85).toString('latin1');
+      results.push(txt);
+    } catch { /* not compressed after a85 */ }
+    // Also read ASCII85-decoded as-is (some streams aren't further compressed)
+    results.push(a85.toString('latin1'));
+  }
+
+  // 4. Always try raw bytes as a last-ditch read
+  results.push(data.toString('latin1'));
+
+  return results;
+}
+
+// ── Main PDF text extractor ───────────────────────────────────────────────────
+// Iterates every stream in the PDF, tries all decompression methods, extracts
+// BT/ET text ops. Deduplicates at the end.
+
+function extractTextFromPdf(buffer: Buffer): string {
+  const raw = buffer.toString('binary');
+  const seen = new Set<string>();
+  const allTexts: string[] = [];
+
+  const add = (items: string[]) => {
+    for (const t of items) {
+      if (!seen.has(t)) { seen.add(t); allTexts.push(t); }
+    }
+  };
+
+  let pos = 0;
+  while (pos < raw.length) {
+    const streamStart = raw.indexOf('stream', pos);
+    if (streamStart === -1) break;
+
+    const nl = raw[streamStart + 6] === '\r' ? 8 : 7;
+    const dataStart = streamStart + nl;
+    const streamEnd = raw.indexOf('endstream', dataStart);
+    if (streamEnd === -1) break;
+
+    const streamData = Buffer.from(raw.slice(dataStart, streamEnd), 'binary');
+
+    // Use 1500-char window to safely cover longer object dictionaries
+    const preStream = raw.slice(Math.max(0, streamStart - 1500), streamStart);
+
+    // Skip image XObjects (raw pixel data — not text)
+    const isImage = /\/Subtype\s*\/Image/.test(preStream);
+
+    if (!isImage && streamData.length > 0) {
+      for (const decoded of decompressStream(streamData)) {
+        add(extractTextOps(decoded));
+      }
+    }
+
+    pos = streamEnd + 9;
+  }
+
+  // Fallback: scan the raw PDF file itself for uncompressed BT/ET blocks
+  if (allTexts.length < 5) {
+    add(extractTextOps(raw));
+  }
+
+  return allTexts.join(' ').replace(/\s+/g, ' ').trim();
+}
+
 // ── PDF image extractor ───────────────────────────────────────────────────────
-// Extracts JPEG (DCTDecode) and PNG-like (FlateDecode) image XObjects from PDF
+// Extracts JPEG images (DCTDecode) from image XObjects.
 
 function extractImagesFromPdf(buffer: Buffer): string[] {
   const raw = buffer.toString('binary');
@@ -59,97 +179,39 @@ function extractImagesFromPdf(buffer: Buffer): string[] {
     const streamEnd = raw.indexOf('endstream', dataStart);
     if (streamEnd === -1) break;
 
-    const preStream = raw.slice(Math.max(0, streamStart - 800), streamStart);
+    const preStream = raw.slice(Math.max(0, streamStart - 1500), streamStart);
     const isImage = /\/Subtype\s*\/Image/.test(preStream);
 
     if (isImage) {
       const streamData = Buffer.from(raw.slice(dataStart, streamEnd), 'binary');
 
-      // JPEG images stored with DCTDecode — extract directly as JPEG
-      if (/\/Filter\s*\/DCTDecode|\/DCTDecode/.test(preStream)) {
-        // Verify it looks like a JPEG (starts with FFD8)
+      // JPEG: DCTDecode — extract directly
+      if (/DCTDecode/.test(preStream)) {
         if (streamData[0] === 0xff && streamData[1] === 0xd8) {
           images.push(`data:image/jpeg;base64,${streamData.toString('base64')}`);
         }
       }
-      // FlateDecode images — decompress and try to use as-is or detect format
-      else if (/\/Filter\s*\/FlateDecode|\/FlateDecode/.test(preStream)) {
+      // FlateDecode image — decompress and check format
+      else if (/FlateDecode/.test(preStream)) {
         try {
-          const decompressed = inflateSync(streamData);
-          // Check if decompressed data is actually a JPEG or PNG
-          if (decompressed[0] === 0xff && decompressed[1] === 0xd8) {
-            images.push(`data:image/jpeg;base64,${decompressed.toString('base64')}`);
-          } else if (decompressed[0] === 0x89 && decompressed[1] === 0x50) {
-            images.push(`data:image/png;base64,${decompressed.toString('base64')}`);
+          const d = inflateSync(streamData);
+          if (d[0] === 0xff && d[1] === 0xd8) {
+            images.push(`data:image/jpeg;base64,${d.toString('base64')}`);
+          } else if (d[0] === 0x89 && d[1] === 0x50) {
+            images.push(`data:image/png;base64,${d.toString('base64')}`);
           }
-        } catch { /* skip undecompressable streams */ }
+        } catch { /* skip */ }
       }
     }
 
     pos = streamEnd + 9;
   }
 
-  // Filter out very small images (icons, bullets, etc.) — keep only reasonably sized ones
+  // Keep only images large enough to be actual product photos (~1.5 KB+)
   return images.filter(img => {
     const b64 = img.split(',')[1];
-    return b64 && b64.length > 2000; // ~1.5KB minimum
+    return b64 && b64.length > 2000;
   });
-}
-
-function tryDecompress(data: Buffer): string | null {
-  try { return inflateSync(data).toString('latin1'); } catch { /* try raw */ }
-  try { return inflateRawSync(data).toString('latin1'); } catch { /* not compressed */ }
-  return null;
-}
-
-function extractTextFromPdf(buffer: Buffer): string {
-  const raw = buffer.toString('binary');
-  const allTexts: string[] = [];
-
-  let pos = 0;
-  while (pos < raw.length) {
-    const streamStart = raw.indexOf('stream', pos);
-    if (streamStart === -1) break;
-
-    // Stream data starts after 'stream\r\n' or 'stream\n'
-    const nl = raw[streamStart + 6] === '\r' ? 8 : 7;
-    const dataStart = streamStart + nl;
-
-    const streamEnd = raw.indexOf('endstream', dataStart);
-    if (streamEnd === -1) break;
-
-    const streamData = Buffer.from(raw.slice(dataStart, streamEnd), 'binary');
-
-    // Check preceding 600 chars for FlateDecode filter
-    const preStream = raw.slice(Math.max(0, streamStart - 600), streamStart);
-    const hasFlate = /\/FlateDecode|\/Fl\b/.test(preStream);
-    // Skip image/binary streams (XObject images, fonts, etc.)
-    const isImage = /\/Subtype\s*\/Image/.test(preStream);
-
-    if (!isImage) {
-      let text: string | null = null;
-      if (hasFlate) {
-        text = tryDecompress(streamData);
-      } else {
-        // Try uncompressed stream (might still have readable text ops)
-        text = streamData.toString('latin1');
-      }
-      if (text) {
-        const extracted = extractTextOps(text);
-        allTexts.push(...extracted);
-      }
-    }
-
-    pos = streamEnd + 9;
-  }
-
-  // Also try raw (for uncompressed PDFs or as fallback)
-  if (allTexts.length === 0) {
-    const fallback = extractTextOps(raw);
-    allTexts.push(...fallback);
-  }
-
-  return allTexts.join(' ').replace(/\s+/g, ' ').trim();
 }
 
 // ── Handler ────────────────────────────────────────────────────────────────────
@@ -180,17 +242,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
     }
 
-    // Use up to 10000 chars to capture all items across multi-page PDFs
-    const truncatedText = text.slice(0, 10000);
+    // Up to 20,000 chars — enough for large multi-room, 50+ item schedules
+    const truncatedText = text.slice(0, 20000);
 
     const prompt = `You are analyzing raw text extracted from an interior design board or furniture schedule PDF.
 
-IMPORTANT: Only extract items that actually appear in the text below. Do NOT invent or guess items. Do NOT use example items.
+IMPORTANT: Only extract items that actually appear in the text below. Do NOT invent, guess, or use example items. Every vendor name and product name must appear verbatim in the extracted text.
 
 The text contains furniture/lighting items, often in formats like:
 - "VENDOR - PRODUCT NAME"
 - "VENDOR - PRODUCT NAME, FINISH/COLOR"
 - Room headers like "LIVING ROOM", "DINING ROOM", "FOYER", "PRIMARY BEDROOM 105"
+
+There may be 10–60 items across multiple rooms. Extract ALL of them — do not stop early.
 
 Extracted text:
 ---
@@ -199,7 +263,7 @@ ${truncatedText}
 
 For EACH item found, return:
 - vendor: the brand/vendor name exactly as written
-- item: the item category (Sofa, Chair, Rug, Table, Pendant, Lamp, Sconce, Ottoman, Bed, Nightstand, etc.)
+- item: the item category (Sofa, Chair, Rug, Table, Pendant, Lamp, Sconce, Ottoman, Bed, Nightstand, Dresser, Mirror, Console, Bench, Bookcase, etc.)
 - description: the full product name as written in the text
 - finish_color: finish/color/material if mentioned, otherwise empty string
 - image_hint: 1-2 keywords from the product name useful for image filename matching
@@ -217,7 +281,7 @@ Return ONLY a JSON object, no markdown, no explanation:
       },
       body: JSON.stringify({
         model: 'gpt-4o',
-        max_tokens: 3000,
+        max_tokens: 4096,
         messages: [{ role: 'user', content: prompt }],
       }),
     });
