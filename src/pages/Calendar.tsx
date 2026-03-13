@@ -8,20 +8,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, Plus, Loader2, CalendarDays, X, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Loader2, CalendarDays, Trash2, Settings2 } from 'lucide-react';
 
 interface CalEvent {
-  uid: string; href: string; etag: string;
-  title: string; description: string;
-  start: string; end: string; allDay: boolean;
+  uid: string; href: string; etag: string; calendarId: string;
+  title: string; description: string; start: string; end: string; allDay: boolean;
 }
-
-interface Settings { connected: boolean; calendarName?: string; calendarUrl?: string; }
-interface ICloudCalendar { name: string; url: string; }
-
-const EVENT_COLORS = [
-  '#4f81bd','#c37e87','#3d6594','#a6636b','#6a8fbf','#b87e8a',
-];
+interface LinkedCal { id: string; calendar_name: string; color: string; active: boolean; }
+interface ICloudCal  { name: string; url: string; }
 
 async function caldavFetch(method: string, action: string, params: Record<string,string> = {}, body?: object) {
   const qs = new URLSearchParams({ action, ...params }).toString();
@@ -35,61 +29,57 @@ async function caldavFetch(method: string, action: string, params: Record<string
   return json;
 }
 
-function colorForEvent(uid: string): string {
-  let hash = 0;
-  for (let i = 0; i < uid.length; i++) hash = uid.charCodeAt(i) + ((hash << 5) - hash);
-  return EVENT_COLORS[Math.abs(hash) % EVENT_COLORS.length];
-}
+// ── Add Calendar dialog ───────────────────────────────────────────────────────
 
-// ── Connect iCloud dialog ─────────────────────────────────────────────────────
-
-function ConnectDialog({
-  open, onClose, onConnected,
-}: { open: boolean; onClose: () => void; onConnected: () => void }) {
-  const [step, setStep] = useState<'creds' | 'pick'>('creds');
+function AddCalendarDialog({ open, onClose, onAdded }: {
+  open: boolean; onClose: () => void; onAdded: (cal: LinkedCal) => void;
+}) {
+  const [step, setStep] = useState<'creds'|'pick'>('creds');
   const [appleId, setAppleId] = useState('');
   const [appPassword, setAppPassword] = useState('');
-  const [calendars, setCalendars] = useState<ICloudCalendar[]>([]);
+  const [available, setAvailable] = useState<ICloudCal[]>([]);
   const [selectedUrl, setSelectedUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  function reset() { setStep('creds'); setAppleId(''); setAppPassword(''); setAvailable([]); setSelectedUrl(''); setError(''); }
+
   async function handleConnect() {
     setError(''); setLoading(true);
     try {
-      const { calendars: cals } = await caldavFetch('POST', 'connect', {}, { appleId, appPassword });
-      setCalendars(cals);
-      if (cals.length > 0) setSelectedUrl(cals[0].url);
+      const { calendars } = await caldavFetch('POST', 'connect', {}, { appleId, appPassword });
+      setAvailable(calendars);
+      if (calendars.length) setSelectedUrl(calendars[0].url);
       setStep('pick');
     } catch (e: any) { setError(e.message); }
     setLoading(false);
   }
 
-  async function handleSave() {
-    const cal = calendars.find(c => c.url === selectedUrl);
+  async function handleAdd() {
+    const cal = available.find(c => c.url === selectedUrl);
     setLoading(true);
     try {
-      await caldavFetch('POST', 'save', {}, {
+      const added = await caldavFetch('POST', 'add', {}, {
         appleId, appPassword, calendarUrl: selectedUrl, calendarName: cal?.name || 'Calendar',
       });
-      onConnected();
-      onClose();
+      onAdded(added);
+      reset(); onClose();
     } catch (e: any) { setError(e.message); }
     setLoading(false);
   }
 
   return (
-    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
+    <Dialog open={open} onOpenChange={v => { if (!v) { reset(); onClose(); } }}>
       <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>Connect iCloud Calendar</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Add iCloud Calendar</DialogTitle></DialogHeader>
         {step === 'creds' ? (
           <div className="space-y-3 pt-1">
             <p className="text-xs text-muted-foreground">
-              Use an <strong>app-specific password</strong> — not your Apple ID password.
-              Generate one at <strong>appleid.apple.com → Sign-In & Security → App-Specific Passwords</strong>.
+              Enter your Apple ID and an <strong>app-specific password</strong> from
+              <strong> appleid.apple.com → Sign-In & Security → App-Specific Passwords</strong>.
             </p>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Apple ID (email)</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Apple ID</label>
               <Input className="mt-1" value={appleId} onChange={e => setAppleId(e.target.value)} placeholder="you@icloud.com" />
             </div>
             <div>
@@ -98,26 +88,27 @@ function ConnectDialog({
             </div>
             {error && <p className="text-xs text-destructive">{error}</p>}
             <Button className="w-full" onClick={handleConnect} disabled={!appleId || !appPassword || loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Connect
+              {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Connect
             </Button>
           </div>
         ) : (
           <div className="space-y-3 pt-1">
-            <p className="text-xs text-muted-foreground">Select which calendar to sync:</p>
-            {calendars.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No calendars found.</p>
-            ) : (
+            <p className="text-xs text-muted-foreground">Select a calendar to add:</p>
+            {available.length === 0 ? <p className="text-sm text-muted-foreground">No calendars found.</p> : (
               <Select value={selectedUrl} onValueChange={setSelectedUrl}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {calendars.map(c => <SelectItem key={c.url} value={c.url}>{c.name}</SelectItem>)}
+                  {available.map(c => <SelectItem key={c.url} value={c.url}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             )}
             {error && <p className="text-xs text-destructive">{error}</p>}
-            <Button className="w-full" onClick={handleSave} disabled={!selectedUrl || loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Use This Calendar
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setStep('creds')}>Back</Button>
+              <Button className="flex-1" onClick={handleAdd} disabled={!selectedUrl || loading}>
+                {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />} Add
+              </Button>
+            </div>
           </div>
         )}
       </DialogContent>
@@ -125,33 +116,33 @@ function ConnectDialog({
   );
 }
 
-// ── Add event dialog ──────────────────────────────────────────────────────────
+// ── Add Event dialog ──────────────────────────────────────────────────────────
 
-function AddEventDialog({
-  open, defaultDate, onClose, onSaved,
-}: { open: boolean; defaultDate: Date; onClose: () => void; onSaved: (e: CalEvent) => void }) {
+function AddEventDialog({ open, defaultDate, calendars, onClose, onSaved }: {
+  open: boolean; defaultDate: Date; calendars: LinkedCal[];
+  onClose: () => void; onSaved: (e: CalEvent) => void;
+}) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [allDay, setAllDay] = useState(true);
   const [date, setDate] = useState(format(defaultDate, 'yyyy-MM-dd'));
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:00');
+  const [calendarId, setCalendarId] = useState(calendars[0]?.id || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => { setDate(format(defaultDate, 'yyyy-MM-dd')); }, [defaultDate]);
+  useEffect(() => { if (calendars.length && !calendarId) setCalendarId(calendars[0].id); }, [calendars]);
 
   async function handleSave() {
-    if (!title.trim()) return;
+    if (!title.trim() || !calendarId) return;
     setError(''); setSaving(true);
     try {
       const start = allDay ? date : `${date}T${startTime}:00Z`;
       const end   = allDay ? format(addDays(parseISO(date), 1), 'yyyy-MM-dd') : `${date}T${endTime}:00Z`;
-      const result = await caldavFetch('POST', 'event', {}, { title: title.trim(), description, start, end, allDay });
-      onSaved({
-        uid: result.uid, href: result.href, etag: '',
-        title: title.trim(), description, start, end, allDay,
-      });
+      const result = await caldavFetch('POST', 'event', {}, { title: title.trim(), description, start, end, allDay, calendarId });
+      onSaved({ uid: result.uid, href: result.href, etag: '', calendarId, title: title.trim(), description, start, end, allDay });
       setTitle(''); setDescription('');
       onClose();
     } catch (e: any) { setError(e.message); }
@@ -167,12 +158,30 @@ function AddEventDialog({
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Title</label>
             <Input className="mt-1" value={title} onChange={e => setTitle(e.target.value)} placeholder="Event title" autoFocus />
           </div>
-
+          {calendars.length > 1 && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Calendar</label>
+              <Select value={calendarId} onValueChange={setCalendarId}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {calendars.map(c => (
+                    <SelectItem key={c.id} value={c.id}>
+                      <span className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ backgroundColor: c.color }} />
+                        {c.calendar_name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="flex items-center gap-2">
             <input type="checkbox" id="allday" checked={allDay} onChange={e => setAllDay(e.target.checked)} className="rounded" />
             <label htmlFor="allday" className="text-sm">All day</label>
           </div>
-
           {!allDay && (
             <div className="flex gap-2">
               <div className="flex-1">
@@ -185,19 +194,15 @@ function AddEventDialog({
               </div>
             </div>
           )}
-
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Notes</label>
-            <textarea
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              rows={3} value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional notes..."
-            />
+            <textarea className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm resize-none focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              rows={3} value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional notes..." />
           </div>
-
           {error && <p className="text-xs text-destructive">{error}</p>}
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-            <Button size="sm" onClick={handleSave} disabled={!title.trim() || saving}>
+            <Button size="sm" onClick={handleSave} disabled={!title.trim() || !calendarId || saving}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
             </Button>
           </div>
@@ -209,9 +214,10 @@ function AddEventDialog({
 
 // ── Event detail dialog ───────────────────────────────────────────────────────
 
-function EventDetailDialog({
-  event, onClose, onDeleted,
-}: { event: CalEvent | null; onClose: () => void; onDeleted: (uid: string) => void }) {
+function EventDetailDialog({ event, calendars, onClose, onDeleted }: {
+  event: CalEvent | null; calendars: LinkedCal[];
+  onClose: () => void; onDeleted: (uid: string) => void;
+}) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
 
@@ -219,27 +225,32 @@ function EventDetailDialog({
     if (!event) return;
     setDeleting(true);
     try {
-      await caldavFetch('DELETE', 'event', { href: encodeURIComponent(event.href) });
-      onDeleted(event.uid);
-      onClose();
+      await caldavFetch('DELETE', 'event', { href: encodeURIComponent(event.href), calendarId: event.calendarId });
+      onDeleted(event.uid); onClose();
     } catch (e: any) { setError(e.message); }
     setDeleting(false);
   }
 
   if (!event) return null;
-
+  const cal = calendars.find(c => c.id === event.calendarId);
   const startDate = event.allDay ? parseISO(event.start) : new Date(event.start);
-  const endDate   = event.allDay ? parseISO(event.end) : new Date(event.end);
+  const endDate   = event.allDay ? parseISO(event.end)   : new Date(event.end);
 
   return (
     <Dialog open={!!event} onOpenChange={v => { if (!v) onClose(); }}>
       <DialogContent className="max-w-sm">
-        <DialogHeader><DialogTitle>{event.title}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            {cal && <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: cal.color }} />}
+            {event.title}
+          </DialogTitle>
+        </DialogHeader>
         <div className="space-y-2 pt-1 text-sm">
+          {cal && <p className="text-xs text-muted-foreground">{cal.calendar_name}</p>}
           <p className="text-muted-foreground">
             {event.allDay
               ? format(startDate, 'MMMM d, yyyy')
-              : `${format(startDate, 'MMM d, yyyy h:mm a')} – ${format(endDate, 'h:mm a')}`}
+              : `${format(startDate,'MMM d, yyyy h:mm a')} – ${format(endDate,'h:mm a')}`}
           </p>
           {event.description && <p className="whitespace-pre-wrap">{event.description}</p>}
           {error && <p className="text-xs text-destructive">{error}</p>}
@@ -255,29 +266,78 @@ function EventDetailDialog({
   );
 }
 
-// ── Main Calendar page ────────────────────────────────────────────────────────
+// ── Manage Calendars dialog ───────────────────────────────────────────────────
+
+function ManageDialog({ open, calendars, onClose, onRemoved, onToggled }: {
+  open: boolean; calendars: LinkedCal[]; onClose: () => void;
+  onRemoved: (id: string) => void; onToggled: (id: string, active: boolean) => void;
+}) {
+  const [removing, setRemoving] = useState<string|null>(null);
+
+  async function handleRemove(id: string) {
+    setRemoving(id);
+    try { await caldavFetch('DELETE', 'calendar', { id }); onRemoved(id); }
+    catch (e) { console.error(e); }
+    setRemoving(null);
+  }
+
+  async function handleToggle(id: string, active: boolean) {
+    try { await caldavFetch('PATCH', 'calendar', { id }, { active }); onToggled(id, active); }
+    catch (e) { console.error(e); }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Manage Calendars</DialogTitle></DialogHeader>
+        <div className="space-y-2 pt-1">
+          {calendars.length === 0 && <p className="text-sm text-muted-foreground">No calendars linked.</p>}
+          {calendars.map(c => (
+            <div key={c.id} className="flex items-center justify-between gap-2 py-1">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+                <span className="text-sm truncate">{c.calendar_name}</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <input type="checkbox" checked={c.active} onChange={e => handleToggle(c.id, e.target.checked)} className="rounded" />
+                <button onClick={() => handleRemove(c.id)} disabled={removing === c.id}
+                  className="text-muted-foreground hover:text-destructive transition-colors">
+                  {removing === c.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [events, setEvents] = useState<CalEvent[]>([]);
-  const [settings, setSettings] = useState<Settings | null>(null);
+  const [calendars, setCalendars] = useState<LinkedCal[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventsLoading, setEventsLoading] = useState(false);
-  const [connectOpen, setConnectOpen] = useState(false);
-  const [addDate, setAddDate] = useState<Date | null>(null);
-  const [detailEvent, setDetailEvent] = useState<CalEvent | null>(null);
+  const [addCalOpen, setAddCalOpen] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
+  const [addDate, setAddDate] = useState<Date|null>(null);
+  const [detailEvent, setDetailEvent] = useState<CalEvent|null>(null);
 
-  // Load settings on mount
+  const activeCalendars = calendars.filter(c => c.active);
+  const calMap = Object.fromEntries(calendars.map(c => [c.id, c]));
+
   useEffect(() => {
     caldavFetch('GET', 'settings')
-      .then(s => setSettings(s))
-      .catch(() => setSettings({ connected: false }))
+      .then(s => setCalendars(s.calendars || []))
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  // Load events when month or connection changes
   useEffect(() => {
-    if (!settings?.connected) return;
+    if (activeCalendars.length === 0) { setEvents([]); return; }
     const start = format(startOfMonth(currentMonth), "yyyy-MM-dd'T'00:00:00'Z'");
     const end   = format(endOfMonth(currentMonth),   "yyyy-MM-dd'T'23:59:59'Z'");
     setEventsLoading(true);
@@ -285,19 +345,15 @@ export default function CalendarPage() {
       .then(data => setEvents(Array.isArray(data) ? data : []))
       .catch(console.error)
       .finally(() => setEventsLoading(false));
-  }, [settings, currentMonth]);
+  }, [calendars, currentMonth]);
 
-  // Build calendar grid
   const monthStart = startOfMonth(currentMonth);
-  const monthEnd   = endOfMonth(currentMonth);
-  const gridStart  = startOfWeek(monthStart);
-  const gridEnd    = endOfWeek(monthEnd);
-  const days       = eachDayOfInterval({ start: gridStart, end: gridEnd });
+  const days = eachDayOfInterval({ start: startOfWeek(monthStart), end: endOfWeek(endOfMonth(currentMonth)) });
 
   function eventsOnDay(day: Date) {
     return events.filter(e => {
       const s = e.allDay ? parseISO(e.start) : new Date(e.start);
-      return isSameDay(s, day);
+      return isSameDay(s, day) && calMap[e.calendarId]?.active !== false;
     });
   }
 
@@ -307,27 +363,24 @@ export default function CalendarPage() {
     </div>
   );
 
-  if (!settings?.connected) return (
+  if (calendars.length === 0) return (
     <div className="p-6 max-w-md mx-auto mt-20 text-center space-y-4">
       <CalendarDays className="h-12 w-12 mx-auto text-muted-foreground" />
       <h2 className="text-xl font-semibold">Calendar</h2>
-      <p className="text-muted-foreground text-sm">Connect your iCloud calendar to view and add events.</p>
-      <Button onClick={() => setConnectOpen(true)}>Connect iCloud Calendar</Button>
-      <ConnectDialog
-        open={connectOpen}
-        onClose={() => setConnectOpen(false)}
-        onConnected={() => {
-          caldavFetch('GET', 'settings').then(s => setSettings(s));
-        }}
-      />
+      <p className="text-muted-foreground text-sm">Connect your iCloud calendars to get started.</p>
+      <Button onClick={() => setAddCalOpen(true)}>
+        <Plus className="h-4 w-4 mr-2" /> Add iCloud Calendar
+      </Button>
+      <AddCalendarDialog open={addCalOpen} onClose={() => setAddCalOpen(false)}
+        onAdded={cal => { setCalendars(prev => [...prev, cal]); setAddCalOpen(false); }} />
     </div>
   );
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0 flex-wrap gap-2">
+        <div className="flex items-center gap-2">
           <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} className="p-1 rounded hover:bg-muted transition-colors">
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -337,65 +390,69 @@ export default function CalendarPage() {
           </button>
           {eventsLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
         </div>
+
+        {/* Calendar legend */}
+        <div className="flex items-center gap-3 flex-wrap">
+          {calendars.map(c => (
+            <button key={c.id} onClick={() => caldavFetch('PATCH','calendar',{id:c.id},{active:!c.active}).then(()=>setCalendars(prev=>prev.map(p=>p.id===c.id?{...p,active:!p.active}:p)))}
+              className={`flex items-center gap-1.5 text-xs transition-opacity ${c.active ? 'opacity-100' : 'opacity-40'}`}>
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+              {c.calendar_name}
+            </button>
+          ))}
+        </div>
+
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setCurrentMonth(new Date())}>Today</Button>
-          <Button size="sm" onClick={() => setAddDate(new Date())}>
-            <Plus className="h-4 w-4 mr-1" /> Add Event
+          <Button variant="outline" size="sm" onClick={() => setManageOpen(true)}>
+            <Settings2 className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setConnectOpen(true)} className="text-xs text-muted-foreground">
-            {settings.calendarName || 'iCloud'}
+          <Button variant="outline" size="sm" onClick={() => setAddCalOpen(true)}>
+            <Plus className="h-4 w-4 mr-1" /> Calendar
+          </Button>
+          <Button size="sm" onClick={() => setAddDate(new Date())}>
+            <Plus className="h-4 w-4 mr-1" /> Event
           </Button>
         </div>
       </div>
 
-      {/* Day-of-week header */}
+      {/* Day-of-week row */}
       <div className="grid grid-cols-7 border-b border-border">
         {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-          <div key={d} className="py-2 text-center text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {d}
-          </div>
+          <div key={d} className="py-2 text-center text-xs font-medium text-muted-foreground uppercase tracking-wide">{d}</div>
         ))}
       </div>
 
-      {/* Calendar grid */}
+      {/* Grid */}
       <div className="grid grid-cols-7 flex-1 overflow-y-auto" style={{ gridAutoRows: 'minmax(100px, 1fr)' }}>
         {days.map(day => {
           const dayEvents = eventsOnDay(day);
           const inMonth = isSameMonth(day, currentMonth);
-          const today = isToday(day);
           return (
-            <div
-              key={day.toISOString()}
-              className={`border-b border-r border-border p-1 flex flex-col cursor-pointer group transition-colors ${
-                inMonth ? 'bg-background' : 'bg-muted/20'
-              } hover:bg-muted/30`}
-              onClick={() => setAddDate(day)}
-            >
-              {/* Day number */}
+            <div key={day.toISOString()}
+              className={`border-b border-r border-border p-1 flex flex-col cursor-pointer group transition-colors hover:bg-muted/30 ${inMonth ? 'bg-background' : 'bg-muted/20'}`}
+              onClick={() => setAddDate(day)}>
               <div className="flex items-center justify-between mb-1">
                 <span className={`text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full ${
-                  today
-                    ? 'bg-primary text-primary-foreground'
-                    : inMonth ? 'text-foreground' : 'text-muted-foreground'
+                  isToday(day) ? 'bg-primary text-primary-foreground' : inMonth ? 'text-foreground' : 'text-muted-foreground'
                 }`}>
                   {format(day, 'd')}
                 </span>
                 <Plus className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
-
-              {/* Events */}
               <div className="flex flex-col gap-0.5 overflow-hidden">
-                {dayEvents.slice(0, 3).map(e => (
-                  <button
-                    key={e.uid}
-                    className="text-left text-xs px-1.5 py-0.5 rounded truncate text-white font-medium"
-                    style={{ backgroundColor: colorForEvent(e.uid) }}
-                    onClick={ev => { ev.stopPropagation(); setDetailEvent(e); }}
-                  >
-                    {e.allDay ? '' : format(new Date(e.start), 'h:mma ').toLowerCase()}
-                    {e.title}
-                  </button>
-                ))}
+                {dayEvents.slice(0, 3).map(e => {
+                  const cal = calMap[e.calendarId];
+                  return (
+                    <button key={e.uid}
+                      className="text-left text-xs px-1.5 py-0.5 rounded truncate text-white font-medium"
+                      style={{ backgroundColor: cal?.color || '#4f81bd' }}
+                      onClick={ev => { ev.stopPropagation(); setDetailEvent(e); }}>
+                      {!e.allDay && <span className="opacity-80">{format(new Date(e.start),'h:mma ')} </span>}
+                      {e.title}
+                    </button>
+                  );
+                })}
                 {dayEvents.length > 3 && (
                   <span className="text-xs text-muted-foreground px-1">+{dayEvents.length - 3} more</span>
                 )}
@@ -405,25 +462,20 @@ export default function CalendarPage() {
         })}
       </div>
 
-      {/* Dialogs */}
-      <ConnectDialog
-        open={connectOpen}
-        onClose={() => setConnectOpen(false)}
-        onConnected={() => caldavFetch('GET', 'settings').then(s => setSettings(s))}
-      />
+      <AddCalendarDialog open={addCalOpen} onClose={() => setAddCalOpen(false)}
+        onAdded={cal => setCalendars(prev => [...prev, cal])} />
 
-      <AddEventDialog
-        open={!!addDate}
-        defaultDate={addDate || new Date()}
-        onClose={() => setAddDate(null)}
-        onSaved={e => { setEvents(prev => [...prev, e]); setAddDate(null); }}
-      />
+      <ManageDialog open={manageOpen} calendars={calendars} onClose={() => setManageOpen(false)}
+        onRemoved={id => setCalendars(prev => prev.filter(c => c.id !== id))}
+        onToggled={(id, active) => setCalendars(prev => prev.map(c => c.id === id ? { ...c, active } : c))} />
 
-      <EventDetailDialog
-        event={detailEvent}
+      <AddEventDialog open={!!addDate} defaultDate={addDate || new Date()}
+        calendars={activeCalendars} onClose={() => setAddDate(null)}
+        onSaved={e => { setEvents(prev => [...prev, e]); setAddDate(null); }} />
+
+      <EventDetailDialog event={detailEvent} calendars={calendars}
         onClose={() => setDetailEvent(null)}
-        onDeleted={uid => setEvents(prev => prev.filter(e => e.uid !== uid))}
-      />
+        onDeleted={uid => setEvents(prev => prev.filter(e => e.uid !== uid))} />
     </div>
   );
 }
