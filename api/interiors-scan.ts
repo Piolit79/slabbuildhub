@@ -1,28 +1,25 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { inflateSync, inflateRawSync } from 'zlib';
 
 export const maxDuration = 60;
 
-// ── Lightweight PDF text extractor (no external deps) ─────────────────────────
-// Works for InDesign-exported PDFs where text is stored as standard PDF text ops
+// ── PDF text extractor with zlib decompression ────────────────────────────────
+// InDesign PDFs use FlateDecode (zlib) on content streams — must decompress first
 
 function decodePdfString(s: string): string {
   return s
-    .replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t')
+    .replace(/\\n/g, ' ').replace(/\\r/g, ' ').replace(/\\t/g, ' ')
     .replace(/\\\\/g, '\\')
     .replace(/\\([0-7]{1,3})/g, (_, oct) => String.fromCharCode(parseInt(oct, 8)))
     .replace(/\\(.)/g, '$1');
 }
 
-function extractTextFromPdf(buffer: Buffer): string {
-  const content = buffer.toString('latin1');
+function extractTextOps(content: string): string[] {
   const texts: string[] = [];
-
-  // Match BT...ET text blocks
-  const btEt = /BT([\s\S]{1,8000}?)ET/g;
+  const btEt = /BT([\s\S]{1,10000}?)ET/g;
   let btMatch;
   while ((btMatch = btEt.exec(content)) !== null) {
     const block = btMatch[1];
-
     // (text)Tj
     const tj = /\(([^)\\]*(?:\\[\s\S][^)\\]*)*)\)\s*Tj/g;
     let m;
@@ -30,22 +27,75 @@ function extractTextFromPdf(buffer: Buffer): string {
       const t = decodePdfString(m[1]).trim();
       if (t.length > 1) texts.push(t);
     }
-
     // [(text)...]TJ
     const tjArr = /\[([^\]]*)\]\s*TJ/g;
     let ma;
     while ((ma = tjArr.exec(block)) !== null) {
-      const inner = ma[1];
       const sp = /\(([^)\\]*(?:\\[\s\S][^)\\]*)*)\)/g;
       let ms;
-      while ((ms = sp.exec(inner)) !== null) {
+      while ((ms = sp.exec(ma[1])) !== null) {
         const t = decodePdfString(ms[1]).trim();
         if (t.length > 1) texts.push(t);
       }
     }
   }
+  return texts;
+}
 
-  return texts.join(' ').replace(/\s+/g, ' ').trim();
+function tryDecompress(data: Buffer): string | null {
+  try { return inflateSync(data).toString('latin1'); } catch { /* try raw */ }
+  try { return inflateRawSync(data).toString('latin1'); } catch { /* not compressed */ }
+  return null;
+}
+
+function extractTextFromPdf(buffer: Buffer): string {
+  const raw = buffer.toString('binary');
+  const allTexts: string[] = [];
+
+  let pos = 0;
+  while (pos < raw.length) {
+    const streamStart = raw.indexOf('stream', pos);
+    if (streamStart === -1) break;
+
+    // Stream data starts after 'stream\r\n' or 'stream\n'
+    const nl = raw[streamStart + 6] === '\r' ? 8 : 7;
+    const dataStart = streamStart + nl;
+
+    const streamEnd = raw.indexOf('endstream', dataStart);
+    if (streamEnd === -1) break;
+
+    const streamData = Buffer.from(raw.slice(dataStart, streamEnd), 'binary');
+
+    // Check preceding 600 chars for FlateDecode filter
+    const preStream = raw.slice(Math.max(0, streamStart - 600), streamStart);
+    const hasFlate = /\/FlateDecode|\/Fl\b/.test(preStream);
+    // Skip image/binary streams (XObject images, fonts, etc.)
+    const isImage = /\/Subtype\s*\/Image/.test(preStream);
+
+    if (!isImage) {
+      let text: string | null = null;
+      if (hasFlate) {
+        text = tryDecompress(streamData);
+      } else {
+        // Try uncompressed stream (might still have readable text ops)
+        text = streamData.toString('latin1');
+      }
+      if (text) {
+        const extracted = extractTextOps(text);
+        allTexts.push(...extracted);
+      }
+    }
+
+    pos = streamEnd + 9;
+  }
+
+  // Also try raw (for uncompressed PDFs or as fallback)
+  if (allTexts.length === 0) {
+    const fallback = extractTextOps(raw);
+    allTexts.push(...fallback);
+  }
+
+  return allTexts.join(' ').replace(/\s+/g, ' ').trim();
 }
 
 // ── Handler ────────────────────────────────────────────────────────────────────
@@ -65,30 +115,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!text || text.trim().length < 10) {
       return res.status(400).json({
-        error: 'Could not extract text from this PDF. Make sure it is an InDesign-exported PDF, not a scanned/image-only file.',
+        error: 'Could not extract text from this PDF.',
+        hint: 'Raw byte count: ' + buffer.length,
       });
     }
 
     const prompt = `You are analyzing text extracted from an interior design board PDF.
 The text contains furniture and lighting items, typically in formats like:
-"VENDOR - PRODUCT NAME, FINISH"
-"VENDOR - MODEL NAME"
+"VENDOR - PRODUCT NAME, FINISH"  or  "VENDOR - MODEL NAME"
 
-Here is the extracted text:
+Extracted text:
 ---
 ${text.slice(0, 4000)}
 ---
 
-Extract every distinct furniture and lighting item. For each item return:
-- vendor: brand name (e.g. "RH Modern", "A.Rudin", "Lumens", "Visual Comfort")
-- item: item type (e.g. "Sofa", "Lounge Chair", "Floor Lamp", "Rug", "Side Table", "Pendant", "Sconce", "Sectional")
-- description: full product name as written
-- finish_color: any finish, color, or material mentioned (or empty string)
-- image_hint: 1-2 keywords from the product name for filename matching (e.g. "sectional", "quill", "comtesse")
+Extract every distinct furniture and lighting item. For each return:
+- vendor: brand name (e.g. "RH Modern", "A.Rudin", "Lumens", "Visual Comfort", "Urban Electric Co.")
+- item: item type (e.g. "Sofa", "Sectional", "Lounge Chair", "Floor Lamp", "Rug", "Side Table", "Pendant", "Sconce", "Ottoman", "Drink Table")
+- description: full product name/model as written
+- finish_color: finish, color, or material if mentioned (empty string if not)
+- image_hint: 1-2 short keywords from the product name for filename matching
 
-Also detect the room name if present (e.g. "LIVING ROOM", "PRIMARY BEDROOM 105").
+Detect the room name if present (e.g. "LIVING ROOM", "PRIMARY BEDROOM").
 
-Return ONLY valid JSON, no other text:
+Return ONLY valid JSON, nothing else:
 {
   "room": "Living Room",
   "items": [
