@@ -28,6 +28,50 @@ async function trelloFetch(method: string, action: string, params: Record<string
   return r.json();
 }
 
+function BoardSelector({ boards, loading, error, selectedBoardId, onSelect, onLink, linking }: {
+  boards: TrelloBoard[]; loading: boolean; error: string;
+  selectedBoardId: string; onSelect: (id: string) => void;
+  onLink: () => void; linking: boolean;
+}) {
+  if (loading) return (
+    <div className="space-y-4 pt-2">
+      <div className="flex items-center gap-2 text-muted-foreground text-sm">
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading your boards...
+      </div>
+    </div>
+  );
+  if (error) return (
+    <div className="space-y-3 pt-2">
+      <p className="text-sm text-destructive">{error}</p>
+      <p className="text-xs text-muted-foreground">Check that your Trello API key and token are set correctly in Vercel.</p>
+    </div>
+  );
+  if (boards.length === 0) return (
+    <div className="space-y-3 pt-2">
+      <p className="text-sm text-muted-foreground">No boards found. Create a board in Trello first, then come back here.</p>
+      <a href="https://trello.com/b/create" target="_blank" rel="noopener noreferrer">
+        <Button variant="outline" className="w-full">
+          <ExternalLink className="h-4 w-4 mr-2" /> Create a board in Trello
+        </Button>
+      </a>
+    </div>
+  );
+  return (
+    <div className="space-y-4 pt-2">
+      <Select value={selectedBoardId} onValueChange={onSelect}>
+        <SelectTrigger><SelectValue placeholder="Select a board" /></SelectTrigger>
+        <SelectContent>
+          {boards.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      <Button onClick={onLink} disabled={!selectedBoardId || linking} className="w-full">
+        {linking ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+        Link Board
+      </Button>
+    </div>
+  );
+}
+
 export default function TrelloPage() {
   const { selectedProject } = useProject();
   const pid = selectedProject.id;
@@ -41,9 +85,11 @@ export default function TrelloPage() {
   const [boardLoading, setBoardLoading] = useState(false);
 
   // Link board dialog
-  const [linkOpen, setLinkOpen]     = useState(false);
+  const [linkOpen, setLinkOpen]       = useState(false);
   const [selectedBoardId, setSelectedBoardId] = useState('');
-  const [linking, setLinking]       = useState(false);
+  const [linking, setLinking]         = useState(false);
+  const [boardsLoading, setBoardsLoading] = useState(false);
+  const [boardsError, setBoardsError] = useState('');
 
   // Add card
   const [addingToList, setAddingToList] = useState<string | null>(null);
@@ -106,10 +152,15 @@ export default function TrelloPage() {
 
   async function openLinkDialog() {
     setLinkOpen(true);
-    if (boards.length === 0) {
-      const data = await trelloFetch('GET', 'boards').catch(() => []);
-      setBoards(data);
+    setBoardsError('');
+    setBoardsLoading(true);
+    try {
+      const data = await trelloFetch('GET', 'boards');
+      setBoards(Array.isArray(data) ? data : []);
+    } catch (e: any) {
+      setBoardsError(e.message || 'Failed to load boards');
     }
+    setBoardsLoading(false);
   }
 
   async function handleLink() {
@@ -210,24 +261,15 @@ export default function TrelloPage() {
         <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
           <DialogContent>
             <DialogHeader><DialogTitle>Link Trello Board</DialogTitle></DialogHeader>
-            <div className="space-y-4 pt-2">
-              {boards.length === 0 ? (
-                <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Loading your boards...
-                </div>
-              ) : (
-                <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
-                  <SelectTrigger><SelectValue placeholder="Select a board" /></SelectTrigger>
-                  <SelectContent>
-                    {boards.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              )}
-              <Button onClick={handleLink} disabled={!selectedBoardId || linking} className="w-full">
-                {linking ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Link Board
-              </Button>
-            </div>
+            <BoardSelector
+              boards={boards}
+              loading={boardsLoading}
+              error={boardsError}
+              selectedBoardId={selectedBoardId}
+              onSelect={setSelectedBoardId}
+              onLink={handleLink}
+              linking={linking}
+            />
           </DialogContent>
         </Dialog>
       </div>
