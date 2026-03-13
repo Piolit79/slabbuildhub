@@ -15,7 +15,6 @@ const companyNavItems = [
   { to: '/draws', label: 'Draws', icon: Landmark },
   { to: '/vendors', label: 'Vendors', icon: Users },
   { to: '/invoices', label: 'Invoices', icon: Receipt },
-  { to: '/trello', label: 'Task Board', icon: Kanban },
 ];
 
 const clientNavItems = [
@@ -89,6 +88,19 @@ export default function AppSidebar() {
           </span>
         )}
         {navItems.map(({ to, label, icon }) => renderNavLink(to, label, icon))}
+
+        {/* Internal Hub Section — company only */}
+        {!isClient && (
+          <>
+            {!(collapsed && !isMobile) && (
+              <span className="block text-base font-semibold uppercase tracking-widest text-muted-foreground px-3 pb-2 pt-4">
+                Internal Hub
+              </span>
+            )}
+            {collapsed && !isMobile && <div className="border-t border-sidebar-border my-2" />}
+            {renderNavLink('/trello', 'Trello', Kanban)}
+          </>
+        )}
 
         {/* Insurance Hub Section — company only */}
         {!isClient && (
