@@ -35,6 +35,7 @@ import InteriorsLedger from "./pages/InteriorsLedger";
 import PackageTrack from "./pages/PackageTrack";
 import ClientCOI from "./pages/ClientCOI";
 import ClientSubAgreements from "./pages/ClientSubAgreements";
+import TrelloPage from "./pages/Trello";
 
 const queryClient = new QueryClient();
 
@@ -88,6 +89,9 @@ const App = () => {
                 <Route path="/insurance/projects/:id" element={<ClientRedirect><COIProjectDetail /></ClientRedirect>} />
                 <Route path="/insurance/files" element={<ClientRedirect><COIFiles /></ClientRedirect>} />
                 <Route path="/insurance/settings" element={<ClientRedirect><COISettings /></ClientRedirect>} />
+
+                {/* Trello Task Board (company only) */}
+                <Route path="/trello" element={<ClientRedirect><TrelloPage /></ClientRedirect>} />
 
                 {/* Vendor Hub routes (company only) */}
                 <Route path="/vendor-hub" element={<ClientRedirect><VendorDirectoryPage /></ClientRedirect>} />

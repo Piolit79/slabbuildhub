@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderClosed, FolderOpen, UserRound, MessageSquare, Store, ClipboardCheck, CalendarDays, Layers, Package, Receipt } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, Calculator, Users, Landmark, ChevronLeft, ChevronRight, Menu, X, Settings, LogOut, Shield, FolderKanban, FolderClosed, FolderOpen, UserRound, MessageSquare, Store, ClipboardCheck, CalendarDays, Layers, Package, Receipt, Kanban } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -15,6 +15,7 @@ const companyNavItems = [
   { to: '/draws', label: 'Draws', icon: Landmark },
   { to: '/vendors', label: 'Vendors', icon: Users },
   { to: '/invoices', label: 'Invoices', icon: Receipt },
+  { to: '/trello', label: 'Task Board', icon: Kanban },
 ];
 
 const clientNavItems = [
