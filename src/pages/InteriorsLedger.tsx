@@ -154,8 +154,11 @@ export default function InteriorsLedger() {
   const [items, setItems] = useState<FurnitureItem[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Editing state
-  const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
+  // Row edit state
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<Partial<FurnitureItem>>({});
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  // Room rename state
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
 
@@ -312,18 +315,30 @@ export default function InteriorsLedger() {
     }));
   };
 
-  // ── Inline edit helpers ───────────────────────────────────────────────────────
+  // ── Row edit helpers ──────────────────────────────────────────────────────────
 
-  const startEdit = (id: string, field: string, current: string) => {
-    setEditingCell({ id, field });
-    setEditValue(current);
+  const startEditRow = (item: FurnitureItem) => {
+    setConfirmDeleteId(null);
+    setEditId(item.id);
+    setEditDraft({ ...item });
   };
 
-  const saveEdit = async () => {
-    if (!editingCell) return;
-    await updateItemField(editingCell.id, editingCell.field, editValue);
-    setEditingCell(null);
+  const saveEditRow = async () => {
+    if (!editId || !editDraft) return;
+    const updates: Record<string, unknown> = { ...editDraft };
+    // Auto-detect carrier when tracking number changes
+    if (editDraft.tracking_number !== undefined) {
+      updates.carrier = detectCarrier(editDraft.tracking_number as string);
+      if (updates.carrier && editDraft.tracking_number) updates.delivery_status = 'shipped';
+    }
+    const { error } = await supabase.from('interiors_items').update(updates).eq('id', editId);
+    if (error) { toast.error('Failed to save'); return; }
+    setItems(prev => prev.map(i => i.id === editId ? { ...i, ...updates } as FurnitureItem : i));
+    setEditId(null);
+    setEditDraft({});
   };
+
+  const cancelEditRow = () => { setEditId(null); setEditDraft({}); };
 
   // ── Image upload ──────────────────────────────────────────────────────────────
 
@@ -587,34 +602,13 @@ export default function InteriorsLedger() {
 
   // ── Render helpers ────────────────────────────────────────────────────────────
 
-  const EditableCell = ({
-    itemId, field, value, placeholder = '', className = '', multiline = false
-  }: {
-    itemId: string; field: string; value: string; placeholder?: string; className?: string; multiline?: boolean;
-  }) => {
-    const isEditing = editingCell?.id === itemId && editingCell?.field === field;
-    if (isEditing) {
-      return (
-        <Input
-          autoFocus
-          value={editValue}
-          onChange={e => setEditValue(e.target.value)}
-          onBlur={saveEdit}
-          onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingCell(null); }}
-          className={`h-7 text-xs px-1 min-w-[80px] ${className}`}
-        />
-      );
-    }
-    return (
-      <span
-        className={`cursor-pointer hover:bg-accent/50 rounded px-1 py-0.5 min-h-[24px] inline-block text-xs ${!value ? 'text-muted-foreground/50' : ''} ${className}`}
-        onClick={() => startEdit(itemId, field, value)}
-        title="Click to edit"
-      >
-        {value || placeholder || '—'}
-      </span>
-    );
-  };
+  const isEditing = (itemId: string) => editId === itemId;
+
+  const df = (field: keyof FurnitureItem) =>
+    editDraft[field] !== undefined ? String(editDraft[field]) : '';
+
+  const setDf = (field: keyof FurnitureItem, value: string | number | null) =>
+    setEditDraft(d => ({ ...d, [field]: value }));
 
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -712,8 +706,8 @@ export default function InteriorsLedger() {
         const roomItems = [...items.filter(i => i.room_id === room.id)].sort((a, b) => a.sort_order - b.sort_order);
         return (
           <div key={room.id} className="border rounded-lg overflow-hidden">
-            {/* Room Header */}
-            <div className="flex items-center gap-2 px-4 py-2.5 bg-[#F5C518] text-black">
+            {/* Room Header — matches app accent style */}
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-accent/60 text-accent-foreground">
               {editingRoomId === room.id ? (
                 <div className="flex items-center gap-2 flex-1">
                   <Input
@@ -722,18 +716,19 @@ export default function InteriorsLedger() {
                     onChange={e => setEditValue(e.target.value)}
                     onBlur={() => saveRoomName(room.id)}
                     onKeyDown={e => { if (e.key === 'Enter') saveRoomName(room.id); if (e.key === 'Escape') setEditingRoomId(null); }}
-                    className="h-7 text-sm font-semibold bg-white/80 border-black/20 max-w-[200px]"
+                    className="h-7 text-sm font-semibold bg-background/20 border-white/20 max-w-[200px]"
                   />
                   <button onClick={() => saveRoomName(room.id)}><Check className="h-4 w-4" /></button>
+                  <button onClick={() => setEditingRoomId(null)}><X className="h-4 w-4" /></button>
                 </div>
               ) : (
                 <span className="font-semibold text-sm flex-1 uppercase tracking-wide">{room.name}</span>
               )}
               <div className="flex items-center gap-1">
-                <button onClick={() => { setEditingRoomId(room.id); setEditValue(room.name); }} title="Rename"><Pencil className="h-3.5 w-3.5" /></button>
-                <button onClick={() => moveRoom(room.id, 'up')} disabled={roomIdx === 0} className="disabled:opacity-30"><ChevronUp className="h-4 w-4" /></button>
-                <button onClick={() => moveRoom(room.id, 'down')} disabled={roomIdx === sortedRooms.length - 1} className="disabled:opacity-30"><ChevronDown className="h-4 w-4" /></button>
-                <button onClick={() => deleteRoom(room.id)} className="hover:text-red-800"><Trash2 className="h-3.5 w-3.5" /></button>
+                <button onClick={() => { setEditingRoomId(room.id); setEditValue(room.name); }} title="Rename" className="opacity-70 hover:opacity-100"><Pencil className="h-3.5 w-3.5" /></button>
+                <button onClick={() => moveRoom(room.id, 'up')} disabled={roomIdx === 0} className="disabled:opacity-20 opacity-70 hover:opacity-100"><ChevronUp className="h-4 w-4" /></button>
+                <button onClick={() => moveRoom(room.id, 'down')} disabled={roomIdx === sortedRooms.length - 1} className="disabled:opacity-20 opacity-70 hover:opacity-100"><ChevronDown className="h-4 w-4" /></button>
+                <button onClick={() => deleteRoom(room.id)} className="opacity-70 hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></button>
               </div>
             </div>
 
@@ -741,165 +736,110 @@ export default function InteriorsLedger() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b bg-muted/30 text-xs text-muted-foreground">
-                    <th className="w-[60px] px-2 py-2 text-left">Sort</th>
-                    <th className="w-[80px] px-2 py-2 text-left">Image</th>
-                    <th className="w-[70px] px-2 py-2 text-left">Key</th>
-                    <th className="w-[120px] px-2 py-2 text-left">Item</th>
-                    <th className="w-[130px] px-2 py-2 text-left">Vendor</th>
-                    <th className="w-[130px] px-2 py-2 text-left">Finish / Color</th>
-                    <th className="w-[200px] px-2 py-2 text-left">Description</th>
-                    <th className="w-[50px] px-2 py-2 text-left">Qty</th>
-                    <th className="w-[90px] px-2 py-2 text-left">Link</th>
-                    <th className="w-[130px] px-2 py-2 text-left">Tracking #</th>
-                    <th className="w-[70px] px-2 py-2 text-left">Carrier</th>
-                    <th className="w-[130px] px-2 py-2 text-left">Status</th>
-                    <th className="w-[110px] px-2 py-2 text-left">ETA</th>
-                    <th className="w-[60px] px-2 py-2"></th>
+                  <tr className="border-b text-xs text-muted-foreground" style={{ backgroundColor: 'rgba(195, 126, 135, 0.10)' }}>
+                    <th className="w-[52px] px-2 py-2 text-left">Sort</th>
+                    <th className="w-[68px] px-2 py-2 text-left">Image</th>
+                    <th className="w-[64px] px-2 py-2 text-left">Key</th>
+                    <th className="w-[110px] px-2 py-2 text-left">Item</th>
+                    <th className="w-[120px] px-2 py-2 text-left">Vendor</th>
+                    <th className="w-[110px] px-2 py-2 text-left">Finish / Color</th>
+                    <th className="w-[180px] px-2 py-2 text-left">Description</th>
+                    <th className="w-[42px] px-2 py-2 text-left">Qty</th>
+                    <th className="w-[80px] px-2 py-2 text-left">Link</th>
+                    <th className="w-[120px] px-2 py-2 text-left">Tracking #</th>
+                    <th className="w-[64px] px-2 py-2 text-left">Carrier</th>
+                    <th className="w-[120px] px-2 py-2 text-left">Status</th>
+                    <th className="w-[100px] px-2 py-2 text-left">ETA</th>
+                    <th className="w-[72px] px-2 py-2"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {roomItems.map((item, itemIdx) => (
-                    <tr key={item.id} className="border-b hover:bg-muted/10 transition-colors">
-                      {/* Sort buttons */}
+                  {roomItems.map((item, itemIdx) => {
+                    const editing = isEditing(item.id);
+                    const confirming = confirmDeleteId === item.id;
+                    return (
+                    <tr
+                      key={item.id}
+                      className="group border-b transition-colors"
+                      style={itemIdx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.07)' } : undefined}
+                    >
+                      {/* Sort */}
                       <td className="px-2 py-1.5">
                         <div className="flex flex-col gap-0.5">
-                          <button onClick={() => moveItem(item.id, room.id, 'up')} disabled={itemIdx === 0} className="disabled:opacity-20 hover:text-foreground text-muted-foreground"><ChevronUp className="h-3.5 w-3.5" /></button>
-                          <button onClick={() => moveItem(item.id, room.id, 'down')} disabled={itemIdx === roomItems.length - 1} className="disabled:opacity-20 hover:text-foreground text-muted-foreground"><ChevronDown className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => moveItem(item.id, room.id, 'up')} disabled={itemIdx === 0} className="disabled:opacity-20 text-muted-foreground hover:text-foreground"><ChevronUp className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => moveItem(item.id, room.id, 'down')} disabled={itemIdx === roomItems.length - 1} className="disabled:opacity-20 text-muted-foreground hover:text-foreground"><ChevronDown className="h-3.5 w-3.5" /></button>
                         </div>
                       </td>
 
                       {/* Image */}
                       <td className="px-2 py-1.5">
-                        <div className="relative group w-14 h-14">
+                        <div className="relative group w-12 h-12">
                           {item.image_url ? (
-                            <img src={item.image_url} alt="" className="w-14 h-14 object-contain rounded border bg-white" />
+                            <img src={item.image_url} alt="" className="w-12 h-12 object-contain rounded border bg-white" />
                           ) : (
-                            <div className="w-14 h-14 rounded border bg-muted/20 flex items-center justify-center">
-                              <ImageIcon className="h-5 w-5 text-muted-foreground/30" />
+                            <div className="w-12 h-12 rounded border bg-muted/20 flex items-center justify-center">
+                              <ImageIcon className="h-4 w-4 text-muted-foreground/30" />
                             </div>
                           )}
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center gap-1">
-                            <button
-                              onClick={() => { setImageUploadItemId(item.id); imageInputRef.current?.click(); }}
-                              className="text-white p-0.5" title="Upload photo"
-                            >
-                              <Upload className="h-4 w-4" />
-                            </button>
-                            {zipImages.length > 0 && (
-                              <button
-                                onClick={() => setShowImagePicker({ itemId: item.id })}
-                                className="text-white p-0.5" title="Pick from board images"
-                              >
-                                <RefreshCw className="h-3.5 w-3.5" />
-                              </button>
-                            )}
+                            <button onClick={() => { setImageUploadItemId(item.id); imageInputRef.current?.click(); }} className="text-white p-0.5" title="Upload photo"><Upload className="h-3.5 w-3.5" /></button>
+                            {zipImages.length > 0 && <button onClick={() => setShowImagePicker({ itemId: item.id })} className="text-white p-0.5" title="Pick from board"><RefreshCw className="h-3 w-3" /></button>}
                           </div>
                         </div>
                       </td>
 
                       {/* Key */}
                       <td className="px-2 py-1.5">
-                        <EditableCell itemId={item.id} field="key" value={item.key} placeholder="F-01" />
+                        {editing ? <Input value={df('key')} onChange={e => setDf('key', e.target.value)} className="h-7 text-xs px-1 w-14" /> : <span className="text-xs font-mono text-muted-foreground">{item.key}</span>}
                       </td>
 
                       {/* Item */}
                       <td className="px-2 py-1.5">
-                        <EditableCell itemId={item.id} field="item" value={item.item} placeholder="Chair" />
+                        {editing ? <Input value={df('item')} onChange={e => setDf('item', e.target.value)} className="h-7 text-xs px-1 w-24" /> : <span className="text-xs">{item.item || <span className="text-muted-foreground/40">—</span>}</span>}
                       </td>
 
                       {/* Vendor */}
                       <td className="px-2 py-1.5">
-                        <EditableCell itemId={item.id} field="vendor" value={item.vendor} placeholder="Vendor" />
+                        {editing ? <Input value={df('vendor')} onChange={e => setDf('vendor', e.target.value)} className="h-7 text-xs px-1 w-24" /> : <span className="text-xs text-muted-foreground">{item.vendor || '—'}</span>}
                       </td>
 
                       {/* Finish/Color */}
                       <td className="px-2 py-1.5">
-                        <EditableCell itemId={item.id} field="finish_color" value={item.finish_color} placeholder="Color" />
+                        {editing ? <Input value={df('finish_color')} onChange={e => setDf('finish_color', e.target.value)} className="h-7 text-xs px-1 w-24" /> : <span className="text-xs text-muted-foreground">{item.finish_color || '—'}</span>}
                       </td>
 
                       {/* Description */}
                       <td className="px-2 py-1.5">
-                        <EditableCell itemId={item.id} field="description" value={item.description} placeholder="Description" className="max-w-[190px]" />
+                        {editing ? <Input value={df('description')} onChange={e => setDf('description', e.target.value)} className="h-7 text-xs px-1 w-40" /> : <span className="text-xs text-muted-foreground truncate max-w-[170px] block">{item.description || '—'}</span>}
                       </td>
 
                       {/* Qty */}
                       <td className="px-2 py-1.5">
-                        {editingCell?.id === item.id && editingCell?.field === 'qty' ? (
-                          <Input
-                            autoFocus
-                            type="number"
-                            value={editValue}
-                            onChange={e => setEditValue(e.target.value)}
-                            onBlur={async () => { await updateItemField(item.id, 'qty', parseInt(editValue) || 1); setEditingCell(null); }}
-                            onKeyDown={e => { if (e.key === 'Enter') { updateItemField(item.id, 'qty', parseInt(editValue) || 1); setEditingCell(null); } }}
-                            className="h-7 w-14 text-xs px-1"
-                          />
-                        ) : (
-                          <span className="cursor-pointer hover:bg-accent/50 rounded px-1 py-0.5 text-xs" onClick={() => startEdit(item.id, 'qty', String(item.qty))}>
-                            {item.qty}
-                          </span>
-                        )}
+                        {editing ? <Input type="number" value={df('qty')} onChange={e => setDf('qty', parseInt(e.target.value) || 1)} className="h-7 text-xs px-1 w-12" /> : <span className="text-xs">{item.qty}</span>}
                       </td>
 
                       {/* Product Link */}
                       <td className="px-2 py-1.5">
-                        {editingCell?.id === item.id && editingCell?.field === 'product_link' ? (
-                          <Input
-                            autoFocus
-                            value={editValue}
-                            onChange={e => setEditValue(e.target.value)}
-                            onBlur={saveEdit}
-                            onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingCell(null); }}
-                            className="h-7 text-xs px-1 w-24"
-                            placeholder="https://..."
-                          />
+                        {editing ? (
+                          <Input value={df('product_link')} onChange={e => setDf('product_link', e.target.value)} className="h-7 text-xs px-1 w-20" placeholder="https://…" />
                         ) : item.product_link ? (
-                          <div className="flex items-center gap-1">
-                            <a href={item.product_link} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                              <Link2 className="h-3.5 w-3.5" />
-                            </a>
-                            <button onClick={() => startEdit(item.id, 'product_link', item.product_link)} className="text-muted-foreground hover:text-foreground">
-                              <Pencil className="h-3 w-3" />
-                            </button>
-                          </div>
+                          <a href={item.product_link} target="_blank" rel="noopener noreferrer" style={{ color: '#7b9ec3' }} className="hover:underline"><Link2 className="h-3.5 w-3.5" /></a>
                         ) : (
-                          <button onClick={() => startEdit(item.id, 'product_link', '')} className="text-muted-foreground/50 hover:text-muted-foreground text-xs">
-                            + Link
-                          </button>
+                          <span className="text-muted-foreground/30 text-xs">—</span>
                         )}
                       </td>
 
                       {/* Tracking # */}
                       <td className="px-2 py-1.5">
-                        {editingCell?.id === item.id && editingCell?.field === 'tracking_number' ? (
-                          <Input
-                            autoFocus
-                            value={editValue}
-                            onChange={e => setEditValue(e.target.value)}
-                            onBlur={saveEdit}
-                            onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingCell(null); }}
-                            className="h-7 text-xs px-1 w-28"
-                            placeholder="Tracking #"
-                          />
+                        {editing ? (
+                          <Input value={df('tracking_number')} onChange={e => setDf('tracking_number', e.target.value)} className="h-7 text-xs px-1 w-28" placeholder="Tracking #" />
                         ) : item.tracking_number ? (
-                          <div className="flex items-center gap-1">
-                            {getTrackingUrl(item.carrier, item.tracking_number) ? (
-                              <a href={getTrackingUrl(item.carrier, item.tracking_number)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline font-mono truncate max-w-[90px]">
-                                {item.tracking_number}
-                              </a>
-                            ) : (
-                              <span className="text-xs font-mono truncate max-w-[90px]">{item.tracking_number}</span>
-                            )}
-                            <button onClick={() => startEdit(item.id, 'tracking_number', item.tracking_number)} className="text-muted-foreground hover:text-foreground">
-                              <Pencil className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ) : (
-                          <button onClick={() => startEdit(item.id, 'tracking_number', '')} className="text-muted-foreground/50 hover:text-muted-foreground text-xs">
-                            + Track
-                          </button>
-                        )}
+                          getTrackingUrl(item.carrier, item.tracking_number) ? (
+                            <a href={getTrackingUrl(item.carrier, item.tracking_number)} target="_blank" rel="noopener noreferrer" style={{ color: '#7b9ec3' }} className="text-xs font-mono hover:underline truncate max-w-[90px] block">{item.tracking_number}</a>
+                          ) : (
+                            <span className="text-xs font-mono truncate max-w-[90px] block">{item.tracking_number}</span>
+                          )
+                        ) : <span className="text-muted-foreground/30 text-xs">—</span>}
                       </td>
 
                       {/* Carrier */}
@@ -910,10 +850,10 @@ export default function InteriorsLedger() {
                       {/* Status */}
                       <td className="px-2 py-1.5">
                         <Select
-                          value={item.delivery_status || 'not_ordered'}
-                          onValueChange={val => updateItemField(item.id, 'delivery_status', val)}
+                          value={editing ? (df('delivery_status') || 'not_ordered') : (item.delivery_status || 'not_ordered')}
+                          onValueChange={val => editing ? setDf('delivery_status', val) : updateItemField(item.id, 'delivery_status', val)}
                         >
-                          <SelectTrigger className={`h-6 text-xs border px-2 py-0 rounded-full w-auto min-w-[100px] ${getStatusStyle(item.delivery_status)}`}>
+                          <SelectTrigger className={`h-6 text-xs border px-2 py-0 rounded-full w-auto min-w-[95px] ${getStatusStyle(editing ? df('delivery_status') : item.delivery_status)}`}>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -928,34 +868,38 @@ export default function InteriorsLedger() {
 
                       {/* ETA */}
                       <td className="px-2 py-1.5">
-                        {editingCell?.id === item.id && editingCell?.field === 'eta' ? (
-                          <Input
-                            autoFocus
-                            type="date"
-                            value={editValue}
-                            onChange={e => setEditValue(e.target.value)}
-                            onBlur={async () => { await updateItemField(item.id, 'eta', editValue || null); setEditingCell(null); }}
-                            onKeyDown={e => { if (e.key === 'Enter') { updateItemField(item.id, 'eta', editValue || null); setEditingCell(null); } }}
-                            className="h-7 text-xs px-1 w-28"
-                          />
+                        {editing ? (
+                          <Input type="date" value={df('eta')} onChange={e => setDf('eta', e.target.value || null)} className="h-7 text-xs px-1 w-28" />
                         ) : (
-                          <span
-                            className="cursor-pointer hover:bg-accent/50 rounded px-1 py-0.5 text-xs"
-                            onClick={() => startEdit(item.id, 'eta', item.eta || '')}
-                          >
-                            {item.eta ? new Date(item.eta + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : <span className="text-muted-foreground/50">+ ETA</span>}
+                          <span className="text-xs text-muted-foreground">
+                            {item.eta ? new Date(item.eta + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                           </span>
                         )}
                       </td>
 
-                      {/* Delete */}
-                      <td className="px-2 py-1.5 text-right">
-                        <button onClick={() => deleteItem(item.id)} className="text-muted-foreground hover:text-red-500 transition-colors">
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                      {/* Actions: edit / delete */}
+                      <td className="px-2 py-1.5">
+                        {editing ? (
+                          <div className="flex items-center gap-1">
+                            <button onClick={saveEditRow} className="text-green-600 hover:opacity-70" title="Save"><Check className="h-3.5 w-3.5" /></button>
+                            <button onClick={cancelEditRow} className="text-muted-foreground hover:text-foreground" title="Undo"><X className="h-3.5 w-3.5" /></button>
+                          </div>
+                        ) : confirming ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-muted-foreground">Delete?</span>
+                            <button onClick={() => { deleteItem(item.id); setConfirmDeleteId(null); }} className="text-destructive hover:opacity-70"><Check className="h-3.5 w-3.5" /></button>
+                            <button onClick={() => setConfirmDeleteId(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => startEditRow(item)} className="text-muted-foreground/60 hover:text-foreground" title="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+                            <button onClick={() => { setEditId(null); setConfirmDeleteId(item.id); }} className="text-muted-foreground/40 hover:text-destructive" title="Delete"><Trash2 className="h-3.5 w-3.5" /></button>
+                          </div>
+                        )}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
 
@@ -1041,14 +985,14 @@ export default function InteriorsLedger() {
               {scannedRooms.map((sr, roomIdx) => (
                 <div key={roomIdx} className="border rounded-lg overflow-hidden">
                   {/* Room name header — editable */}
-                  <div className="flex items-center gap-2 px-3 py-2 bg-[#F5C518]/20 border-b">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground w-20">Room name</span>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-accent/60 text-accent-foreground border-b">
+                    <span className="text-xs font-semibold uppercase tracking-wide opacity-70 w-20">Room</span>
                     <Input
                       value={sr.name}
                       onChange={e => setScannedRooms(prev => prev.map((r, i) => i === roomIdx ? { ...r, name: e.target.value } : r))}
-                      className="h-7 text-sm font-semibold max-w-xs border-0 bg-transparent focus-visible:ring-1 px-1"
+                      className="h-7 text-sm font-semibold max-w-xs border-0 bg-white/20 focus-visible:ring-1 px-2"
                     />
-                    <span className="text-xs text-muted-foreground ml-auto">{sr.items.length} item{sr.items.length !== 1 ? 's' : ''}</span>
+                    <span className="text-xs opacity-60 ml-auto">{sr.items.length} item{sr.items.length !== 1 ? 's' : ''}</span>
                   </div>
 
                   {/* Items table */}
