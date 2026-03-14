@@ -707,7 +707,7 @@ export default function InteriorsLedger() {
         return (
           <div key={room.id} className="border rounded-lg overflow-hidden">
             {/* Room Header — matches app accent style */}
-            <div className="flex items-center gap-2 px-4 py-2.5 bg-accent/60 text-accent-foreground">
+            <div className="flex items-center gap-2 px-4 py-2.5 bg-secondary/50 text-secondary-foreground">
               {editingRoomId === room.id ? (
                 <div className="flex items-center gap-2 flex-1">
                   <Input
@@ -985,7 +985,7 @@ export default function InteriorsLedger() {
               {scannedRooms.map((sr, roomIdx) => (
                 <div key={roomIdx} className="border rounded-lg overflow-hidden">
                   {/* Room name header — editable */}
-                  <div className="flex items-center gap-2 px-3 py-2 bg-accent/60 text-accent-foreground border-b">
+                  <div className="flex items-center gap-2 px-3 py-2 bg-secondary/50 text-secondary-foreground border-b">
                     <span className="text-xs font-semibold uppercase tracking-wide opacity-70 w-20">Room</span>
                     <Input
                       value={sr.name}
