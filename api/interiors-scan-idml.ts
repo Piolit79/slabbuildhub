@@ -1,66 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import JSZip from 'jszip';
 
 export const maxDuration = 60;
 
-// ── IDML parser ───────────────────────────────────────────────────────────────
-// IDML is a ZIP archive containing XML files.
-// Stories/*.xml  → clean UTF-8 text (exactly what was typed in InDesign)
-// Spreads/*.xml  → image link filenames (LinkResourceURI attributes)
-
-function unescapeXml(s: string): string {
-  return s
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&apos;/g, "'")
-    .replace(/&quot;/g, '"');
-}
-
-async function parseIdml(buffer: Buffer): Promise<{ text: string; imageFilenames: string[] }> {
-  const zip = new JSZip();
-  await zip.loadAsync(buffer);
-
-  const storyTexts: string[] = [];
-  const imageFilenames: string[] = [];
-
-  // ── Text extraction from Stories ─────────────────────────────────────────
-  for (const [path, file] of Object.entries(zip.files)) {
-    if (!path.startsWith('Stories/') || !path.endsWith('.xml') || file.dir) continue;
-    const xml = await file.async('string');
-    const re = /<Content>([^<]*)<\/Content>/g;
-    let m;
-    while ((m = re.exec(xml)) !== null) {
-      const t = unescapeXml(m[1]).trim();
-      if (t.length > 1) storyTexts.push(t);
-    }
-  }
-
-  // ── Image filename extraction from Spreads (and BackingStory) ────────────
-  for (const [path, file] of Object.entries(zip.files)) {
-    const isSpread = path.startsWith('Spreads/') && path.endsWith('.xml');
-    const isBacking = path === 'BackingStory.xml';
-    if ((!isSpread && !isBacking) || file.dir) continue;
-    const xml = await file.async('string');
-    const re = /LinkResourceURI="([^"]+)"/g;
-    let m;
-    while ((m = re.exec(xml)) !== null) {
-      const uri = m[1].replace(/\\/g, '/');
-      const parts = uri.split('/');
-      const fname = decodeURIComponent(parts[parts.length - 1]);
-      if (fname && /\.(jpe?g|png|gif|webp|tiff?|psd|eps|ai|svg)$/i.test(fname)) {
-        imageFilenames.push(fname);
-      }
-    }
-  }
-
-  return {
-    text: storyTexts.join('\n'),
-    imageFilenames: [...new Set(imageFilenames)],
-  };
-}
-
 // ── Handler ────────────────────────────────────────────────────────────────────
+// Receives pre-parsed text + imageFilenames from the client-side IDML parser.
+// The client uses JSZip to parse the IDML in the browser (no file upload needed).
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -69,22 +13,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!OPENAI_API_KEY) return res.status(500).json({ error: 'OPENAI_API_KEY not set' });
 
   try {
-    const { idmlUrl } = req.body;
-    if (!idmlUrl) return res.status(400).json({ error: 'idmlUrl required' });
-
-    // Fetch the IDML from Supabase Storage
-    const idmlResp = await fetch(idmlUrl);
-    if (!idmlResp.ok) throw new Error(`Failed to fetch IDML: ${idmlResp.status}`);
-    const arrayBuffer = await idmlResp.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    const { text, imageFilenames } = await parseIdml(buffer);
-
+    const { text, imageFilenames } = req.body as { text: string; imageFilenames: string[] };
     if (!text || text.trim().length < 10) {
-      return res.status(400).json({
-        error: 'Could not extract text from this IDML file.',
-        hint: `Story text length: ${text?.length ?? 0}`,
-      });
+      return res.status(400).json({ error: 'text is required and must not be empty' });
     }
 
     // Provide GPT the full text and the exact image filenames so it can match them

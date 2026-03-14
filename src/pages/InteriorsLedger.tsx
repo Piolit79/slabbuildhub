@@ -343,6 +343,47 @@ export default function InteriorsLedger() {
     e.target.value = '';
   };
 
+  // ── IDML client-side parser ───────────────────────────────────────────────────
+  // IDML is a ZIP of XML files. Parse it in the browser — no upload needed.
+  // Stories/*.xml  → clean UTF-8 text (exactly what was typed in InDesign)
+  // Spreads/*.xml  → image filenames from LinkResourceURI attributes
+
+  const parseIdmlClient = async (file: File): Promise<{ text: string; imageFilenames: string[] }> => {
+    const jszip = new JSZip();
+    const zip = await jszip.loadAsync(file);
+    const storyTexts: string[] = [];
+    const imageFilenames: string[] = [];
+
+    for (const [path, entry] of Object.entries(zip.files)) {
+      if (entry.dir) continue;
+      if (path.startsWith('Stories/') && path.endsWith('.xml')) {
+        const xml = await entry.async('string');
+        const re = /<Content>([^<]*)<\/Content>/g;
+        let m;
+        while ((m = re.exec(xml)) !== null) {
+          const t = m[1]
+            .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+            .replace(/&apos;/g, "'").replace(/&quot;/g, '"').trim();
+          if (t.length > 1) storyTexts.push(t);
+        }
+      }
+      if ((path.startsWith('Spreads/') && path.endsWith('.xml')) || path === 'BackingStory.xml') {
+        const xml = await entry.async('string');
+        const re = /LinkResourceURI="([^"]+)"/g;
+        let m;
+        while ((m = re.exec(xml)) !== null) {
+          const uri = m[1].replace(/\\/g, '/');
+          const fname = decodeURIComponent(uri.split('/').pop() || '');
+          if (fname && /\.(jpe?g|png|gif|webp|tiff?|psd|eps|ai|svg)$/i.test(fname)) {
+            imageFilenames.push(fname);
+          }
+        }
+      }
+    }
+
+    return { text: storyTexts.join('\n'), imageFilenames: [...new Set(imageFilenames)] };
+  };
+
   // ── PDF Scan ──────────────────────────────────────────────────────────────────
 
   const extractZipImages = async (zip: File): Promise<ZipImage[]> => {
@@ -378,35 +419,33 @@ export default function InteriorsLedger() {
         setZipImages(extracted);
       }
 
-      // Upload source file to Supabase Storage (avoids Vercel 4.5MB payload limit)
-      const ext = isIdml ? 'idml' : 'pdf';
-      const contentType = isIdml ? 'application/zip' : 'application/pdf';
-      const tempPath = `temp/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from('interiors-images')
-        .upload(tempPath, sourceFile, { contentType, upsert: true });
-      if (upErr) throw new Error(`Upload failed: ${upErr.message}`);
-      const { data: urlData } = supabase.storage.from('interiors-images').getPublicUrl(tempPath);
-
       let aiItems: ScannedItem[] = [];
       let room = '';
       let docImageFilenames: string[] = [];
 
       if (isIdml) {
-        // ── IDML path: clean XML text + exact image filenames ──────────────
+        // ── IDML path: parse client-side, send only text + filenames ────────
+        // No file upload needed — avoids all size limits
+        const { text, imageFilenames } = await parseIdmlClient(idmlFile!);
+        if (!text || text.trim().length < 10) throw new Error('Could not extract text from this IDML file. Make sure it was exported from InDesign as .idml');
+        docImageFilenames = imageFilenames;
         const resp = await fetch('/api/interiors-scan-idml', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idmlUrl: urlData.publicUrl }),
+          body: JSON.stringify({ text, imageFilenames }),
         });
-        supabase.storage.from('interiors-images').remove([tempPath]).catch(() => {});
         if (!resp.ok) throw new Error(await resp.text());
         const data = await resp.json();
         aiItems = data.items || [];
         room = data.room || '';
-        docImageFilenames = data.imageFilenames || [];
       } else {
-        // ── PDF path (fallback) ────────────────────────────────────────────
+        // ── PDF path (fallback): upload to storage, pass URL to API ─────────
+        const tempPath = `temp/${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`;
+        const { error: upErr } = await supabase.storage
+          .from('interiors-images')
+          .upload(tempPath, pdfFile!, { contentType: 'application/pdf', upsert: true });
+        if (upErr) throw new Error(`PDF upload failed: ${upErr.message}`);
+        const { data: urlData } = supabase.storage.from('interiors-images').getPublicUrl(tempPath);
         const resp = await fetch('/api/interiors-scan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
