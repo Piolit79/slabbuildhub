@@ -72,6 +72,11 @@ interface ScannedItem {
   assigned_image?: string; // filename from zip
 }
 
+interface ScannedRoom {
+  name: string;
+  items: ScannedItem[];
+}
+
 interface ZipImage {
   name: string;
   dataUrl: string;
@@ -160,14 +165,11 @@ export default function InteriorsLedger() {
   const [zipFile, setZipFile] = useState<File | null>(null);
   const [scanning, setScanning] = useState(false);
   const [showScanModal, setShowScanModal] = useState(false);
-  const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
-  const [scannedRoom, setScannedRoom] = useState('');
+  const [scannedRooms, setScannedRooms] = useState<ScannedRoom[]>([]);
   const [zipImages, setZipImages] = useState<ZipImage[]>([]);
-  const [targetRoomId, setTargetRoomId] = useState('');
-  const [newRoomName, setNewRoomName] = useState('');
   const [importingItems, setImportingItems] = useState(false);
   const [showImagePicker, setShowImagePicker] = useState<{ itemId: string } | null>(null);
-  const [showZipPicker, setShowZipPicker] = useState<{ index: number } | null>(null);
+  const [showZipPicker, setShowZipPicker] = useState<{ roomIdx: number; itemIdx: number } | null>(null);
 
   const idmlInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
@@ -419,13 +421,12 @@ export default function InteriorsLedger() {
         setZipImages(extracted);
       }
 
-      let aiItems: ScannedItem[] = [];
-      let room = '';
+      // ── Call the appropriate API ───────────────────────────────────────────
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let apiData: any = {};
       let docImageFilenames: string[] = [];
 
       if (isIdml) {
-        // ── IDML path: parse client-side, send only text + filenames ────────
-        // No file upload needed — avoids all size limits
         const { text, imageFilenames } = await parseIdmlClient(idmlFile!);
         if (!text || text.trim().length < 10) throw new Error('Could not extract text from this IDML file. Make sure it was exported from InDesign as .idml');
         docImageFilenames = imageFilenames;
@@ -435,11 +436,8 @@ export default function InteriorsLedger() {
           body: JSON.stringify({ text, imageFilenames }),
         });
         if (!resp.ok) throw new Error(await resp.text());
-        const data = await resp.json();
-        aiItems = data.items || [];
-        room = data.room || '';
+        apiData = await resp.json();
       } else {
-        // ── PDF path (fallback): upload to storage, pass URL to API ─────────
         const tempPath = `temp/${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`;
         const { error: upErr } = await supabase.storage
           .from('interiors-images')
@@ -453,11 +451,8 @@ export default function InteriorsLedger() {
         });
         supabase.storage.from('interiors-images').remove([tempPath]).catch(() => {});
         if (!resp.ok) throw new Error(await resp.text());
-        const data = await resp.json();
-        aiItems = data.items || [];
-        room = data.room || '';
-        // Merge PDF-extracted images with ZIP images
-        const pdfImages: ZipImage[] = (data.pdfImages || []).map((dataUrl: string, i: number) => ({
+        apiData = await resp.json();
+        const pdfImages: ZipImage[] = (apiData.pdfImages || []).map((dataUrl: string, i: number) => ({
           name: `image-${i + 1}.jpg`,
           dataUrl,
         }));
@@ -468,18 +463,14 @@ export default function InteriorsLedger() {
         }
       }
 
-      // ── Image matching ─────────────────────────────────────────────────────
-      // Build a lookup from filename → ZipImage for exact matching (IDML path)
+      // ── Image matching helper ──────────────────────────────────────────────
       const zipByName = new Map<string, ZipImage>(extracted.map(img => [img.name.toLowerCase(), img]));
 
-      const matched: ScannedItem[] = aiItems.map((ai: ScannedItem) => {
-        // 1. Exact filename match (IDML gives us this via image_filename)
+      const matchItem = (ai: ScannedItem): ScannedItem => {
         if (ai.image_filename) {
           const exact = zipByName.get(ai.image_filename.toLowerCase());
           if (exact) return { ...ai, assigned_image: exact.name, image_url: exact.dataUrl };
         }
-
-        // 2. Fuzzy fallback (used for PDF path or when exact match fails)
         let best: ZipImage | null = null;
         let bestScore = 0;
         for (const img of extracted) {
@@ -487,18 +478,25 @@ export default function InteriorsLedger() {
           if (score > bestScore) { bestScore = score; best = img; }
         }
         return { ...ai, assigned_image: best ? best.name : undefined, image_url: best ? best.dataUrl : undefined };
-      });
+      };
 
-      // If IDML gave us filenames but user didn't upload the Links ZIP,
-      // show a note about what filenames were expected
+      // ── Build scanned rooms ────────────────────────────────────────────────
+      let finalRooms: ScannedRoom[];
+
+      if (isIdml) {
+        const rawRooms: Array<{ name: string; items: ScannedItem[] }> = apiData.rooms || [];
+        finalRooms = rawRooms.map(r => ({ name: r.name, items: r.items.map(matchItem) }));
+        if (finalRooms.length === 0) finalRooms = [{ name: 'General', items: [] }];
+      } else {
+        const aiItems: ScannedItem[] = apiData.items || [];
+        finalRooms = [{ name: apiData.room || 'General', items: aiItems.map(matchItem) }];
+      }
+
       if (isIdml && docImageFilenames.length > 0 && extracted.length === 0) {
         toast.info(`Found ${docImageFilenames.length} image file(s) in the IDML. Upload the InDesign Links ZIP to auto-attach photos.`);
       }
 
-      setScannedItems(matched);
-      setScannedRoom(room || '');
-      setTargetRoomId('');
-      setNewRoomName(room || '');
+      setScannedRooms(finalRooms);
       setShowScanModal(true);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -514,75 +512,71 @@ export default function InteriorsLedger() {
     if (!selectedProject?.id) return;
     setImportingItems(true);
     try {
-      let roomId = targetRoomId;
-
-      // Create new room if needed
-      if (!roomId) {
-        const name = newRoomName.trim() || scannedRoom || 'New Room';
-        const maxOrder = rooms.length > 0 ? Math.max(...rooms.map(r => r.sort_order)) + 1 : 0;
-        const { data: newRoom, error } = await supabase
-          .from('interiors_rooms')
-          .insert({ project_id: selectedProject.id, name, sort_order: maxOrder })
-          .select().single();
-        if (error) throw error;
-        setRooms(prev => [...prev, newRoom as Room]);
-        roomId = newRoom.id;
-      }
-
       const existingKeys = [...items.map(i => i.key)];
-      const newItems: FurnitureItem[] = [];
+      const allNewRooms: Room[] = [];
+      const allNewItems: FurnitureItem[] = [];
+      let sortBase = rooms.length > 0 ? Math.max(...rooms.map(r => r.sort_order)) + 1 : 0;
 
-      for (let idx = 0; idx < scannedItems.length; idx++) {
-        const si = scannedItems[idx];
-        const key = autoKey(si.item, [...existingKeys, ...newItems.map(i => i.key)]);
-
-        let imageUrl = '';
-        // Upload image to Supabase Storage if assigned
-        if (si.image_url && si.image_url.startsWith('data:')) {
-          const resp = await fetch(si.image_url);
-          const blob = await resp.blob();
-          const ext = blob.type.split('/')[1] || 'jpg';
-          const tempId = `temp-${Date.now()}-${idx}`;
-          const path = `${selectedProject.id}/${tempId}.${ext}`;
-          const { error: upErr } = await supabase.storage.from('interiors-images').upload(path, blob, { upsert: true });
-          if (!upErr) {
-            const { data: urlData } = supabase.storage.from('interiors-images').getPublicUrl(path);
-            imageUrl = urlData.publicUrl;
-          }
-        }
-
-        const { data: newItem, error } = await supabase
-          .from('interiors_items')
-          .insert({
-            project_id: selectedProject.id,
-            room_id: roomId,
-            key,
-            item: si.item,
-            vendor: si.vendor,
-            finish_color: si.finish_color,
-            description: si.description,
-            qty: 1,
-            image_url: imageUrl,
-            product_link: '',
-            tracking_number: '',
-            carrier: '',
-            delivery_status: 'not_ordered',
-            eta: null,
-            sort_order: idx,
-          })
+      for (const sr of scannedRooms) {
+        // Create a new room for each scanned room group
+        const { data: newRoom, error: roomErr } = await supabase
+          .from('interiors_rooms')
+          .insert({ project_id: selectedProject.id, name: sr.name.trim() || 'New Room', sort_order: sortBase++ })
           .select().single();
-        if (error) throw error;
-        existingKeys.push(key);
-        newItems.push(newItem as FurnitureItem);
+        if (roomErr) throw roomErr;
+        allNewRooms.push(newRoom as Room);
+
+        for (let idx = 0; idx < sr.items.length; idx++) {
+          const si = sr.items[idx];
+          const key = autoKey(si.item, [...existingKeys, ...allNewItems.map(i => i.key)]);
+
+          let imageUrl = '';
+          if (si.image_url && si.image_url.startsWith('data:')) {
+            const resp = await fetch(si.image_url);
+            const blob = await resp.blob();
+            const ext = blob.type.split('/')[1] || 'jpg';
+            const path = `${selectedProject.id}/${Date.now()}-${idx}.${ext}`;
+            const { error: upErr } = await supabase.storage.from('interiors-images').upload(path, blob, { upsert: true });
+            if (!upErr) {
+              const { data: urlData } = supabase.storage.from('interiors-images').getPublicUrl(path);
+              imageUrl = urlData.publicUrl;
+            }
+          }
+
+          const { data: newItem, error } = await supabase
+            .from('interiors_items')
+            .insert({
+              project_id: selectedProject.id,
+              room_id: newRoom.id,
+              key,
+              item: si.item,
+              vendor: si.vendor,
+              finish_color: si.finish_color,
+              description: si.description,
+              qty: 1,
+              image_url: imageUrl,
+              product_link: '',
+              tracking_number: '',
+              carrier: '',
+              delivery_status: 'not_ordered',
+              eta: null,
+              sort_order: idx,
+            })
+            .select().single();
+          if (error) throw error;
+          existingKeys.push(key);
+          allNewItems.push(newItem as FurnitureItem);
+        }
       }
 
-      setItems(prev => [...prev, ...newItems]);
+      setRooms(prev => [...prev, ...allNewRooms]);
+      setItems(prev => [...prev, ...allNewItems]);
       setShowScanModal(false);
       setIdmlFile(null);
       setPdfFile(null);
       setZipFile(null);
       setZipImages([]);
-      toast.success(`Imported ${newItems.length} items`);
+      toast.success(`Imported ${allNewItems.length} items across ${allNewRooms.length} room${allNewRooms.length !== 1 ? 's' : ''}`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       toast.error(`Import failed: ${message}`);
@@ -1035,110 +1029,89 @@ export default function InteriorsLedger() {
         <Dialog open onOpenChange={v => { if (!v && !importingItems) setShowScanModal(false); }}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Review Scanned Items ({scannedItems.length} found)</DialogTitle>
+              <DialogTitle>
+                Review Scanned Items — {scannedRooms.length} room{scannedRooms.length !== 1 ? 's' : ''},{' '}
+                {scannedRooms.reduce((n, r) => n + r.items.length, 0)} items
+              </DialogTitle>
             </DialogHeader>
 
-            {/* Room assignment */}
-            <div className="flex flex-wrap gap-3 items-end pb-4 border-b">
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground font-medium">Add to room</p>
-                <Select value={targetRoomId || '__new__'} onValueChange={v => setTargetRoomId(v === '__new__' ? '' : v)}>
-                  <SelectTrigger className="h-8 text-sm w-48">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__new__">— Create new room —</SelectItem>
-                    {sortedRooms.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              {!targetRoomId && (
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground font-medium">New room name</p>
-                  <Input
-                    value={newRoomName}
-                    onChange={e => setNewRoomName(e.target.value)}
-                    className="h-8 text-sm w-48"
-                    placeholder="e.g. Living Room"
-                  />
-                </div>
-              )}
-            </div>
+            <p className="text-xs text-muted-foreground -mt-1">Each room will be created as a new section. Edit names and items before importing.</p>
 
-            {/* Scanned items table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b text-muted-foreground">
-                    <th className="px-2 py-1.5 text-left w-16">Image</th>
-                    <th className="px-2 py-1.5 text-left">Item</th>
-                    <th className="px-2 py-1.5 text-left">Vendor</th>
-                    <th className="px-2 py-1.5 text-left">Finish/Color</th>
-                    <th className="px-2 py-1.5 text-left">Description</th>
-                    {zipImages.length > 0 && <th className="px-2 py-1.5 text-left w-20">Photo</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {scannedItems.map((si, idx) => (
-                    <tr key={idx} className="border-b hover:bg-muted/10">
-                      <td className="px-2 py-1.5">
-                        {si.image_url ? (
-                          <img src={si.image_url} alt="" className="w-12 h-12 object-contain rounded border bg-white" />
-                        ) : (
-                          <div className="w-12 h-12 rounded border bg-muted/20 flex items-center justify-center">
-                            <ImageIcon className="h-4 w-4 text-muted-foreground/30" />
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <Input
-                          value={si.item ?? ''}
-                          onChange={e => setScannedItems(prev => prev.map((s, i) => i === idx ? { ...s, item: e.target.value } : s))}
-                          className="h-7 text-xs px-1"
-                        />
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <Input
-                          value={si.vendor ?? ''}
-                          onChange={e => setScannedItems(prev => prev.map((s, i) => i === idx ? { ...s, vendor: e.target.value } : s))}
-                          className="h-7 text-xs px-1"
-                        />
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <Input
-                          value={si.finish_color ?? ''}
-                          onChange={e => setScannedItems(prev => prev.map((s, i) => i === idx ? { ...s, finish_color: e.target.value } : s))}
-                          className="h-7 text-xs px-1"
-                        />
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <Input
-                          value={si.description ?? ''}
-                          onChange={e => setScannedItems(prev => prev.map((s, i) => i === idx ? { ...s, description: e.target.value } : s))}
-                          className="h-7 text-xs px-1"
-                        />
-                      </td>
-                      {zipImages.length > 0 && (
-                        <td className="px-2 py-1.5">
-                          <button
-                            onClick={() => setShowZipPicker({ index: idx })}
-                            className="border rounded px-2 py-1 text-xs hover:bg-accent"
-                          >
-                            {si.assigned_image ? si.assigned_image.slice(0, 14) + '…' : 'Pick photo'}
-                          </button>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-4">
+              {scannedRooms.map((sr, roomIdx) => (
+                <div key={roomIdx} className="border rounded-lg overflow-hidden">
+                  {/* Room name header — editable */}
+                  <div className="flex items-center gap-2 px-3 py-2 bg-[#F5C518]/20 border-b">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground w-20">Room name</span>
+                    <Input
+                      value={sr.name}
+                      onChange={e => setScannedRooms(prev => prev.map((r, i) => i === roomIdx ? { ...r, name: e.target.value } : r))}
+                      className="h-7 text-sm font-semibold max-w-xs border-0 bg-transparent focus-visible:ring-1 px-1"
+                    />
+                    <span className="text-xs text-muted-foreground ml-auto">{sr.items.length} item{sr.items.length !== 1 ? 's' : ''}</span>
+                  </div>
+
+                  {/* Items table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b text-muted-foreground bg-muted/10">
+                          <th className="px-2 py-1.5 text-left w-14">Image</th>
+                          <th className="px-2 py-1.5 text-left">Item</th>
+                          <th className="px-2 py-1.5 text-left">Vendor</th>
+                          <th className="px-2 py-1.5 text-left">Finish/Color</th>
+                          <th className="px-2 py-1.5 text-left">Description</th>
+                          {zipImages.length > 0 && <th className="px-2 py-1.5 text-left w-20">Photo</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sr.items.map((si, itemIdx) => (
+                          <tr key={itemIdx} className="border-b hover:bg-muted/10">
+                            <td className="px-2 py-1.5">
+                              {si.image_url ? (
+                                <img src={si.image_url} alt="" className="w-12 h-12 object-contain rounded border bg-white" />
+                              ) : (
+                                <div className="w-12 h-12 rounded border bg-muted/20 flex items-center justify-center">
+                                  <ImageIcon className="h-4 w-4 text-muted-foreground/30" />
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <Input value={si.item ?? ''} onChange={e => setScannedRooms(prev => prev.map((r, ri) => ri !== roomIdx ? r : { ...r, items: r.items.map((s, ii) => ii === itemIdx ? { ...s, item: e.target.value } : s) }))} className="h-7 text-xs px-1" />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <Input value={si.vendor ?? ''} onChange={e => setScannedRooms(prev => prev.map((r, ri) => ri !== roomIdx ? r : { ...r, items: r.items.map((s, ii) => ii === itemIdx ? { ...s, vendor: e.target.value } : s) }))} className="h-7 text-xs px-1" />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <Input value={si.finish_color ?? ''} onChange={e => setScannedRooms(prev => prev.map((r, ri) => ri !== roomIdx ? r : { ...r, items: r.items.map((s, ii) => ii === itemIdx ? { ...s, finish_color: e.target.value } : s) }))} className="h-7 text-xs px-1" />
+                            </td>
+                            <td className="px-2 py-1.5">
+                              <Input value={si.description ?? ''} onChange={e => setScannedRooms(prev => prev.map((r, ri) => ri !== roomIdx ? r : { ...r, items: r.items.map((s, ii) => ii === itemIdx ? { ...s, description: e.target.value } : s) }))} className="h-7 text-xs px-1" />
+                            </td>
+                            {zipImages.length > 0 && (
+                              <td className="px-2 py-1.5">
+                                <button
+                                  onClick={() => setShowZipPicker({ roomIdx, itemIdx })}
+                                  className="border rounded px-2 py-1 text-xs hover:bg-accent"
+                                >
+                                  {si.assigned_image ? si.assigned_image.slice(0, 14) + '…' : 'Pick photo'}
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" size="sm" onClick={() => setShowScanModal(false)} disabled={importingItems}>Cancel</Button>
               <Button size="sm" onClick={handleImport} disabled={importingItems} className="gap-1.5">
                 {importingItems ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                Import {scannedItems.length} Items
+                Import {scannedRooms.reduce((n, r) => n + r.items.length, 0)} Items into {scannedRooms.length} Room{scannedRooms.length !== 1 ? 's' : ''}
               </Button>
             </div>
           </DialogContent>
@@ -1158,8 +1131,11 @@ export default function InteriorsLedger() {
                   key={img.name}
                   className="border rounded p-1 hover:border-primary transition-colors text-left"
                   onClick={() => {
-                    const idx = showZipPicker.index;
-                    setScannedItems(prev => prev.map((s, i) => i === idx ? { ...s, assigned_image: img.name, image_url: img.dataUrl } : s));
+                    const { roomIdx, itemIdx } = showZipPicker!;
+                    setScannedRooms(prev => prev.map((r, ri) => ri !== roomIdx ? r : {
+                      ...r,
+                      items: r.items.map((s, ii) => ii === itemIdx ? { ...s, assigned_image: img.name, image_url: img.dataUrl } : s)
+                    }));
                     setShowZipPicker(null);
                   }}
                 >

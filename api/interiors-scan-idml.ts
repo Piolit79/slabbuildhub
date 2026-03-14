@@ -27,12 +27,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 IMPORTANT: Only extract items that actually appear in the text below. Do NOT invent or guess items.
 
-The text contains furniture/lighting items, often in formats like:
-- "VENDOR - PRODUCT NAME"
-- "VENDOR - PRODUCT NAME, FINISH/COLOR"
-- Room headers like "LIVING ROOM", "DINING ROOM", "FOYER", "PRIMARY BEDROOM"
+Each page of the design board typically covers ONE room. Room names appear as headers in ALL CAPS, such as "LIVING ROOM", "DINING ROOM", "FOYER", "PRIMARY BEDROOM", "GUEST BEDROOM", "KITCHEN", etc.
 
-There may be 10–60 items across multiple rooms. Extract ALL of them.
+Group every item under the room header it appears beneath. If no room header is present, use "General".
+
+There may be 10–60 items across multiple rooms. Extract ALL of them — do not stop early.
 ${filenameBlock}
 
 Extracted text:
@@ -40,17 +39,17 @@ Extracted text:
 ${text.slice(0, 25000)}
 ---
 
-For EACH item found, return:
-- vendor: the brand/vendor name exactly as written
-- item: the item category (Sofa, Chair, Rug, Table, Pendant, Lamp, Sconce, Ottoman, Bed, Nightstand, Dresser, Mirror, Console, Bench, Bookcase, etc.)
-- description: the full product name as written in the text
-- finish_color: finish/color/material if mentioned, otherwise empty string
-- image_filename: the filename from the list above that best matches this item (exact filename, or empty string if no match)
-
-Also return the room name if present (first room header found).
+For EACH room found, return:
+- name: the room name as it appears (e.g. "Living Room", "Primary Bedroom")
+- items: array of items in that room, each with:
+  - vendor: brand/vendor name exactly as written
+  - item: item category (Sofa, Chair, Rug, Table, Pendant, Lamp, Sconce, Ottoman, Bed, Nightstand, Dresser, Mirror, Console, Bench, Bookcase, etc.)
+  - description: full product name as written
+  - finish_color: finish/color/material if mentioned, otherwise empty string
+  - image_filename: best matching filename from the list above (exact filename, or empty string)
 
 Return ONLY a JSON object, no markdown, no explanation:
-{"room":"","items":[{"vendor":"","item":"","description":"","finish_color":"","image_filename":""}]}`;
+{"rooms":[{"name":"","items":[{"vendor":"","item":"","description":"","finish_color":"","image_filename":""}]}]}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
