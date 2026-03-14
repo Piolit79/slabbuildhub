@@ -365,11 +365,11 @@ export default function InteriorsLedger() {
   // Stories/*.xml  → clean UTF-8 text (exactly what was typed in InDesign)
   // Spreads/*.xml  → image filenames from LinkResourceURI attributes
 
-  const parseIdmlClient = async (file: File): Promise<{ text: string; imageFilenames: string[]; imageFilenamesOrdered: string[] }> => {
+  const parseIdmlClient = async (file: File): Promise<{ text: string; imageFilenames: string[] }> => {
     const jszip = new JSZip();
     const zip = await jszip.loadAsync(file);
     const storyTexts: string[] = [];
-    const imageFilenamesOrdered: string[] = []; // ordered, with duplicates — for positional PDF thumbnail matching
+    const imageFilenames: string[] = [];
 
     for (const [path, entry] of Object.entries(zip.files)) {
       if (entry.dir) continue;
@@ -392,17 +392,13 @@ export default function InteriorsLedger() {
           const uri = m[1].replace(/\\/g, '/');
           const fname = decodeURIComponent(uri.split('/').pop() || '');
           if (fname && /\.(jpe?g|png|gif|webp|tiff?|psd|eps|ai|svg)$/i.test(fname)) {
-            imageFilenamesOrdered.push(fname);
+            imageFilenames.push(fname);
           }
         }
       }
     }
 
-    return {
-      text: storyTexts.join('\n'),
-      imageFilenames: [...new Set(imageFilenamesOrdered)], // deduped list for GPT
-      imageFilenamesOrdered,                               // ordered list for PDF thumbnail matching
-    };
+    return { text: storyTexts.join('\n'), imageFilenames: [...new Set(imageFilenames)] };
   };
 
   // ── PDF Scan ──────────────────────────────────────────────────────────────────
@@ -446,40 +442,9 @@ export default function InteriorsLedger() {
       let docImageFilenames: string[] = [];
 
       if (isIdml) {
-        const { text, imageFilenames, imageFilenamesOrdered } = await parseIdmlClient(idmlFile!);
+        const { text, imageFilenames } = await parseIdmlClient(idmlFile!);
         if (!text || text.trim().length < 10) throw new Error('Could not extract text from this IDML file. Make sure it was exported from InDesign as .idml');
         docImageFilenames = imageFilenames;
-
-        // If PDF also provided, extract its embedded thumbnails and pair with IDML filenames by position
-        if (pdfFile) {
-          const tempPath = `temp/${Date.now()}-${Math.random().toString(36).slice(2)}.pdf`;
-          const { error: upErr } = await supabase.storage
-            .from('interiors-images')
-            .upload(tempPath, pdfFile, { contentType: 'application/pdf', upsert: true });
-          if (!upErr) {
-            const { data: urlData } = supabase.storage.from('interiors-images').getPublicUrl(tempPath);
-            const pdfResp = await fetch('/api/interiors-scan', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ pdfUrl: urlData.publicUrl }),
-            });
-            supabase.storage.from('interiors-images').remove([tempPath]).catch(() => {});
-            if (pdfResp.ok) {
-              const pdfData = await pdfResp.json();
-              const pdfImages: string[] = pdfData.pdfImages || [];
-              // Pair each PDF thumbnail with the IDML filename at the same position
-              const thumbnails: ZipImage[] = pdfImages.map((dataUrl, i) => ({
-                name: imageFilenamesOrdered[i] || `image-${i + 1}.jpg`,
-                dataUrl,
-              }));
-              if (thumbnails.length > 0) {
-                extracted = thumbnails;
-                setZipImages(thumbnails);
-              }
-            }
-          }
-        }
-
         const resp = await fetch('/api/interiors-scan-idml', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -692,7 +657,7 @@ export default function InteriorsLedger() {
               </Button>
               {idmlFile && <button onClick={() => setIdmlFile(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>}
             </div>
-            <input ref={idmlInputRef} type="file" accept=".idml" className="hidden" onChange={e => { setIdmlFile(e.target.files?.[0] || null); }} />
+            <input ref={idmlInputRef} type="file" accept=".idml" className="hidden" onChange={e => { setIdmlFile(e.target.files?.[0] || null); setPdfFile(null); }} />
           </div>
 
           {/* Links ZIP */}
@@ -715,11 +680,9 @@ export default function InteriorsLedger() {
           </Button>
         </div>
 
-        {/* PDF — thumbnail source when IDML selected, or standalone fallback */}
+        {/* PDF fallback */}
         <div className="flex flex-wrap gap-3 items-center pt-1 border-t border-dashed">
-          <p className="text-xs text-muted-foreground">
-            {idmlFile ? 'Add PDF to extract image thumbnails (optional):' : 'Or scan PDF directly (less accurate):'}
-          </p>
+          <p className="text-xs text-muted-foreground">Or use PDF (less accurate):</p>
           <div className="flex gap-2 items-center">
             <Button variant="ghost" size="sm" onClick={() => pdfInputRef.current?.click()} className="gap-1.5 text-xs h-7">
               <Upload className="h-3 w-3" />
@@ -727,7 +690,7 @@ export default function InteriorsLedger() {
             </Button>
             {pdfFile && <button onClick={() => setPdfFile(null)} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>}
           </div>
-          <input ref={pdfInputRef} type="file" accept=".pdf" className="hidden" onChange={e => { setPdfFile(e.target.files?.[0] || null); }} />
+          <input ref={pdfInputRef} type="file" accept=".pdf" className="hidden" onChange={e => { setPdfFile(e.target.files?.[0] || null); setIdmlFile(null); }} />
         </div>
       </div>
 
