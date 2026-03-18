@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useProject } from '@/contexts/ProjectContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Archive, Trash2, Plus, Loader2, FolderOpen, SlidersHorizontal, Database } from 'lucide-react';
+import { Archive, Trash2, Plus, Loader2, FolderOpen, SlidersHorizontal, Database, CheckCircle2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Profile } from '@/contexts/AuthContext';
 
@@ -19,13 +19,42 @@ export default function Settings() {
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [qbConnected, setQbConnected] = useState<boolean | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const active = projects.filter(p => p.status !== 'archived');
   const archived = projects.filter(p => p.status === 'archived');
 
   useEffect(() => {
     loadCompanyUsers();
+    checkQBStatus();
+    // Handle redirect back from QB OAuth
+    const qb = searchParams.get('qb');
+    if (qb === 'connected') {
+      toast.success('QuickBooks connected');
+      setQbConnected(true);
+      setSearchParams({});
+    } else if (qb === 'error') {
+      toast.error('QuickBooks connection failed', { description: searchParams.get('msg') || undefined });
+      setSearchParams({});
+    }
   }, []);
+
+  const checkQBStatus = async () => {
+    try {
+      const resp = await fetch('/api/qb-status');
+      const data = await resp.json();
+      setQbConnected(data.connected);
+    } catch {
+      setQbConnected(false);
+    }
+  };
+
+  const disconnectQB = async () => {
+    await supabase.from('qb_tokens').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    setQbConnected(false);
+    toast.success('QuickBooks disconnected');
+  };
 
   const loadCompanyUsers = async () => {
     const { data } = await supabase
@@ -87,6 +116,37 @@ export default function Settings() {
   return (
     <div className="space-y-4">
       <h1 className="text-lg md:text-xl font-bold tracking-tight text-muted-foreground">Settings</h1>
+
+      {/* QuickBooks Integration */}
+      <Card>
+        <CardHeader className="pb-1 pt-3 px-4">
+          <CardTitle className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Integrations</CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">QuickBooks Online</span>
+              {qbConnected === null ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+              ) : qbConnected ? (
+                <span className="flex items-center gap-1 text-[11px] text-green-600"><CheckCircle2 size={13} /> Connected</span>
+              ) : (
+                <span className="flex items-center gap-1 text-[11px] text-muted-foreground"><XCircle size={13} /> Not connected</span>
+              )}
+            </div>
+            {qbConnected ? (
+              <Button variant="outline" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" onClick={disconnectQB}>Disconnect</Button>
+            ) : (
+              <a href="/api/qb-auth">
+                <Button size="sm" className="h-7 text-xs">Connect to QuickBooks</Button>
+              </a>
+            )}
+          </div>
+          {qbConnected && (
+            <p className="text-[11px] text-muted-foreground mt-2">Go to Payments on any project to sync QB checks.</p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Admin Tools */}
       <Card>

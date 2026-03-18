@@ -12,9 +12,10 @@ import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
-import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown, Undo2, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown, Undo2, Trash2, RefreshCw } from 'lucide-react';
 import { Payment, PaymentCategory } from '@/types';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const fmt = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
@@ -36,11 +37,62 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [open, setOpen] = useState(false);
 
+  // QB sync state
+  const [qbProjects, setQbProjects] = useState<{ id: string; name: string }[]>([]);
+  const [qbProjectId, setQbProjectId] = useState<string>('');
+  const [syncing, setSyncing] = useState(false);
+  const [qbReady, setQbReady] = useState(false);
+
   useEffect(() => {
     supabase.from('payments').select('*').eq('project_id', selectedProject.id).then(({ data }) => {
       if (data) setPayments(data as Payment[]);
     });
   }, [selectedProject.id]);
+
+  useEffect(() => {
+    // Load QB projects list and saved mapping for this project
+    fetch('/api/qb-status').then(r => r.json()).then(s => {
+      if (!s.connected) return;
+      setQbReady(true);
+      fetch('/api/qb-projects').then(r => r.json()).then(d => {
+        if (d.projects) setQbProjects(d.projects);
+      });
+    });
+    supabase.from('projects').select('qb_project_id').eq('id', selectedProject.id).single().then(({ data }) => {
+      if (data?.qb_project_id) setQbProjectId(data.qb_project_id);
+    });
+  }, [selectedProject.id]);
+
+  const handleQbProjectChange = async (val: string) => {
+    setQbProjectId(val);
+    await supabase.from('projects').update({ qb_project_id: val }).eq('id', selectedProject.id);
+  };
+
+  const handleSync = async () => {
+    if (!qbProjectId) return;
+    setSyncing(true);
+    try {
+      const resp = await fetch('/api/qb-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project_id: selectedProject.id, qb_project_id: qbProjectId }),
+      });
+      const result = await resp.json();
+      if (!resp.ok) throw new Error(result.error);
+      // Reload payments
+      const { data } = await supabase.from('payments').select('*').eq('project_id', selectedProject.id);
+      if (data) setPayments(data as Payment[]);
+      if (result.imported > 0) {
+        toast.success(`Synced ${result.imported} new check${result.imported !== 1 ? 's' : ''} from QuickBooks`);
+      } else {
+        toast.info('No new checks to import');
+      }
+    } catch (e: any) {
+      toast.error('Sync failed', { description: e.message });
+    } finally {
+      setSyncing(false);
+    }
+  };
   const [activeTab, setActiveTab] = useState<PaymentCategory>('subcontractor');
   const [editId, setEditId] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<Payment>>({});
@@ -137,6 +189,23 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
         </Dialog>}
       </div>
 
+      {qbReady && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select value={qbProjectId} onValueChange={handleQbProjectChange}>
+            <SelectTrigger className="h-7 text-xs w-52">
+              <SelectValue placeholder="Link QB project..." />
+            </SelectTrigger>
+            <SelectContent>
+              {qbProjects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" disabled={!qbProjectId || syncing} onClick={handleSync}>
+            <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
+            {syncing ? 'Syncing...' : 'Sync QB Checks'}
+          </Button>
+        </div>
+      )}
+
       <Tabs value={activeTab} onValueChange={v => { setActiveTab(v as PaymentCategory); setSortKey('date'); setSortDir('asc'); setEditId(null); }}>
         <TabsList className="h-auto flex-wrap bg-[rgba(195,126,135,0.12)]">
           {tabs.map(t => <TabsTrigger key={t.value} value={t.value} className="text-[10px] md:text-xs px-2 md:px-3 py-1 data-[state=active]:bg-[#c37e87] data-[state=active]:text-white">{t.label}</TabsTrigger>)}
@@ -196,7 +265,10 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                         ) : (
                           <>
                             <TableCell className="tabular-nums text-[11px] md:text-sm pr-6">{format(new Date(p.date), 'MM.dd.yy')}</TableCell>
-                            <TableCell className="text-[11px] md:text-sm truncate max-w-[120px] md:max-w-none pl-6">{p.name}</TableCell>
+                            <TableCell className="text-[11px] md:text-sm truncate max-w-[120px] md:max-w-none pl-6">
+                              {p.name}
+                              {p.source === 'qb' && <span className="ml-1.5 inline-block text-[9px] font-semibold px-1 py-0.5 rounded bg-[rgba(45,150,80,0.12)] text-green-700 align-middle">QB</span>}
+                            </TableCell>
                             <TableCell className="text-right tabular-nums text-[11px] md:text-sm pr-6">{fmt(p.amount)}</TableCell>
                             {!isMobile && <TableCell className="text-[11px] md:text-sm pl-6">{p.form}</TableCell>}
                             {!isMobile && <TableCell className="tabular-nums text-[11px] md:text-sm">{p.check_number || '—'}</TableCell>}

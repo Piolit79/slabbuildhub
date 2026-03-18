@@ -38,6 +38,8 @@ export interface Payment {
   form: string;
   check_number?: string;
   vendor_id?: string;
+  external_id?: string;
+  source?: string;
 }
 
 export interface BudgetItem {
