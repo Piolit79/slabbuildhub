@@ -74,14 +74,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const checks = allChecks.filter(matchesProject);
 
-    const externalIds = checks.map((c: any) => `qb_${c.Id}`);
+    // Fetch all existing payments for this project to dedup by external_id OR check_number
     const { data: existing } = await supabase
       .from('payments')
-      .select('external_id')
-      .in('external_id', externalIds);
-    const existingSet = new Set((existing || []).map((r: any) => r.external_id));
+      .select('external_id, check_number')
+      .eq('project_id', project_id);
 
-    const newChecks = checks.filter((c: any) => !existingSet.has(`qb_${c.Id}`));
+    const existingExternalIds = new Set((existing || []).map((r: any) => r.external_id).filter(Boolean));
+    const existingCheckNumbers = new Set((existing || []).map((r: any) => r.check_number).filter(Boolean));
+
+    const newChecks = checks.filter((c: any) =>
+      !existingExternalIds.has(`qb_${c.Id}`) &&
+      !(c.DocNumber && existingCheckNumbers.has(c.DocNumber))
+    );
 
     if (newChecks.length > 0) {
       const rows = newChecks.map((c: any, i: number) => ({
