@@ -167,18 +167,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
 
     if (newChecks.length > 0) {
-      const rows = newChecks.map((c: any, i: number) => ({
-        id: `${Date.now()}_${i}_${c.Id}`,
-        project_id,
-        date: c.TxnDate,
-        name: c.EntityRef?.name || c.VendorRef?.name || 'Unknown',
-        amount: c.TotalAmt || 0,
-        category: category || 'subcontractor',
-        form: 'Check',
-        check_number: c.DocNumber || null,
-        external_id: `qb_${c._entity}_${c.Id}`,
-        source: 'qb',
-      }));
+      const rows = newChecks.map((c: any, i: number) => {
+        const name = c.EntityRef?.name || c.VendorRef?.name || 'Unknown';
+        const cat = /francisco/i.test(name) ? 'field_labor' : (category || 'subcontractor');
+        return {
+          id: `${Date.now()}_${i}_${c.Id}`,
+          project_id,
+          date: c.TxnDate,
+          name,
+          amount: c.TotalAmt || 0,
+          category: cat,
+          form: 'Check',
+          check_number: c.DocNumber || null,
+          external_id: `qb_${c._entity}_${c.Id}`,
+          source: 'qb',
+        };
+      });
       const { error: insertError } = await supabase.from('payments').insert(rows);
       if (insertError) throw new Error(`Insert failed: ${insertError.message}`);
     }
@@ -205,8 +209,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .from('payments').select('name, category').eq('project_id', project_id);
     const subNames = [...new Set((allProjectPayments || []).filter((p: any) => p.category === 'subcontractor').map((p: any) => p.name).filter(Boolean))];
     const matNames = [...new Set((allProjectPayments || []).filter((p: any) => p.category === 'materials').map((p: any) => p.name).filter(Boolean))];
+    const laborNames = [...new Set((allProjectPayments || []).filter((p: any) => p.category === 'field_labor').map((p: any) => p.name).filter(Boolean))];
     if (subNames.length > 0) await ensureVendors(supabase, project_id, subNames, 'Subcontractor');
     if (matNames.length > 0) await ensureVendors(supabase, project_id, matNames, 'Vendor');
+    if (laborNames.length > 0) await ensureVendors(supabase, project_id, laborNames, 'Subcontractor');
 
     // Remove duplicates: for any check_number with multiple rows, keep the QB-synced one
     const { data: allPayments } = await supabase

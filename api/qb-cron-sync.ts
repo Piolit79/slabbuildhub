@@ -136,18 +136,22 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
   );
 
   if (newChecks.length > 0) {
-    const rows = newChecks.map((c: any, i: number) => ({
-      id: `${Date.now()}_${i}_${c.Id}`,
-      project_id,
-      date: c.TxnDate,
-      name: c.EntityRef?.name || c.VendorRef?.name || 'Unknown',
-      amount: c.TotalAmt || 0,
-      category: 'subcontractor',
-      form: 'Check',
-      check_number: c.DocNumber || null,
-      external_id: `qb_${c._entity}_${c.Id}`,
-      source: 'qb',
-    }));
+    const rows = newChecks.map((c: any, i: number) => {
+      const name = c.EntityRef?.name || c.VendorRef?.name || 'Unknown';
+      const cat = /francisco/i.test(name) ? 'field_labor' : 'subcontractor';
+      return {
+        id: `${Date.now()}_${i}_${c.Id}`,
+        project_id,
+        date: c.TxnDate,
+        name,
+        amount: c.TotalAmt || 0,
+        category: cat,
+        form: 'Check',
+        check_number: c.DocNumber || null,
+        external_id: `qb_${c._entity}_${c.Id}`,
+        source: 'qb',
+      };
+    });
     await supabase.from('payments').insert(rows);
   }
 
@@ -172,8 +176,10 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
     .from('payments').select('name, category').eq('project_id', project_id);
   const subNames = [...new Set((allProjectPayments || []).filter((p: any) => p.category === 'subcontractor').map((p: any) => p.name).filter(Boolean))];
   const matNames = [...new Set((allProjectPayments || []).filter((p: any) => p.category === 'materials').map((p: any) => p.name).filter(Boolean))];
+  const laborNames = [...new Set((allProjectPayments || []).filter((p: any) => p.category === 'field_labor').map((p: any) => p.name).filter(Boolean))];
   if (subNames.length > 0) await ensureVendors(supabase, project_id, subNames, 'Subcontractor');
   if (matNames.length > 0) await ensureVendors(supabase, project_id, matNames, 'Vendor');
+  if (laborNames.length > 0) await ensureVendors(supabase, project_id, laborNames, 'Subcontractor');
 
   // Remove duplicates
   const { data: allPayments } = await supabase
