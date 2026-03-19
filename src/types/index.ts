@@ -37,6 +37,7 @@ export interface Payment {
   category: PaymentCategory;
   form: string;
   check_number?: string;
+  detail?: string;
   vendor_id?: string;
   external_id?: string;
   source?: string;

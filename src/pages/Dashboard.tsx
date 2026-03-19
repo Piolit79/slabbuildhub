@@ -119,11 +119,12 @@ export default function Dashboard({ readOnly }: { readOnly?: boolean }) {
   const allPaymentsExSoft = payments.filter(p => p.category !== 'soft_costs').reduce((s, p) => s + p.amount, 0);
   const drawBalance = drawRequested - allPaymentsExSoft;
   const softCostsByName = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, { total: number; detail: string }>();
     for (const p of payments.filter(q => q.category === 'soft_costs')) {
-      map.set(p.name, (map.get(p.name) || 0) + p.amount);
+      const existing = map.get(p.name) || { total: 0, detail: '' };
+      map.set(p.name, { total: existing.total + p.amount, detail: p.detail || existing.detail });
     }
-    return [...map.entries()].map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total);
+    return [...map.entries()].map(([name, { total, detail }]) => ({ name, total, detail })).sort((a, b) => b.total - a.total);
   }, [payments]);
   const materialsVendorsTotal = payments.filter(p => p.category === 'materials').reduce((s, p) => s + p.amount, 0);
   const fixturesFittingsTotal = payments.filter(p => p.category === 'materials' && vendors.find(v => v.name === p.name)?.detail?.toLowerCase().includes('fixture')).reduce((s, p) => s + p.amount, 0);
@@ -405,7 +406,7 @@ export default function Dashboard({ readOnly }: { readOnly?: boolean }) {
                 {softCostsByName.map((row, idx) => (
                   <TableRow key={row.name} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
                     <TableCell className="text-[11px] md:text-sm">{row.name}</TableCell>
-                    <TableCell className="text-[11px] md:text-sm">{vendors.find(v => v.name === row.name)?.detail || '—'}</TableCell>
+                    <TableCell className="text-[11px] md:text-sm">{row.detail || '—'}</TableCell>
                     <TableCell className="text-right tabular-nums text-[11px] md:text-sm">
                       <PaymentHover total={row.total} payments={payments.filter(p => p.name === row.name && p.category === 'soft_costs')} />
                     </TableCell>

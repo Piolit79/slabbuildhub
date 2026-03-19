@@ -191,6 +191,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
       amount: parseFloat(fd.get('amount') as string) || 0,
       category: fd.get('category') as PaymentCategory, form: fd.get('form') as string,
       check_number: (fd.get('check_number') as string) || undefined,
+      detail: (fd.get('detail') as string) || undefined,
     };
     await supabase.from('payments').insert(np);
     setPayments(prev => [...prev, np]);
@@ -223,7 +224,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
           <option>Check</option><option>Credit</option><option>Wire</option><option>ACH</option>
         </select>
       </TableCell>
-      <TableCell><Input value={editData.check_number || ''} onChange={e => setEditData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" /></TableCell>
+      <TableCell>{activeTab === 'soft_costs' ? <Input value={editData.detail || ''} onChange={e => setEditData(d => ({ ...d, detail: e.target.value }))} className="h-6 text-xs w-24 px-1" placeholder="Detail" /> : <Input value={editData.check_number || ''} onChange={e => setEditData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" />}</TableCell>
       <TableCell className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button><button onClick={cancelEdit} className="text-destructive"><X size={14} /></button></TableCell>
     </>
   );
@@ -237,7 +238,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
       </TableCell>
       <TableCell className="text-right tabular-nums text-[11px] md:text-sm pr-6">{fmt(p.amount)}</TableCell>
       {!isMobile && <TableCell className="text-[11px] md:text-sm pl-6">{p.form}</TableCell>}
-      {!isMobile && <TableCell className="tabular-nums text-[11px] md:text-sm">{p.check_number || '—'}</TableCell>}
+      {!isMobile && <TableCell className="tabular-nums text-[11px] md:text-sm">{activeTab === 'soft_costs' ? (p.detail || '—') : (p.check_number || '—')}</TableCell>}
       {!readOnly && (
         <TableCell>
           {undoInfo?.id === p.id ? (
@@ -266,7 +267,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
         <TableCell className="pl-6"><AutocompleteInput value={newData.name || ''} onChange={v => setNewData(d => ({ ...d, name: v }))} suggestions={nameSuggestions} className="h-6 text-[10px] px-1" placeholder="Name" /></TableCell>
         <TableCell className="text-right pr-6"><CurrencyInput value={newData.amount || 0} onChange={v => setNewData(d => ({ ...d, amount: v }))} className="h-6 text-[10px] w-full md:w-28 px-1" placeholder="0.00" /></TableCell>
         {!isMobile && <TableCell className="pl-6"><select value={newData.form || 'Check'} onChange={e => setNewData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs border rounded px-1 bg-background w-20"><option>Check</option><option>Credit</option><option>Wire</option><option>ACH</option></select></TableCell>}
-        {!isMobile && <TableCell><Input value={newData.check_number || ''} onChange={e => setNewData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" placeholder="Check #" /></TableCell>}
+        {!isMobile && <TableCell>{activeTab === 'soft_costs' ? <Input value={newData.detail || ''} onChange={e => setNewData(d => ({ ...d, detail: e.target.value }))} className="h-6 text-xs w-24 px-1" placeholder="Detail" /> : <Input value={newData.check_number || ''} onChange={e => setNewData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" placeholder="Check #" />}</TableCell>}
         <TableCell><div className="flex gap-1">
           <button onClick={async () => { if (newData.date && newData.name) { const np = { id: Date.now().toString(), project_id: selectedProject.id, category: activeTab, ...newData } as Payment; await supabase.from('payments').insert(np); setPayments(prev => [...prev, np]); setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
           <button onClick={() => { setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); }} className="text-destructive"><X size={13} /></button>
@@ -303,7 +304,8 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                   <SelectContent><SelectItem value="Check">Check</SelectItem><SelectItem value="Credit">Credit</SelectItem><SelectItem value="Wire">Wire</SelectItem><SelectItem value="ACH">ACH</SelectItem></SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1"><Label className="text-xs">Check # (optional)</Label><Input name="check_number" className="h-8 text-xs" /></div>
+              {activeTab !== 'soft_costs' && <div className="space-y-1"><Label className="text-xs">Check # (optional)</Label><Input name="check_number" className="h-8 text-xs" /></div>}
+              {activeTab === 'soft_costs' && <div className="space-y-1"><Label className="text-xs">Detail (optional)</Label><Input name="detail" className="h-8 text-xs" /></div>}
               <Button type="submit" size="sm" className="w-full">Save</Button>
             </form>
           </DialogContent>
@@ -370,7 +372,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                       <TableHead className="pl-6">{t.value === 'materials' ? sh('Vendor', 'name') : sh('Name', 'name')}</TableHead>
                       <TableHead className="text-right pr-6">{sh('Amt', 'amount', 'justify-end')}</TableHead>
                       {!isMobile && <TableHead className="pl-6">{sh('Form', 'form')}</TableHead>}
-                      {!isMobile && <TableHead>{t.value === 'materials' ? '' : sh('Check #', 'check_number')}</TableHead>}
+                      {!isMobile && <TableHead>{t.value === 'materials' ? '' : t.value === 'soft_costs' ? 'Detail' : sh('Check #', 'check_number')}</TableHead>}
                       {!readOnly && <TableHead className={isMobile ? 'w-10' : 'w-12'}></TableHead>}
                     </TableRow>
                   </TableHeader>
