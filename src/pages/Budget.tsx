@@ -89,25 +89,50 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
       const ws = wb.Sheets[wb.SheetNames[0]];
       const raw: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-      // Find header row (contains Description / Labor / Material)
+      // Find header row — look for any row that has a text-like column + numeric columns
       let headerRowIdx = -1;
       let colDesc = -1, colLabor = -1, colMaterial = -1, colStatus = -1;
-      for (let i = 0; i < Math.min(10, raw.length); i++) {
+
+      const descKeywords = ['description', 'item', 'scope', 'work', 'task', 'line item', 'activity', 'detail', 'name'];
+      const laborKeywords = ['labor', 'labour', 'install', 'labor cost', 'labour cost'];
+      const materialKeywords = ['material', 'materials', 'mat ', 'mat.', 'supply', 'supplies', 'parts'];
+      const statusKeywords = ['status', 'state', 'stage'];
+
+      for (let i = 0; i < Math.min(15, raw.length); i++) {
         const row = raw[i].map((c: any) => String(c).toLowerCase().trim());
-        const dIdx = row.findIndex(c => c.includes('description'));
-        if (dIdx !== -1) {
+        // Try to find desc col by keyword
+        let dIdx = row.findIndex(c => descKeywords.some(k => c === k || c.startsWith(k)));
+        // Fallback: first non-empty string cell in this row
+        if (dIdx === -1) dIdx = row.findIndex(c => c.length > 0 && isNaN(Number(c)));
+
+        const lIdx = row.findIndex(c => laborKeywords.some(k => c === k || c.startsWith(k)));
+        const mIdx = row.findIndex(c => materialKeywords.some(k => c === k || c.startsWith(k)));
+
+        // Accept row as header if we find at least desc + one numeric col, or desc keyword
+        const hasDescKeyword = row.some(c => descKeywords.some(k => c === k || c.startsWith(k)));
+        const hasNumericCol = lIdx !== -1 || mIdx !== -1;
+        if (dIdx !== -1 && (hasDescKeyword || hasNumericCol)) {
           headerRowIdx = i;
           colDesc = dIdx;
-          colLabor = row.findIndex(c => c.includes('labor'));
-          colMaterial = row.findIndex(c => c.includes('material'));
-          colStatus = row.findIndex(c => c.includes('status'));
+          colLabor = lIdx;
+          colMaterial = mIdx;
+          colStatus = row.findIndex(c => statusKeywords.some(k => c === k || c.startsWith(k)));
           break;
         }
       }
-      if (headerRowIdx === -1 || colDesc === -1) {
-        alert('Could not find a "Description" column in the spreadsheet.');
-        setImporting(false);
-        return;
+
+      // Last resort: if still no header found, treat row 0 as header and first col as description
+      if (headerRowIdx === -1) {
+        headerRowIdx = 0;
+        colDesc = 0;
+        // Guess numeric cols by scanning data rows
+        for (let c = 1; c < (raw[0]?.length || 0); c++) {
+          const vals = raw.slice(1, 6).map(r => parseFloat(String(r[c] ?? '').replace(/[^0-9.-]/g, '')));
+          if (vals.some(v => !isNaN(v) && v > 0)) {
+            if (colLabor === -1) colLabor = c;
+            else if (colMaterial === -1) { colMaterial = c; break; }
+          }
+        }
       }
 
       // Parse rows into { category, description, labor, material, status }
