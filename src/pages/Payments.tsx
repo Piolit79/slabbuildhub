@@ -82,10 +82,13 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
       // Reload payments
       const { data } = await supabase.from('payments').select('*').eq('project_id', selectedProject.id);
       if (data) setPayments(data as Payment[]);
-      if (result.imported > 0) {
-        toast.success(`Synced ${result.imported} new check${result.imported !== 1 ? 's' : ''} from QuickBooks`);
+      const parts = [];
+      if (result.imported > 0) parts.push(`${result.imported} new check${result.imported !== 1 ? 's' : ''} imported`);
+      if (result.removed > 0) parts.push(`${result.removed} duplicate${result.removed !== 1 ? 's' : ''} removed`);
+      if (parts.length > 0) {
+        toast.success(parts.join(', '));
       } else {
-        toast.info('No new checks to import');
+        toast.info('Already up to date');
       }
     } catch (e: any) {
       toast.error('Sync failed', { description: e.message });

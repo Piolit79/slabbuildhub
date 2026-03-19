@@ -105,12 +105,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (insertError) throw new Error(`Insert failed: ${insertError.message}`);
     }
 
+    // Remove duplicates: for any check_number with multiple rows, keep the QB-synced one
+    const { data: allPayments } = await supabase
+      .from('payments')
+      .select('id, check_number, source')
+      .eq('project_id', project_id)
+      .not('check_number', 'is', null);
+
+    const byCheckNumber = new Map<string, { id: string; source: string }[]>();
+    for (const p of allPayments || []) {
+      if (!p.check_number) continue;
+      if (!byCheckNumber.has(p.check_number)) byCheckNumber.set(p.check_number, []);
+      byCheckNumber.get(p.check_number)!.push(p);
+    }
+
+    const toDelete: string[] = [];
+    for (const [, group] of byCheckNumber) {
+      if (group.length < 2) continue;
+      // Keep QB-synced row, delete the rest
+      const qbRow = group.find(r => r.source === 'qb');
+      const keepId = qbRow ? qbRow.id : group[0].id;
+      group.forEach(r => { if (r.id !== keepId) toDelete.push(r.id); });
+    }
+
+    let removed = 0;
+    if (toDelete.length > 0) {
+      await supabase.from('payments').delete().in('id', toDelete);
+      removed = toDelete.length;
+    }
+
     await supabase
       .from('projects')
       .update({ qb_last_synced: new Date().toISOString() })
       .eq('id', project_id);
 
-    res.json({ imported: newChecks.length, total: checks.length, skipped: checks.length - newChecks.length });
+    res.json({ imported: newChecks.length, total: checks.length, skipped: checks.length - newChecks.length, removed });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
