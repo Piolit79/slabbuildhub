@@ -366,10 +366,10 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                   </colgroup>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="pr-6">{t.value === 'materials' ? sh('Last Date', 'date') : sh('Date', 'date')}</TableHead>
+                      <TableHead className="pr-6">{sh('Date', 'date')}</TableHead>
                       <TableHead className="pl-6">{t.value === 'materials' ? sh('Vendor', 'name') : sh('Name', 'name')}</TableHead>
                       <TableHead className="text-right pr-6">{sh('Amt', 'amount', 'justify-end')}</TableHead>
-                      {!isMobile && <TableHead className="pl-6">{t.value === 'materials' ? '' : sh('Form', 'form')}</TableHead>}
+                      {!isMobile && <TableHead className="pl-6">{sh('Form', 'form')}</TableHead>}
                       {!isMobile && <TableHead>{t.value === 'materials' ? '' : sh('Check #', 'check_number')}</TableHead>}
                       {!readOnly && <TableHead className={isMobile ? 'w-10' : 'w-12'}></TableHead>}
                     </TableRow>
@@ -399,7 +399,19 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                                     </span>
                                   </TableCell>
                                   <TableCell className="text-right tabular-nums text-[11px] md:text-sm pr-6 font-medium">{fmt(group.total)}</TableCell>
-                                  {!isMobile && <TableCell className="pl-6 text-[11px] text-muted-foreground">{group.count === 1 ? group.items[0].form : ''}</TableCell>}
+                                  {!isMobile && <TableCell className="pl-6" onClick={e => e.stopPropagation()}>
+                                    <select
+                                      value={group.items[group.items.length - 1].form || 'Credit'}
+                                      onChange={async e => {
+                                        const f = e.target.value;
+                                        await Promise.all(group.items.map(p => supabase.from('payments').update({ form: f }).eq('id', p.id)));
+                                        setPayments(prev => prev.map(p => group.items.some(gi => gi.id === p.id) ? { ...p, form: f } : p));
+                                      }}
+                                      className="h-6 text-[10px] border rounded px-1 bg-background w-20"
+                                    >
+                                      <option>Credit</option><option>Check</option><option>ACH</option><option>Cash</option><option>Wire</option>
+                                    </select>
+                                  </TableCell>}
                                   {!isMobile && <TableCell className="tabular-nums text-[11px] text-muted-foreground">{group.count === 1 ? (group.items[0].check_number || '—') : ''}</TableCell>}
                                   {!readOnly && (
                                     <TableCell>
