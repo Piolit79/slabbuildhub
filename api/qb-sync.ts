@@ -84,7 +84,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const newChecks = checks.filter((c: any) => !existingSet.has(`qb_${c.Id}`));
 
     if (newChecks.length > 0) {
-      const rows = newChecks.map((c: any) => ({
+      const rows = newChecks.map((c: any, i: number) => ({
+        id: `${Date.now()}_${i}_${c.Id}`,
         project_id,
         date: c.TxnDate,
         name: c.EntityRef?.name || 'Unknown',
@@ -95,7 +96,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         external_id: `qb_${c.Id}`,
         source: 'qb',
       }));
-      await supabase.from('payments').insert(rows);
+      const { error: insertError } = await supabase.from('payments').insert(rows);
+      if (insertError) throw new Error(`Insert failed: ${insertError.message}`);
     }
 
     await supabase
