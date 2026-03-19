@@ -39,7 +39,7 @@ async function getValidToken() {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { project_id, qb_project_id, category } = req.body;
+  const { project_id, qb_project_id, qb_cc_account_id, category } = req.body;
   if (!project_id || !qb_project_id) {
     return res.status(400).json({ error: 'project_id and qb_project_id required' });
   }
@@ -102,7 +102,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     const checks = allChecks.filter(matchesProject);
-    const creditCards = allPurchases.filter((c: any) => c.PaymentType === 'CreditCard').filter(matchesProject);
+    const creditCards = qb_cc_account_id
+      ? allPurchases.filter((c: any) => c.PaymentType === 'CreditCard' && String(c.AccountRef?.value) === String(qb_cc_account_id))
+      : [];
 
     // Fetch all existing payments for this project to dedup by external_id OR check_number
     const { data: existing } = await supabase

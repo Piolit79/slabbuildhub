@@ -40,6 +40,8 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
   // QB sync state
   const [qbProjects, setQbProjects] = useState<{ id: string; name: string }[]>([]);
   const [qbProjectId, setQbProjectId] = useState<string>('');
+  const [qbAccounts, setQbAccounts] = useState<{ id: string; name: string }[]>([]);
+  const [qbCcAccountId, setQbCcAccountId] = useState<string>('');
   const [syncing, setSyncing] = useState(false);
   const [qbReady, setQbReady] = useState(false);
   const [qbChanging, setQbChanging] = useState(false);
@@ -52,6 +54,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
 
   useEffect(() => {
     setQbProjectId('');
+    setQbCcAccountId('');
     setQbChanging(false);
     fetch('/api/qb-status').then(r => r.json()).then(s => {
       if (!s.connected) return;
@@ -59,15 +62,24 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
       fetch('/api/qb-projects').then(r => r.json()).then(d => {
         if (d.projects) setQbProjects(d.projects);
       });
+      fetch('/api/qb-accounts').then(r => r.json()).then(d => {
+        if (d.accounts) setQbAccounts(d.accounts);
+      });
     });
-    supabase.from('projects').select('qb_project_id').eq('id', selectedProject.id).single().then(({ data }) => {
+    supabase.from('projects').select('qb_project_id, qb_cc_account_id').eq('id', selectedProject.id).single().then(({ data }) => {
       if (data?.qb_project_id) setQbProjectId(data.qb_project_id);
+      if (data?.qb_cc_account_id) setQbCcAccountId(data.qb_cc_account_id);
     });
   }, [selectedProject.id]);
 
   const handleQbProjectChange = async (val: string) => {
     setQbProjectId(val);
     await supabase.from('projects').update({ qb_project_id: val }).eq('id', selectedProject.id);
+  };
+
+  const handleQbCcAccountChange = async (val: string) => {
+    setQbCcAccountId(val);
+    await supabase.from('projects').update({ qb_cc_account_id: val }).eq('id', selectedProject.id);
   };
 
   const handleSync = async () => {
@@ -77,7 +89,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
       const resp = await fetch('/api/qb-sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project_id: selectedProject.id, qb_project_id: qbProjectId }),
+        body: JSON.stringify({ project_id: selectedProject.id, qb_project_id: qbProjectId, qb_cc_account_id: qbCcAccountId || undefined }),
       });
       const result = await resp.json();
       if (!resp.ok) throw new Error(result.error);
@@ -196,30 +208,48 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
       </div>
 
       {qbReady && (
-        <div className="flex items-center gap-2 flex-wrap">
-          {qbProjectId && !qbChanging ? (
-            <>
-              <span className="text-xs text-muted-foreground">
-                QB: <span className="font-medium text-foreground">{qbProjects.find(p => p.id === qbProjectId)?.name || '...'}</span>
-              </span>
-              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" disabled={syncing} onClick={handleSync}>
-                <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
-                {syncing ? 'Syncing...' : 'Sync QB Checks'}
-              </Button>
-              <button onClick={() => setQbChanging(true)} className="text-[10px] text-muted-foreground hover:text-foreground underline">change</button>
-            </>
-          ) : (
-            <>
-              <Select value={qbProjectId} onValueChange={async (val) => { await handleQbProjectChange(val); setQbChanging(false); }}>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            {qbProjectId && !qbChanging ? (
+              <>
+                <span className="text-xs text-muted-foreground">
+                  QB: <span className="font-medium text-foreground">{qbProjects.find(p => p.id === qbProjectId)?.name || '...'}</span>
+                </span>
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" disabled={syncing} onClick={handleSync}>
+                  <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
+                  {syncing ? 'Syncing...' : 'Sync QB'}
+                </Button>
+                <button onClick={() => setQbChanging(true)} className="text-[10px] text-muted-foreground hover:text-foreground underline">change</button>
+              </>
+            ) : (
+              <>
+                <Select value={qbProjectId} onValueChange={async (val) => { await handleQbProjectChange(val); setQbChanging(false); }}>
+                  <SelectTrigger className="h-7 text-xs w-52">
+                    <SelectValue placeholder="Link QB project..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {qbProjects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {qbChanging && <button onClick={() => setQbChanging(false)} className="text-[10px] text-muted-foreground hover:text-foreground underline">cancel</button>}
+              </>
+            )}
+          </div>
+          {qbReady && (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-muted-foreground w-16">CC Card:</span>
+              <Select value={qbCcAccountId} onValueChange={handleQbCcAccountChange}>
                 <SelectTrigger className="h-7 text-xs w-52">
-                  <SelectValue placeholder="Link QB project..." />
+                  <SelectValue placeholder="Link project credit card..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {qbProjects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                  {qbAccounts.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}
                 </SelectContent>
               </Select>
-              {qbChanging && <button onClick={() => setQbChanging(false)} className="text-[10px] text-muted-foreground hover:text-foreground underline">cancel</button>}
-            </>
+              {qbCcAccountId && (
+                <button onClick={() => handleQbCcAccountChange('')} className="text-[10px] text-muted-foreground hover:text-foreground underline">clear</button>
+              )}
+            </div>
           )}
         </div>
       )}

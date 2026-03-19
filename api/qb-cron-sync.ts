@@ -34,7 +34,7 @@ async function getValidToken(supabase: any) {
   return { access_token: data.access_token, realm_id: data.realm_id };
 }
 
-async function syncProject(supabase: any, access_token: string, realm_id: string, project_id: string, qb_project_id: string) {
+async function syncProject(supabase: any, access_token: string, realm_id: string, project_id: string, qb_project_id: string, qb_cc_account_id?: string) {
   const fetchAll = async (entity: string, whereClause: string): Promise<any[]> => {
     const results: any[] = [];
     let pos = 1;
@@ -76,7 +76,9 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
 
   const matchesProject = (c: any) => allCustomerRefs(c).includes(String(qb_project_id));
   const checks = allChecks.filter(matchesProject);
-  const creditCards = allPurchases.filter((c: any) => c.PaymentType === 'CreditCard').filter(matchesProject);
+  const creditCards = qb_cc_account_id
+    ? allPurchases.filter((c: any) => c.PaymentType === 'CreditCard' && String(c.AccountRef?.value) === String(qb_cc_account_id))
+    : [];
 
   const { data: existing } = await supabase
     .from('payments').select('external_id, check_number').eq('project_id', project_id);
@@ -163,13 +165,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Get all projects with a QB mapping
     const { data: projects } = await supabase
       .from('projects')
-      .select('id, name, qb_project_id')
+      .select('id, name, qb_project_id, qb_cc_account_id')
       .not('qb_project_id', 'is', null);
 
     const results: any[] = [];
     for (const project of projects || []) {
       try {
-        const result = await syncProject(supabase, access_token, realm_id, project.id, project.qb_project_id);
+        const result = await syncProject(supabase, access_token, realm_id, project.id, project.qb_project_id, project.qb_cc_account_id);
         results.push({ project: project.name, ...result });
       } catch (e: any) {
         results.push({ project: project.name, error: e.message });
