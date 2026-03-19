@@ -1,5 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getQBCredentials, getSupabase } from './_qb-utils';
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = 'https://nlusfndskgdcottasfdy.supabase.co';
+const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdXNmbmRza2dkY290dGFzZmR5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Mjc1NjQ0NiwiZXhwIjoyMDg4MzMyNDQ2fQ.rEeEZJJvZNKrqJ5DMMjPlOYuYmAnzzhwLvFqPcZNkwM';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { code, realmId, error } = req.query;
@@ -8,9 +11,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.redirect('/settings?qb=error&msg=' + encodeURIComponent((error as string) || 'Missing params'));
   }
 
-  try {
-    const { clientId, clientSecret, redirectUri } = getQBCredentials();
+  const clientId = process.env.QB_CLIENT_ID!;
+  const clientSecret = process.env.QB_CLIENT_SECRET!;
+  const redirectUri = process.env.QB_REDIRECT_URI || 'https://slabbuildhub.vercel.app/api/qb-callback';
 
+  try {
     const tokenResp = await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
       method: 'POST',
       headers: {
@@ -30,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const tokens = await tokenResp.json();
-    const supabase = getSupabase();
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     await supabase.from('qb_tokens').upsert(
       {

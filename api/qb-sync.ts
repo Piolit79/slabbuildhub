@@ -1,7 +1,40 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { qbQuery, getSupabase } from './_qb-utils';
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = 'https://nlusfndskgdcottasfdy.supabase.co';
+const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5sdXNmbmRza2dkY290dGFzZmR5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Mjc1NjQ0NiwiZXhwIjoyMDg4MzMyNDQ2fQ.rEeEZJJvZNKrqJ5DMMjPlOYuYmAnzzhwLvFqPcZNkwM';
 
 export const maxDuration = 30;
+
+async function getValidToken() {
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  const { data, error } = await supabase.from('qb_tokens').select('*').single();
+  if (error || !data) throw new Error('Not connected to QuickBooks');
+
+  if (data.expires_at - Date.now() < 300_000) {
+    const clientId = process.env.QB_CLIENT_ID!;
+    const clientSecret = process.env.QB_CLIENT_SECRET!;
+    const resp = await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
+      },
+      body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: data.refresh_token }).toString(),
+    });
+    if (resp.ok) {
+      const tokens = await resp.json();
+      await supabase.from('qb_tokens').update({
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token,
+        expires_at: Date.now() + tokens.expires_in * 1000,
+      }).eq('realm_id', data.realm_id);
+      return { access_token: tokens.access_token, realm_id: data.realm_id };
+    }
+  }
+
+  return { access_token: data.access_token, realm_id: data.realm_id };
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -11,19 +44,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'project_id and qb_project_id required' });
   }
 
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
   try {
-    const data = await qbQuery(
+    const { access_token, realm_id } = await getValidToken();
+    const query = encodeURIComponent(
       `SELECT * FROM Purchase WHERE PaymentType = 'Check' AND CustomerRef = '${qb_project_id}' MAXRESULTS 1000`
     );
+    const resp = await fetch(
+      `https://quickbooks.api.intuit.com/v3/company/${realm_id}/query?query=${query}&minorversion=65`,
+      { headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' } }
+    );
+    if (!resp.ok) throw new Error(`QB API ${resp.status}`);
+    const data = await resp.json();
     const checks = data.QueryResponse?.Purchase || [];
 
-    if (checks.length === 0) {
-      return res.json({ imported: 0, total: 0 });
-    }
+    if (checks.length === 0) return res.json({ imported: 0, total: 0, skipped: 0 });
 
-    // Find which external_ids already exist so we don't overwrite user edits
     const externalIds = checks.map((c: any) => `qb_${c.Id}`);
-    const supabase = getSupabase();
     const { data: existing } = await supabase
       .from('payments')
       .select('external_id')
@@ -47,7 +85,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await supabase.from('payments').insert(rows);
     }
 
-    // Update last synced timestamp on project
     await supabase
       .from('projects')
       .update({ qb_last_synced: new Date().toISOString() })
