@@ -102,6 +102,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     const checks = allChecks.filter(matchesProject);
+    const creditCards = allPurchases.filter((c: any) => c.PaymentType === 'CreditCard').filter(matchesProject);
 
     // Fetch all existing payments for this project to dedup by external_id OR check_number
     const { data: existing } = await supabase
@@ -116,6 +117,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       !existingExternalIds.has(`qb_${c._entity}_${c.Id}`) &&
       !existingExternalIds.has(`qb_${c.Id}`) &&
       !(c.DocNumber && existingCheckNumbers.has(c.DocNumber))
+    );
+
+    const newCC = creditCards.filter((c: any) =>
+      !existingExternalIds.has(`qb_${c._entity}_${c.Id}`) &&
+      !existingExternalIds.has(`qb_${c.Id}`)
     );
 
     if (newChecks.length > 0) {
@@ -133,6 +139,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }));
       const { error: insertError } = await supabase.from('payments').insert(rows);
       if (insertError) throw new Error(`Insert failed: ${insertError.message}`);
+    }
+
+    if (newCC.length > 0) {
+      const rows = newCC.map((c: any, i: number) => ({
+        id: `cc_${Date.now()}_${i}_${c.Id}`,
+        project_id,
+        date: c.TxnDate,
+        name: c.EntityRef?.name || c.VendorRef?.name || 'Unknown',
+        amount: c.TotalAmt || 0,
+        category: 'materials',
+        form: 'Credit',
+        check_number: null,
+        external_id: `qb_${c._entity}_${c.Id}`,
+        source: 'qb',
+      }));
+      const { error: insertError } = await supabase.from('payments').insert(rows);
+      if (insertError) throw new Error(`CC insert failed: ${insertError.message}`);
     }
 
     // Remove duplicates: for any check_number with multiple rows, keep the QB-synced one
@@ -169,7 +192,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .update({ qb_last_synced: new Date().toISOString() })
       .eq('id', project_id);
 
-    res.json({ imported: newChecks.length, total: checks.length, skipped: checks.length - newChecks.length, removed });
+    res.json({ imported: newChecks.length, importedCC: newCC.length, total: checks.length, skipped: checks.length - newChecks.length, removed });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }

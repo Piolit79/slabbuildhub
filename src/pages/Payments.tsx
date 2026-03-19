@@ -86,6 +86,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
       if (data) setPayments(data as Payment[]);
       const parts = [];
       if (result.imported > 0) parts.push(`${result.imported} new check${result.imported !== 1 ? 's' : ''} imported`);
+      if (result.importedCC > 0) parts.push(`${result.importedCC} credit card transaction${result.importedCC !== 1 ? 's' : ''} imported`);
       if (result.removed > 0) parts.push(`${result.removed} duplicate${result.removed !== 1 ? 's' : ''} removed`);
       if (parts.length > 0) {
         toast.success(parts.join(', '));

@@ -76,6 +76,7 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
 
   const matchesProject = (c: any) => allCustomerRefs(c).includes(String(qb_project_id));
   const checks = allChecks.filter(matchesProject);
+  const creditCards = allPurchases.filter((c: any) => c.PaymentType === 'CreditCard').filter(matchesProject);
 
   const { data: existing } = await supabase
     .from('payments').select('external_id, check_number').eq('project_id', project_id);
@@ -88,6 +89,11 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
     !(c.DocNumber && existingCheckNumbers.has(c.DocNumber))
   );
 
+  const newCC = creditCards.filter((c: any) =>
+    !existingExternalIds.has(`qb_${c._entity}_${c.Id}`) &&
+    !existingExternalIds.has(`qb_${c.Id}`)
+  );
+
   if (newChecks.length > 0) {
     const rows = newChecks.map((c: any, i: number) => ({
       id: `${Date.now()}_${i}_${c.Id}`,
@@ -98,6 +104,22 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
       category: 'subcontractor',
       form: 'Check',
       check_number: c.DocNumber || null,
+      external_id: `qb_${c._entity}_${c.Id}`,
+      source: 'qb',
+    }));
+    await supabase.from('payments').insert(rows);
+  }
+
+  if (newCC.length > 0) {
+    const rows = newCC.map((c: any, i: number) => ({
+      id: `cc_${Date.now()}_${i}_${c.Id}`,
+      project_id,
+      date: c.TxnDate,
+      name: c.EntityRef?.name || c.VendorRef?.name || 'Unknown',
+      amount: c.TotalAmt || 0,
+      category: 'materials',
+      form: 'Credit',
+      check_number: null,
       external_id: `qb_${c._entity}_${c.Id}`,
       source: 'qb',
     }));
@@ -124,7 +146,7 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
 
   await supabase.from('projects').update({ qb_last_synced: new Date().toISOString() }).eq('id', project_id);
 
-  return { imported: newChecks.length, removed: toDelete.length };
+  return { imported: newChecks.length, importedCC: newCC.length, removed: toDelete.length };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
