@@ -49,27 +49,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { access_token, realm_id } = await getValidToken();
 
-    // Paginate through all checks (QB max per page is 1000)
-    const allChecks: any[] = [];
-    let startPosition = 1;
-    while (true) {
-      const query = encodeURIComponent(
-        `SELECT * FROM Purchase WHERE PaymentType = 'Check' STARTPOSITION ${startPosition} MAXRESULTS 1000`
-      );
-      const resp = await fetch(
-        `https://quickbooks.api.intuit.com/v3/company/${realm_id}/query?query=${query}&minorversion=65`,
-        { headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' } }
-      );
-      if (!resp.ok) {
-        const txt = await resp.text();
-        throw new Error(`QB API ${resp.status}: ${txt.slice(0, 300)}`);
+    // Helper to paginate any QB query
+    const fetchAll = async (entity: string, whereClause: string): Promise<any[]> => {
+      const results: any[] = [];
+      let pos = 1;
+      while (true) {
+        const q = encodeURIComponent(`SELECT * FROM ${entity} WHERE ${whereClause} STARTPOSITION ${pos} MAXRESULTS 1000`);
+        const r = await fetch(
+          `https://quickbooks.api.intuit.com/v3/company/${realm_id}/query?query=${q}&minorversion=65`,
+          { headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' } }
+        );
+        if (!r.ok) { const t = await r.text(); throw new Error(`QB API ${r.status}: ${t.slice(0, 300)}`); }
+        const d = await r.json();
+        const page = d.QueryResponse?.[entity] || [];
+        results.push(...page.map((x: any) => ({ ...x, _entity: entity })));
+        if (page.length < 1000) break;
+        pos += 1000;
       }
-      const data = await resp.json();
-      const page = data.QueryResponse?.Purchase || [];
-      allChecks.push(...page);
-      if (page.length < 1000) break;
-      startPosition += 1000;
-    }
+      return results;
+    };
+
+    // Fetch both Purchase/Check and BillPayment/Check (two ways to write a check in QB)
+    const [purchases, billPayments] = await Promise.all([
+      fetchAll('Purchase', `PaymentType = 'Check'`),
+      fetchAll('BillPayment', `PayType = 'Check'`),
+    ]);
+    const allChecks = [...purchases, ...billPayments];
 
     // Extract all CustomerRef values anywhere in a check object (recursive)
     const allCustomerRefs = (obj: any): string[] => {
@@ -100,6 +105,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const existingCheckNumbers = new Set((existing || []).map((r: any) => r.check_number).filter(Boolean));
 
     const newChecks = checks.filter((c: any) =>
+      !existingExternalIds.has(`qb_${c._entity}_${c.Id}`) &&
       !existingExternalIds.has(`qb_${c.Id}`) &&
       !(c.DocNumber && existingCheckNumbers.has(c.DocNumber))
     );
@@ -109,12 +115,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         id: `${Date.now()}_${i}_${c.Id}`,
         project_id,
         date: c.TxnDate,
-        name: c.EntityRef?.name || 'Unknown',
+        name: c.EntityRef?.name || c.VendorRef?.name || 'Unknown',
         amount: c.TotalAmt || 0,
         category: category || 'subcontractor',
         form: 'Check',
         check_number: c.DocNumber || null,
-        external_id: `qb_${c.Id}`,
+        external_id: `qb_${c._entity}_${c.Id}`,
         source: 'qb',
       }));
       const { error: insertError } = await supabase.from('payments').insert(rows);

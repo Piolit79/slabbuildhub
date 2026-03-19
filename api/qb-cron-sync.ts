@@ -35,24 +35,30 @@ async function getValidToken(supabase: any) {
 }
 
 async function syncProject(supabase: any, access_token: string, realm_id: string, project_id: string, qb_project_id: string) {
-  // Paginate through all checks (QB max per page is 1000)
-  const allChecks: any[] = [];
-  let startPosition = 1;
-  while (true) {
-    const query = encodeURIComponent(
-      `SELECT * FROM Purchase WHERE PaymentType = 'Check' STARTPOSITION ${startPosition} MAXRESULTS 1000`
-    );
-    const resp = await fetch(
-      `https://quickbooks.api.intuit.com/v3/company/${realm_id}/query?query=${query}&minorversion=65`,
-      { headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' } }
-    );
-    if (!resp.ok) throw new Error(`QB API ${resp.status}`);
-    const data = await resp.json();
-    const page = data.QueryResponse?.Purchase || [];
-    allChecks.push(...page);
-    if (page.length < 1000) break;
-    startPosition += 1000;
-  }
+  const fetchAll = async (entity: string, whereClause: string): Promise<any[]> => {
+    const results: any[] = [];
+    let pos = 1;
+    while (true) {
+      const q = encodeURIComponent(`SELECT * FROM ${entity} WHERE ${whereClause} STARTPOSITION ${pos} MAXRESULTS 1000`);
+      const r = await fetch(
+        `https://quickbooks.api.intuit.com/v3/company/${realm_id}/query?query=${q}&minorversion=65`,
+        { headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' } }
+      );
+      if (!r.ok) throw new Error(`QB API ${r.status}`);
+      const d = await r.json();
+      const page = d.QueryResponse?.[entity] || [];
+      results.push(...page.map((x: any) => ({ ...x, _entity: entity })));
+      if (page.length < 1000) break;
+      pos += 1000;
+    }
+    return results;
+  };
+
+  const [purchases, billPayments] = await Promise.all([
+    fetchAll('Purchase', `PaymentType = 'Check'`),
+    fetchAll('BillPayment', `PayType = 'Check'`),
+  ]);
+  const allChecks = [...purchases, ...billPayments];
 
   const allCustomerRefs = (obj: any): string[] => {
     if (!obj || typeof obj !== 'object') return [];
@@ -74,6 +80,7 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
   const existingCheckNumbers = new Set((existing || []).map((r: any) => r.check_number).filter(Boolean));
 
   const newChecks = checks.filter((c: any) =>
+    !existingExternalIds.has(`qb_${c._entity}_${c.Id}`) &&
     !existingExternalIds.has(`qb_${c.Id}`) &&
     !(c.DocNumber && existingCheckNumbers.has(c.DocNumber))
   );
@@ -83,12 +90,12 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
       id: `${Date.now()}_${i}_${c.Id}`,
       project_id,
       date: c.TxnDate,
-      name: c.EntityRef?.name || 'Unknown',
+      name: c.EntityRef?.name || c.VendorRef?.name || 'Unknown',
       amount: c.TotalAmt || 0,
       category: 'subcontractor',
       form: 'Check',
       check_number: c.DocNumber || null,
-      external_id: `qb_${c.Id}`,
+      external_id: `qb_${c._entity}_${c.Id}`,
       source: 'qb',
     }));
     await supabase.from('payments').insert(rows);
