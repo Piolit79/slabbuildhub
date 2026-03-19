@@ -42,6 +42,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
   const [qbProjectId, setQbProjectId] = useState<string>('');
   const [syncing, setSyncing] = useState(false);
   const [qbReady, setQbReady] = useState(false);
+  const [qbChanging, setQbChanging] = useState(false);
 
   useEffect(() => {
     supabase.from('payments').select('*').eq('project_id', selectedProject.id).then(({ data }) => {
@@ -50,7 +51,8 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
   }, [selectedProject.id]);
 
   useEffect(() => {
-    // Load QB projects list and saved mapping for this project
+    setQbProjectId('');
+    setQbChanging(false);
     fetch('/api/qb-status').then(r => r.json()).then(s => {
       if (!s.connected) return;
       setQbReady(true);
@@ -194,18 +196,30 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
 
       {qbReady && (
         <div className="flex items-center gap-2 flex-wrap">
-          <Select value={qbProjectId} onValueChange={handleQbProjectChange}>
-            <SelectTrigger className="h-7 text-xs w-52">
-              <SelectValue placeholder="Link QB project..." />
-            </SelectTrigger>
-            <SelectContent>
-              {qbProjects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" disabled={!qbProjectId || syncing} onClick={handleSync}>
-            <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
-            {syncing ? 'Syncing...' : 'Sync QB Checks'}
-          </Button>
+          {qbProjectId && !qbChanging ? (
+            <>
+              <span className="text-xs text-muted-foreground">
+                QB: <span className="font-medium text-foreground">{qbProjects.find(p => p.id === qbProjectId)?.name || '...'}</span>
+              </span>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" disabled={syncing} onClick={handleSync}>
+                <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
+                {syncing ? 'Syncing...' : 'Sync QB Checks'}
+              </Button>
+              <button onClick={() => setQbChanging(true)} className="text-[10px] text-muted-foreground hover:text-foreground underline">change</button>
+            </>
+          ) : (
+            <>
+              <Select value={qbProjectId} onValueChange={async (val) => { await handleQbProjectChange(val); setQbChanging(false); }}>
+                <SelectTrigger className="h-7 text-xs w-52">
+                  <SelectValue placeholder="Link QB project..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {qbProjects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {qbChanging && <button onClick={() => setQbChanging(false)} className="text-[10px] text-muted-foreground hover:text-foreground underline">cancel</button>}
+            </>
+          )}
         </div>
       )}
 
