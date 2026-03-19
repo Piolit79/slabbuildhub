@@ -118,8 +118,13 @@ export default function Dashboard({ readOnly }: { readOnly?: boolean }) {
   const drawRequested = draws.reduce((s, d) => s + d.amount, 0);
   const allPaymentsExSoft = payments.filter(p => p.category !== 'soft_costs').reduce((s, p) => s + p.amount, 0);
   const drawBalance = drawRequested - allPaymentsExSoft;
-  const softCostStudioLAB = payments.filter(p => p.name === 'StudioLAB' && p.category === 'soft_costs').reduce((s, p) => s + p.amount, 0);
-  const softCostSLAB = payments.filter(p => p.name === 'SLAB Builders' && p.category === 'soft_costs').reduce((s, p) => s + p.amount, 0);
+  const softCostsByName = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const p of payments.filter(q => q.category === 'soft_costs')) {
+      map.set(p.name, (map.get(p.name) || 0) + p.amount);
+    }
+    return [...map.entries()].map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total);
+  }, [payments]);
   const materialsVendorsTotal = payments.filter(p => p.category === 'materials').reduce((s, p) => s + p.amount, 0);
   const fixturesFittingsTotal = payments.filter(p => p.category === 'materials' && vendors.find(v => v.name === p.name)?.detail?.toLowerCase().includes('fixture')).reduce((s, p) => s + p.amount, 0);
   const fieldLaborTotal = payments.filter(p => p.category === 'field_labor').reduce((s, p) => s + p.amount, 0);
@@ -397,20 +402,20 @@ export default function Dashboard({ readOnly }: { readOnly?: boolean }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow style={{ backgroundColor: 'rgba(195, 126, 135, 0.12)' }}>
-                  <TableCell className="text-[11px] md:text-sm">StudioLAB</TableCell>
-                  <TableCell className="text-[11px] md:text-sm">Designer</TableCell>
-                  <TableCell className="text-right tabular-nums text-[11px] md:text-sm">
-                    <PaymentHover total={softCostStudioLAB} payments={payments.filter(p => p.name === 'StudioLAB' && p.category === 'soft_costs')} />
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="text-[11px] md:text-sm">SLAB Builders</TableCell>
-                  <TableCell className="text-[11px] md:text-sm">Builder</TableCell>
-                  <TableCell className="text-right tabular-nums text-[11px] md:text-sm">
-                    <PaymentHover total={softCostSLAB} payments={payments.filter(p => p.name === 'SLAB Builders' && p.category === 'soft_costs')} />
-                  </TableCell>
-                </TableRow>
+                {softCostsByName.map((row, idx) => (
+                  <TableRow key={row.name} style={idx % 2 === 0 ? { backgroundColor: 'rgba(195, 126, 135, 0.12)' } : undefined}>
+                    <TableCell className="text-[11px] md:text-sm">{row.name}</TableCell>
+                    <TableCell className="text-[11px] md:text-sm">{vendors.find(v => v.name === row.name)?.detail || '—'}</TableCell>
+                    <TableCell className="text-right tabular-nums text-[11px] md:text-sm">
+                      <PaymentHover total={row.total} payments={payments.filter(p => p.name === row.name && p.category === 'soft_costs')} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {softCostsByName.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center text-xs text-muted-foreground py-4">No soft cost payments yet</TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
