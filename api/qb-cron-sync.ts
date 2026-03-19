@@ -167,15 +167,13 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
     await supabase.from('payments').insert(rows);
   }
 
-  // Sync vendors: add new names to directory + link to project
-  if (newChecks.length > 0) {
-    const names = [...new Set(newChecks.map((c: any) => c.EntityRef?.name || c.VendorRef?.name).filter(Boolean))];
-    await ensureVendors(supabase, project_id, names, 'Subcontractor');
-  }
-  if (newCC.length > 0) {
-    const names = [...new Set(newCC.map((c: any) => c.EntityRef?.name || c.VendorRef?.name).filter(Boolean))];
-    await ensureVendors(supabase, project_id, names, 'Vendor');
-  }
+  // Sync vendors from ALL project payments (not just new ones — catches backfill on resync)
+  const { data: allProjectPayments } = await supabase
+    .from('payments').select('name, category').eq('project_id', project_id);
+  const subNames = [...new Set((allProjectPayments || []).filter((p: any) => p.category === 'subcontractor').map((p: any) => p.name).filter(Boolean))];
+  const matNames = [...new Set((allProjectPayments || []).filter((p: any) => p.category === 'materials').map((p: any) => p.name).filter(Boolean))];
+  if (subNames.length > 0) await ensureVendors(supabase, project_id, subNames, 'Subcontractor');
+  if (matNames.length > 0) await ensureVendors(supabase, project_id, matNames, 'Vendor');
 
   // Remove duplicates
   const { data: allPayments } = await supabase
