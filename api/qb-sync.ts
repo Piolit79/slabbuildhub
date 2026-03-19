@@ -88,8 +88,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return results;
     };
 
-    // Fetch all Purchases (Check + Expense/Cash) and BillPayment checks
-    // BillPayment doesn't support PayType in WHERE clause — fetch all and filter client-side
+    // Fetch all Purchases and BillPayments
+    // QB "Expense" transactions appear as Purchase with PaymentType='Cash' in the API
     const [allPurchases, allBillPayments] = await Promise.all([
       fetchAll('Purchase', `Id > '0'`),
       fetchAll('BillPayment', `Id > '0'`),
@@ -98,10 +98,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Include a purchase if it's a real Check, OR if it has a numeric DocNumber
     // (catches expenses that were miscategorized but have real check numbers)
-    const looksLikeCheck = (c: any) =>
-      c.PaymentType === 'Check' || /^\d+$/.test((c.DocNumber || '').trim());
+    const FIELD_LABOR_VENDORS = ['francisco'];
+    const isFieldLaborVendor = (c: any) => {
+      const name = (c.EntityRef?.name || c.VendorRef?.name || '').toLowerCase();
+      return FIELD_LABOR_VENDORS.some(n => name.includes(n));
+    };
 
-    const allChecks = [...allPurchases.filter(looksLikeCheck), ...billPayments];
+    const looksLikeCheck = (c: any) =>
+      (c.PaymentType === 'Check' || /^\d+$/.test((c.DocNumber || '').trim())) &&
+      !isFieldLaborVendor(c);
+
+    const allChecks = [...allPurchases.filter(looksLikeCheck), ...billPayments.filter(c => !isFieldLaborVendor(c))];
 
     // Extract all CustomerRef values anywhere in a check object (recursive)
     const allCustomerRefs = (obj: any): string[] => {
@@ -166,6 +173,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       !existingExternalIds.has(`qb_${c.Id}`)
     );
 
+    // Field labor: expense (Cash) purchases to field labor vendors matched by per-project payment account
+    // These are ACH payments — linked to project via AccountRef, not CustomerRef
+    let laborAccountId: string | null = projectRow?.qb_labor_account_id || null;
+    if (!laborAccountId && projectRow?.name) {
+      const q = encodeURIComponent(`SELECT * FROM Account WHERE AccountType = 'Bank' MAXRESULTS 200`);
+      const r = await fetch(`https://quickbooks.api.intuit.com/v3/company/${realm_id}/query?query=${q}&minorversion=65`,
+        { headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' } });
+      if (r.ok) {
+        const d = await r.json();
+        const projName = projectRow.name.toLowerCase();
+        const match = (d.QueryResponse?.Account || []).find((a: any) => {
+          const aName = (a.FullyQualifiedName || a.Name || '').toLowerCase();
+          return aName.includes(projName) || projName.includes(aName);
+        });
+        if (match) {
+          laborAccountId = match.Id;
+          await supabase.from('projects').update({ qb_labor_account_id: match.Id }).eq('id', project_id);
+        }
+      }
+    }
+    const fieldLaborPurchases = laborAccountId
+      ? allPurchases.filter((c: any) =>
+          isFieldLaborVendor(c) && String(c.AccountRef?.value) === String(laborAccountId)
+        )
+      : allPurchases.filter((c: any) => isFieldLaborVendor(c) && matchesProject(c));
+    const newFieldLabor = fieldLaborPurchases.filter((c: any) =>
+      !existingExternalIds.has(`qb_${c._entity}_${c.Id}`) &&
+      !existingExternalIds.has(`qb_${c.Id}`)
+    );
+
     if (newChecks.length > 0) {
       const rows = newChecks.map((c: any, i: number) => {
         const name = c.EntityRef?.name || c.VendorRef?.name || 'Unknown';
@@ -202,6 +239,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }));
       const { error: insertError } = await supabase.from('payments').insert(rows);
       if (insertError) throw new Error(`CC insert failed: ${insertError.message}`);
+    }
+
+    if (newFieldLabor.length > 0) {
+      const rows = newFieldLabor.map((c: any, i: number) => ({
+        id: `fl_${Date.now()}_${i}_${c.Id}`,
+        project_id,
+        date: c.TxnDate,
+        name: c.EntityRef?.name || c.VendorRef?.name || 'Unknown',
+        amount: c.TotalAmt || 0,
+        category: 'field_labor',
+        form: c.PaymentType === 'Check' ? 'Check' : c.PaymentType === 'Cash' ? 'Cash' : 'ACH',
+        check_number: c.DocNumber || null,
+        external_id: `qb_${c._entity}_${c.Id}`,
+        source: 'qb',
+      }));
+      const { error: insertError } = await supabase.from('payments').insert(rows);
+      if (insertError) throw new Error(`Field labor insert failed: ${insertError.message}`);
     }
 
     // Sync vendors from ALL project payments (not just new ones — catches backfill on resync)
@@ -248,7 +302,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .update({ qb_last_synced: new Date().toISOString() })
       .eq('id', project_id);
 
-    res.json({ imported: newChecks.length, importedCC: newCC.length, total: checks.length, skipped: checks.length - newChecks.length, removed });
+    res.json({ imported: newChecks.length, importedCC: newCC.length, importedFL: newFieldLabor.length, total: checks.length, skipped: checks.length - newChecks.length, removed });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }

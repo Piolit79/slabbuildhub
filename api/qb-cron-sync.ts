@@ -53,7 +53,7 @@ async function getValidToken(supabase: any) {
   return { access_token: data.access_token, realm_id: data.realm_id };
 }
 
-async function syncProject(supabase: any, access_token: string, realm_id: string, project_id: string, qb_project_id: string, project_name: string, qb_cc_account_id?: string) {
+async function syncProject(supabase: any, access_token: string, realm_id: string, project_id: string, qb_project_id: string, project_name: string, qb_cc_account_id?: string, qb_labor_account_id?: string) {
   const fetchAll = async (entity: string, whereClause: string): Promise<any[]> => {
     const results: any[] = [];
     let pos = 1;
@@ -77,10 +77,17 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
     fetchAll('Purchase', `Id > '0'`),
     fetchAll('BillPayment', `Id > '0'`),
   ]);
+  const FIELD_LABOR_VENDORS = ['francisco'];
+  const isFieldLaborVendor = (c: any) => {
+    const name = (c.EntityRef?.name || c.VendorRef?.name || '').toLowerCase();
+    return FIELD_LABOR_VENDORS.some(n => name.includes(n));
+  };
+
   const billPayments = allBillPayments.filter((c: any) => c.PayType === 'Check');
   const looksLikeCheck = (c: any) =>
-    c.PaymentType === 'Check' || /^\d+$/.test((c.DocNumber || '').trim());
-  const allChecks = [...allPurchases.filter(looksLikeCheck), ...billPayments];
+    (c.PaymentType === 'Check' || /^\d+$/.test((c.DocNumber || '').trim())) &&
+    !isFieldLaborVendor(c);
+  const allChecks = [...allPurchases.filter(looksLikeCheck), ...billPayments.filter(c => !isFieldLaborVendor(c))];
 
   const allCustomerRefs = (obj: any): string[] => {
     if (!obj || typeof obj !== 'object') return [];
@@ -119,6 +126,29 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
     ? allPurchases.filter((c: any) => c.PaymentType === 'CreditCard' && String(c.AccountRef?.value) === String(ccAccountId))
     : [];
 
+  // Field labor: expense (Cash/ACH) purchases to field labor vendors, matched by per-project bank account
+  let laborAccountId: string | null = qb_labor_account_id || null;
+  if (!laborAccountId && project_name) {
+    const q = encodeURIComponent(`SELECT * FROM Account WHERE AccountType = 'Bank' MAXRESULTS 200`);
+    const r = await fetch(`https://quickbooks.api.intuit.com/v3/company/${realm_id}/query?query=${q}&minorversion=65`,
+      { headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' } });
+    if (r.ok) {
+      const d = await r.json();
+      const projName = project_name.toLowerCase();
+      const match = (d.QueryResponse?.Account || []).find((a: any) => {
+        const aName = (a.FullyQualifiedName || a.Name || '').toLowerCase();
+        return aName.includes(projName) || projName.includes(aName);
+      });
+      if (match) {
+        laborAccountId = match.Id;
+        await supabase.from('projects').update({ qb_labor_account_id: match.Id }).eq('id', project_id);
+      }
+    }
+  }
+  const fieldLaborPurchases = laborAccountId
+    ? allPurchases.filter((c: any) => isFieldLaborVendor(c) && String(c.AccountRef?.value) === String(laborAccountId))
+    : allPurchases.filter((c: any) => isFieldLaborVendor(c) && matchesProject(c));
+
   const { data: existing } = await supabase
     .from('payments').select('external_id, check_number').eq('project_id', project_id);
   const existingExternalIds = new Set((existing || []).map((r: any) => r.external_id).filter(Boolean));
@@ -131,6 +161,11 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
   );
 
   const newCC = creditCards.filter((c: any) =>
+    !existingExternalIds.has(`qb_${c._entity}_${c.Id}`) &&
+    !existingExternalIds.has(`qb_${c.Id}`)
+  );
+
+  const newFieldLabor = fieldLaborPurchases.filter((c: any) =>
     !existingExternalIds.has(`qb_${c._entity}_${c.Id}`) &&
     !existingExternalIds.has(`qb_${c.Id}`)
   );
@@ -171,6 +206,22 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
     await supabase.from('payments').insert(rows);
   }
 
+  if (newFieldLabor.length > 0) {
+    const rows = newFieldLabor.map((c: any, i: number) => ({
+      id: `fl_${Date.now()}_${i}_${c.Id}`,
+      project_id,
+      date: c.TxnDate,
+      name: c.EntityRef?.name || c.VendorRef?.name || 'Unknown',
+      amount: c.TotalAmt || 0,
+      category: 'field_labor',
+      form: c.PaymentType === 'Check' ? 'Check' : c.PaymentType === 'Cash' ? 'Cash' : 'ACH',
+      check_number: c.DocNumber || null,
+      external_id: `qb_${c._entity}_${c.Id}`,
+      source: 'qb',
+    }));
+    await supabase.from('payments').insert(rows);
+  }
+
   // Sync vendors from ALL project payments (not just new ones — catches backfill on resync)
   const { data: allProjectPayments } = await supabase
     .from('payments').select('name, category').eq('project_id', project_id);
@@ -201,7 +252,7 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
 
   await supabase.from('projects').update({ qb_last_synced: new Date().toISOString() }).eq('id', project_id);
 
-  return { imported: newChecks.length, importedCC: newCC.length, removed: toDelete.length };
+  return { imported: newChecks.length, importedCC: newCC.length, importedFL: newFieldLabor.length, removed: toDelete.length };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -218,13 +269,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Get all projects with a QB mapping
     const { data: projects } = await supabase
       .from('projects')
-      .select('id, name, qb_project_id, qb_cc_account_id')
+      .select('id, name, qb_project_id, qb_cc_account_id, qb_labor_account_id')
       .not('qb_project_id', 'is', null);
 
     const results: any[] = [];
     for (const project of projects || []) {
       try {
-        const result = await syncProject(supabase, access_token, realm_id, project.id, project.qb_project_id, project.name, project.qb_cc_account_id);
+        const result = await syncProject(supabase, access_token, realm_id, project.id, project.qb_project_id, project.name, project.qb_cc_account_id, project.qb_labor_account_id);
         results.push({ project: project.name, ...result });
       } catch (e: any) {
         results.push({ project: project.name, error: e.message });
