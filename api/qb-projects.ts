@@ -38,7 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
   try {
     const { access_token, realm_id } = await getValidToken();
-    const query = encodeURIComponent('SELECT * FROM Customer WHERE IsProject = true MAXRESULTS 1000');
+    const query = encodeURIComponent('SELECT * FROM Customer WHERE Active = true MAXRESULTS 1000');
     const resp = await fetch(
       `https://quickbooks.api.intuit.com/v3/company/${realm_id}/query?query=${query}&minorversion=65`,
       { headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' } }
