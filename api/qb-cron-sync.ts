@@ -54,12 +54,14 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
     return results;
   };
 
-  const [purchases, allBillPayments] = await Promise.all([
-    fetchAll('Purchase', `PaymentType = 'Check'`),
+  const [allPurchases, allBillPayments] = await Promise.all([
+    fetchAll('Purchase', `Id > '0'`),
     fetchAll('BillPayment', `Id > '0'`),
   ]);
   const billPayments = allBillPayments.filter((c: any) => c.PayType === 'Check');
-  const allChecks = [...purchases, ...billPayments];
+  const looksLikeCheck = (c: any) =>
+    c.PaymentType === 'Check' || /^\d+$/.test((c.DocNumber || '').trim());
+  const allChecks = [...allPurchases.filter(looksLikeCheck), ...billPayments];
 
   const allCustomerRefs = (obj: any): string[] => {
     if (!obj || typeof obj !== 'object') return [];

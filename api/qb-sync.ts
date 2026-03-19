@@ -69,14 +69,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return results;
     };
 
-    // Fetch both Purchase/Check and BillPayment/Check (two ways to write a check in QB)
+    // Fetch all Purchases (Check + Expense/Cash) and BillPayment checks
     // BillPayment doesn't support PayType in WHERE clause — fetch all and filter client-side
-    const [purchases, allBillPayments] = await Promise.all([
-      fetchAll('Purchase', `PaymentType = 'Check'`),
+    const [allPurchases, allBillPayments] = await Promise.all([
+      fetchAll('Purchase', `Id > '0'`),
       fetchAll('BillPayment', `Id > '0'`),
     ]);
     const billPayments = allBillPayments.filter((c: any) => c.PayType === 'Check');
-    const allChecks = [...purchases, ...billPayments];
+
+    // Include a purchase if it's a real Check, OR if it has a numeric DocNumber
+    // (catches expenses that were miscategorized but have real check numbers)
+    const looksLikeCheck = (c: any) =>
+      c.PaymentType === 'Check' || /^\d+$/.test((c.DocNumber || '').trim());
+
+    const allChecks = [...allPurchases.filter(looksLikeCheck), ...billPayments];
 
     // Extract all CustomerRef values anywhere in a check object (recursive)
     const allCustomerRefs = (obj: any): string[] => {

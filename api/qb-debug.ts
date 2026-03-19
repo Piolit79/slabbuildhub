@@ -85,7 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     const [purchases, allBillPayments] = await Promise.all([
-      fetchAll('Purchase', `PaymentType = 'Check'`),
+      fetchAll('Purchase', `Id > '0'`),
       fetchAll('BillPayment', `Id > '0'`),
     ]);
     const billPayments = allBillPayments.filter((c: any) => c.PayType === 'Check');
