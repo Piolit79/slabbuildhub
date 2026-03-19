@@ -64,7 +64,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const allChecks = data.QueryResponse?.Purchase || [];
     const checks = allChecks.filter((c: any) => c.CustomerRef?.value === String(qb_project_id));
 
-    if (checks.length === 0) return res.json({ imported: 0, total: 0, skipped: 0 });
+    if (checks.length === 0) {
+      const sample = allChecks.slice(0, 3).map((c: any) => ({ id: c.Id, customerRef: c.CustomerRef?.value, looking_for: String(qb_project_id) }));
+      return res.json({ imported: 0, total: 0, skipped: 0, debug: { allChecks: allChecks.length, sample } });
+    }
 
     const externalIds = checks.map((c: any) => `qb_${c.Id}`);
     const { data: existing } = await supabase
