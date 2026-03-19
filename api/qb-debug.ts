@@ -64,10 +64,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return results;
     };
 
-    const [purchases, billPayments] = await Promise.all([
-      fetchEntity('Purchase', 'PaymentType'),
-      fetchEntity('BillPayment', 'PayType'),
+    const fetchAll = async (entity: string, where: string): Promise<any[]> => {
+      const results: any[] = [];
+      let pos = 1;
+      while (true) {
+        const q = encodeURIComponent(`SELECT * FROM ${entity} WHERE ${where} STARTPOSITION ${pos} MAXRESULTS 1000`);
+        const r = await fetch(
+          `https://quickbooks.api.intuit.com/v3/company/${realm_id}/query?query=${q}&minorversion=65`,
+          { headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' } }
+        );
+        if (!r.ok) break;
+        const d = await r.json();
+        const page = d.QueryResponse?.[entity] || [];
+        results.push(...page);
+        if (page.length < 1000) break;
+        pos += 1000;
+      }
+      return results;
+    };
+
+    const [purchases, allBillPayments] = await Promise.all([
+      fetchAll('Purchase', `PaymentType = 'Check'`),
+      fetchAll('BillPayment', `Id > '0'`),
     ]);
+    const billPayments = allBillPayments.filter((c: any) => c.PayType === 'Check');
 
     // Filter to the requested check number range
     const inRange = (docNum: string) => {

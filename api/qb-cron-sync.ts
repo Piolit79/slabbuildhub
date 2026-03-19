@@ -54,10 +54,11 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
     return results;
   };
 
-  const [purchases, billPayments] = await Promise.all([
+  const [purchases, allBillPayments] = await Promise.all([
     fetchAll('Purchase', `PaymentType = 'Check'`),
-    fetchAll('BillPayment', `PayType = 'Check'`),
+    fetchAll('BillPayment', `Id > '0'`),
   ]);
+  const billPayments = allBillPayments.filter((c: any) => c.PayType === 'Check');
   const allChecks = [...purchases, ...billPayments];
 
   const allCustomerRefs = (obj: any): string[] => {
