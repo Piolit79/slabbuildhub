@@ -268,7 +268,14 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                           ) : (
                             <>
                               <TableCell className="pr-6"><SmartDateInput value={editData.date || ''} onChange={v => setEditData(d => ({ ...d, date: v }))} className="h-6 text-xs w-28 px-1" /></TableCell>
-                              <TableCell className="pl-6"><AutocompleteInput value={editData.name || ''} onChange={v => setEditData(d => ({ ...d, name: v }))} suggestions={nameSuggestions} className="h-6 text-xs px-1" /></TableCell>
+                              <TableCell className="pl-6">
+                                <div className="flex flex-col gap-0.5">
+                                  <AutocompleteInput value={editData.name || ''} onChange={v => setEditData(d => ({ ...d, name: v }))} suggestions={nameSuggestions} className="h-6 text-xs px-1" />
+                                  <select value={editData.category || activeTab} onChange={e => setEditData(d => ({ ...d, category: e.target.value as PaymentCategory }))} className="h-5 text-[10px] border rounded px-1 bg-background text-muted-foreground">
+                                    {tabs.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                  </select>
+                                </div>
+                              </TableCell>
                               <TableCell className="text-right pr-6"><CurrencyInput value={editData.amount || 0} onChange={v => setEditData(d => ({ ...d, amount: v }))} className="h-6 text-xs w-28 px-1" /></TableCell>
                               <TableCell className="pl-6">
                                 <select value={editData.form || 'Check'} onChange={e => setEditData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs border rounded px-1 bg-background w-20">
