@@ -48,19 +48,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { access_token, realm_id } = await getValidToken();
-    const query = encodeURIComponent(
-      `SELECT * FROM Purchase WHERE PaymentType = 'Check' MAXRESULTS 1000`
-    );
-    const resp = await fetch(
-      `https://quickbooks.api.intuit.com/v3/company/${realm_id}/query?query=${query}&minorversion=65`,
-      { headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' } }
-    );
-    if (!resp.ok) {
-      const txt = await resp.text();
-      throw new Error(`QB API ${resp.status}: ${txt.slice(0, 300)}`);
+
+    // Paginate through all checks (QB max per page is 1000)
+    const allChecks: any[] = [];
+    let startPosition = 1;
+    while (true) {
+      const query = encodeURIComponent(
+        `SELECT * FROM Purchase WHERE PaymentType = 'Check' STARTPOSITION ${startPosition} MAXRESULTS 1000`
+      );
+      const resp = await fetch(
+        `https://quickbooks.api.intuit.com/v3/company/${realm_id}/query?query=${query}&minorversion=65`,
+        { headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' } }
+      );
+      if (!resp.ok) {
+        const txt = await resp.text();
+        throw new Error(`QB API ${resp.status}: ${txt.slice(0, 300)}`);
+      }
+      const data = await resp.json();
+      const page = data.QueryResponse?.Purchase || [];
+      allChecks.push(...page);
+      if (page.length < 1000) break;
+      startPosition += 1000;
     }
-    const data = await resp.json();
-    const allChecks = data.QueryResponse?.Purchase || [];
 
     // QB stores project on line items, not the check header — check both places
     const matchesProject = (c: any) => {

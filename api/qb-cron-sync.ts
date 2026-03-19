@@ -35,14 +35,24 @@ async function getValidToken(supabase: any) {
 }
 
 async function syncProject(supabase: any, access_token: string, realm_id: string, project_id: string, qb_project_id: string) {
-  const query = encodeURIComponent(`SELECT * FROM Purchase WHERE PaymentType = 'Check' MAXRESULTS 1000`);
-  const resp = await fetch(
-    `https://quickbooks.api.intuit.com/v3/company/${realm_id}/query?query=${query}&minorversion=65`,
-    { headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' } }
-  );
-  if (!resp.ok) throw new Error(`QB API ${resp.status}`);
-  const data = await resp.json();
-  const allChecks = data.QueryResponse?.Purchase || [];
+  // Paginate through all checks (QB max per page is 1000)
+  const allChecks: any[] = [];
+  let startPosition = 1;
+  while (true) {
+    const query = encodeURIComponent(
+      `SELECT * FROM Purchase WHERE PaymentType = 'Check' STARTPOSITION ${startPosition} MAXRESULTS 1000`
+    );
+    const resp = await fetch(
+      `https://quickbooks.api.intuit.com/v3/company/${realm_id}/query?query=${query}&minorversion=65`,
+      { headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' } }
+    );
+    if (!resp.ok) throw new Error(`QB API ${resp.status}`);
+    const data = await resp.json();
+    const page = data.QueryResponse?.Purchase || [];
+    allChecks.push(...page);
+    if (page.length < 1000) break;
+    startPosition += 1000;
+  }
 
   const matchesProject = (c: any) => {
     const id = String(qb_project_id);
