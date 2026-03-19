@@ -35,17 +35,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const tokens = await tokenResp.json();
+
+    if (!tokens.access_token || !tokens.refresh_token) {
+      throw new Error(`Unexpected token response: ${JSON.stringify(tokens).slice(0, 200)}`);
+    }
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    await supabase.from('qb_tokens').upsert(
+    const { error: upsertError } = await supabase.from('qb_tokens').upsert(
       {
         realm_id: realmId as string,
         access_token: tokens.access_token,
         refresh_token: tokens.refresh_token,
-        expires_at: Date.now() + tokens.expires_in * 1000,
+        expires_at: Date.now() + (tokens.expires_in || 3600) * 1000,
       },
       { onConflict: 'realm_id' }
     );
+
+    if (upsertError) {
+      throw new Error(`DB save failed: ${upsertError.message}`);
+    }
 
     res.redirect('/settings?qb=connected');
   } catch (e: any) {
