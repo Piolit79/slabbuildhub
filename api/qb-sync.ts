@@ -49,15 +49,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const { access_token, realm_id } = await getValidToken();
     const query = encodeURIComponent(
-      `SELECT * FROM Purchase WHERE PaymentType = 'Check' AND CustomerRef = '${qb_project_id}' MAXRESULTS 1000`
+      `SELECT * FROM Purchase WHERE PaymentType = 'Check' MAXRESULTS 1000`
     );
     const resp = await fetch(
       `https://quickbooks.api.intuit.com/v3/company/${realm_id}/query?query=${query}&minorversion=65`,
       { headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' } }
     );
-    if (!resp.ok) throw new Error(`QB API ${resp.status}`);
+    if (!resp.ok) {
+      const txt = await resp.text();
+      throw new Error(`QB API ${resp.status}: ${txt.slice(0, 300)}`);
+    }
     const data = await resp.json();
-    const checks = data.QueryResponse?.Purchase || [];
+    // Filter by project client-side since CustomerRef is not a supported WHERE field
+    const allChecks = data.QueryResponse?.Purchase || [];
+    const checks = allChecks.filter((c: any) => c.CustomerRef?.value === String(qb_project_id));
 
     if (checks.length === 0) return res.json({ imported: 0, total: 0, skipped: 0 });
 
