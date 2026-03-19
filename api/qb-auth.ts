@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   const clientId = process.env.QB_CLIENT_ID;
-  const redirectUri = process.env.QB_REDIRECT_URI || 'https://slabbuildhub.vercel.app/api/qb-callback';
+  const redirectUri = process.env.QB_REDIRECT_URI || 'https://slabbuildhub-piolit-9204s-projects.vercel.app/api/qb-callback';
 
   if (!clientId) {
     return res.status(500).send('QB_CLIENT_ID not configured');

@@ -13,7 +13,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const clientId = process.env.QB_CLIENT_ID!;
   const clientSecret = process.env.QB_CLIENT_SECRET!;
-  const redirectUri = process.env.QB_REDIRECT_URI || 'https://slabbuildhub.vercel.app/api/qb-callback';
+  const redirectUri = process.env.QB_REDIRECT_URI || 'https://slabbuildhub-piolit-9204s-projects.vercel.app/api/qb-callback';
 
   try {
     const tokenResp = await fetch('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', {
