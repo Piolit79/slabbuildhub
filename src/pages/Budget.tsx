@@ -184,11 +184,11 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
       const now = new Date().toISOString();
 
       // Delete existing items for this project
-      await supabase.from('budget_items').delete().eq('project_id', selectedProject.id);
+      const { error: deleteError } = await supabase.from('budget_items').delete().eq('project_id', selectedProject.id);
+      if (deleteError) throw new Error('Delete failed: ' + deleteError.message);
 
-      // Insert new items
+      // Insert new items (no id — let DB generate UUID)
       const newRows = parsedItems.map((item, i) => ({
-        id: `${Date.now()}_${i}`,
         project_id: selectedProject.id,
         category: item.category,
         description: item.description,
@@ -200,7 +200,8 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
         status: item.status,
         sort_order: i,
       }));
-      await supabase.from('budget_items').insert(newRows);
+      const { data: insertedRows, error: insertError } = await supabase.from('budget_items').insert(newRows).select();
+      if (insertError) throw new Error('Insert failed: ' + insertError.message);
 
       // Save categories
       const finalCats = parsedCats.length ? parsedCats : DEFAULT_CATEGORIES;
@@ -217,7 +218,7 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
 
       setCategories(finalCats);
       setImportDate(now);
-      setItems(newRows as DbBudgetItem[]);
+      setItems((insertedRows || []) as DbBudgetItem[]);
     } catch (err: any) {
       alert('Import failed: ' + err.message);
     }
