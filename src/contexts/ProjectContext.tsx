@@ -34,13 +34,20 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
             setSelectedProjectId(data[0].id);
           }
         } else {
-          setSelectedProjectId(data[0].id);
+          const saved = localStorage.getItem('selectedProjectId');
+          const valid = saved && data.find((p: any) => p.id === saved);
+          setSelectedProjectId(valid ? saved : data[0].id);
         }
       }
       setLoaded(true);
     };
     load();
   }, [isClient, profile?.project_id]);
+
+  const selectProject = (id: string) => {
+    localStorage.setItem('selectedProjectId', id);
+    setSelectedProjectId(id);
+  };
 
   const activeProjects = projects.filter(p => p.status !== 'archived');
   const selectedProject = activeProjects.find(p => p.id === selectedProjectId) || activeProjects[0];
@@ -55,7 +62,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
     await supabase.from('projects').insert(newProject);
     setProjects(prev => [...prev, newProject]);
-    setSelectedProjectId(newProject.id);
+    selectProject(newProject.id);
   };
 
   const archiveProject = async (id: string) => {
@@ -63,7 +70,7 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setProjects(prev => prev.map(p => p.id === id ? { ...p, status: 'archived' as const } : p));
     if (selectedProjectId === id) {
       const remaining = projects.filter(p => p.id !== id && p.status !== 'archived');
-      if (remaining.length) setSelectedProjectId(remaining[0].id);
+      if (remaining.length) selectProject(remaining[0].id);
     }
   };
 
@@ -72,14 +79,14 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setProjects(prev => prev.filter(p => p.id !== id));
     if (selectedProjectId === id) {
       const remaining = projects.filter(p => p.id !== id && p.status !== 'archived');
-      if (remaining.length) setSelectedProjectId(remaining[0].id);
+      if (remaining.length) selectProject(remaining[0].id);
     }
   };
 
   if (!loaded || !selectedProject) return null;
 
   return (
-    <ProjectContext.Provider value={{ projects, selectedProject, setSelectedProjectId, addProject, archiveProject, deleteProject }}>
+    <ProjectContext.Provider value={{ projects, selectedProject, setSelectedProjectId: selectProject, addProject, archiveProject, deleteProject }}>
       {children}
     </ProjectContext.Provider>
   );
