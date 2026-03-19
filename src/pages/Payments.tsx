@@ -122,7 +122,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
   }), [filtered, sortKey, sortDir]);
   const tabTotal = filtered.reduce((s, p) => s + p.amount, 0);
 
-  // Materials tab: group by vendor name, sorted by last transaction date desc
+  // Materials tab: group by vendor name, sorted by sortKey/sortDir (default: date asc = oldest first)
   const materialGroups = useMemo((): VendorGroup[] => {
     const mats = payments.filter(p => p.project_id === selectedProject.id && p.category === 'materials');
     const groupMap = new Map<string, Payment[]>();
@@ -130,11 +130,19 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
       if (!groupMap.has(p.name)) groupMap.set(p.name, []);
       groupMap.get(p.name)!.push(p);
     }
-    return [...groupMap.entries()].map(([name, items]) => {
-      const sortedItems = [...items].sort((a, b) => b.date.localeCompare(a.date));
-      return { name, count: items.length, total: items.reduce((s, p) => s + p.amount, 0), lastDate: sortedItems[0].date, items: sortedItems };
-    }).sort((a, b) => b.lastDate.localeCompare(a.lastDate));
-  }, [payments, selectedProject.id]);
+    const groups = [...groupMap.entries()].map(([name, items]) => {
+      const sortedItems = [...items].sort((a, b) => a.date.localeCompare(b.date)); // oldest first within group
+      return { name, count: items.length, total: items.reduce((s, p) => s + p.amount, 0), lastDate: sortedItems[sortedItems.length - 1].date, items: sortedItems };
+    });
+    return groups.sort((a, b) => {
+      let av: any, bv: any;
+      if (sortKey === 'amount') { av = a.total; bv = b.total; }
+      else if (sortKey === 'name') { av = a.name; bv = b.name; }
+      else { av = a.lastDate; bv = b.lastDate; }
+      if (typeof av === 'number') return sortDir === 'asc' ? av - bv : bv - av;
+      return sortDir === 'asc' ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+    });
+  }, [payments, selectedProject.id, sortKey, sortDir]);
 
   const toggleVendor = (name: string) => setExpandedVendors(prev => {
     const next = new Set(prev);
@@ -358,8 +366,8 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                   </colgroup>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="pr-6">{t.value === 'materials' ? 'Last Date' : sh('Date', 'date')}</TableHead>
-                      <TableHead className="pl-6">{t.value === 'materials' ? 'Vendor' : sh('Name', 'name')}</TableHead>
+                      <TableHead className="pr-6">{t.value === 'materials' ? sh('Last Date', 'date') : sh('Date', 'date')}</TableHead>
+                      <TableHead className="pl-6">{t.value === 'materials' ? sh('Vendor', 'name') : sh('Name', 'name')}</TableHead>
                       <TableHead className="text-right pr-6">{sh('Amt', 'amount', 'justify-end')}</TableHead>
                       {!isMobile && <TableHead className="pl-6">{t.value === 'materials' ? '' : sh('Form', 'form')}</TableHead>}
                       {!isMobile && <TableHead>{t.value === 'materials' ? '' : sh('Check #', 'check_number')}</TableHead>}

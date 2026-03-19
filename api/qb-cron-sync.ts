@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { ensureVendors } from './_vendor-utils';
 
 const SUPABASE_URL = 'https://nlusfndskgdcottasfdy.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -146,6 +147,16 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
       source: 'qb',
     }));
     await supabase.from('payments').insert(rows);
+  }
+
+  // Sync vendors: add new names to directory + link to project
+  if (newChecks.length > 0) {
+    const names = [...new Set(newChecks.map((c: any) => c.EntityRef?.name || c.VendorRef?.name).filter(Boolean))];
+    await ensureVendors(supabase, project_id, names, 'Subcontractor');
+  }
+  if (newCC.length > 0) {
+    const names = [...new Set(newCC.map((c: any) => c.EntityRef?.name || c.VendorRef?.name).filter(Boolean))];
+    await ensureVendors(supabase, project_id, names, 'Vendor');
   }
 
   // Remove duplicates
