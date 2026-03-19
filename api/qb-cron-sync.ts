@@ -54,14 +54,18 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
     startPosition += 1000;
   }
 
-  const matchesProject = (c: any) => {
-    const id = String(qb_project_id);
-    if (c.CustomerRef?.value === id) return true;
-    return (c.Line || []).some((l: any) =>
-      l.AccountBasedExpenseLineDetail?.CustomerRef?.value === id ||
-      l.ItemBasedExpenseLineDetail?.CustomerRef?.value === id
-    );
+  const allCustomerRefs = (obj: any): string[] => {
+    if (!obj || typeof obj !== 'object') return [];
+    const refs: string[] = [];
+    if (obj.CustomerRef?.value) refs.push(String(obj.CustomerRef.value));
+    for (const val of Object.values(obj)) {
+      if (Array.isArray(val)) val.forEach(v => refs.push(...allCustomerRefs(v)));
+      else if (val && typeof val === 'object') refs.push(...allCustomerRefs(val));
+    }
+    return refs;
   };
+
+  const matchesProject = (c: any) => allCustomerRefs(c).includes(String(qb_project_id));
   const checks = allChecks.filter(matchesProject);
 
   const { data: existing } = await supabase
