@@ -38,6 +38,8 @@ import ClientCOI from "./pages/ClientCOI";
 import ClientSubAgreements from "./pages/ClientSubAgreements";
 import TrelloPage from "./pages/Trello";
 import CalendarPage from "./pages/Calendar";
+import Eula from "./pages/Eula";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 const queryClient = new QueryClient();
 
@@ -63,8 +65,10 @@ const App = () => {
         <BrowserRouter>
           <AuthProvider>
             <Routes>
-              {/* Login page (no layout) */}
+              {/* Public pages (no auth, no layout) */}
               <Route path="/login" element={<Login />} />
+              <Route path="/eula" element={<Eula />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
 
               {/* All app routes require auth */}
               <Route element={
