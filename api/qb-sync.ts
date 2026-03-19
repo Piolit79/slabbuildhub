@@ -39,7 +39,7 @@ async function getValidToken() {
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { project_id, qb_project_id, qb_cc_account_id, category } = req.body;
+  const { project_id, qb_project_id, category } = req.body;
   if (!project_id || !qb_project_id) {
     return res.status(400).json({ error: 'project_id and qb_project_id required' });
   }
@@ -102,8 +102,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     const checks = allChecks.filter(matchesProject);
-    const creditCards = qb_cc_account_id
-      ? allPurchases.filter((c: any) => c.PaymentType === 'CreditCard' && String(c.AccountRef?.value) === String(qb_cc_account_id))
+
+    // Auto-match credit card account by project name
+    const { data: projectRow } = await supabase.from('projects').select('name, qb_cc_account_id').eq('id', project_id).single();
+    let ccAccountId: string | null = projectRow?.qb_cc_account_id || null;
+    if (!ccAccountId && projectRow?.name) {
+      const q = encodeURIComponent(`SELECT * FROM Account WHERE AccountType = 'Credit Card' MAXRESULTS 200`);
+      const r = await fetch(`https://quickbooks.api.intuit.com/v3/company/${realm_id}/query?query=${q}&minorversion=65`,
+        { headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' } });
+      if (r.ok) {
+        const d = await r.json();
+        const projName = projectRow.name.toLowerCase();
+        const match = (d.QueryResponse?.Account || []).find((a: any) => {
+          const aName = (a.FullyQualifiedName || a.Name || '').toLowerCase();
+          return aName.includes(projName) || projName.includes(aName);
+        });
+        if (match) {
+          ccAccountId = match.Id;
+          await supabase.from('projects').update({ qb_cc_account_id: match.Id }).eq('id', project_id);
+        }
+      }
+    }
+    const creditCards = ccAccountId
+      ? allPurchases.filter((c: any) => c.PaymentType === 'CreditCard' && String(c.AccountRef?.value) === String(ccAccountId))
       : [];
 
     // Fetch all existing payments for this project to dedup by external_id OR check_number

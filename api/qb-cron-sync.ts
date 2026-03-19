@@ -34,7 +34,7 @@ async function getValidToken(supabase: any) {
   return { access_token: data.access_token, realm_id: data.realm_id };
 }
 
-async function syncProject(supabase: any, access_token: string, realm_id: string, project_id: string, qb_project_id: string, qb_cc_account_id?: string) {
+async function syncProject(supabase: any, access_token: string, realm_id: string, project_id: string, qb_project_id: string, project_name: string, qb_cc_account_id?: string) {
   const fetchAll = async (entity: string, whereClause: string): Promise<any[]> => {
     const results: any[] = [];
     let pos = 1;
@@ -76,8 +76,28 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
 
   const matchesProject = (c: any) => allCustomerRefs(c).includes(String(qb_project_id));
   const checks = allChecks.filter(matchesProject);
-  const creditCards = qb_cc_account_id
-    ? allPurchases.filter((c: any) => c.PaymentType === 'CreditCard' && String(c.AccountRef?.value) === String(qb_cc_account_id))
+
+  // Auto-match CC account by project name if not already saved
+  let ccAccountId: string | null = qb_cc_account_id || null;
+  if (!ccAccountId && project_name) {
+    const q = encodeURIComponent(`SELECT * FROM Account WHERE AccountType = 'Credit Card' MAXRESULTS 200`);
+    const r = await fetch(`https://quickbooks.api.intuit.com/v3/company/${realm_id}/query?query=${q}&minorversion=65`,
+      { headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' } });
+    if (r.ok) {
+      const d = await r.json();
+      const projName = project_name.toLowerCase();
+      const match = (d.QueryResponse?.Account || []).find((a: any) => {
+        const aName = (a.FullyQualifiedName || a.Name || '').toLowerCase();
+        return aName.includes(projName) || projName.includes(aName);
+      });
+      if (match) {
+        ccAccountId = match.Id;
+        await supabase.from('projects').update({ qb_cc_account_id: match.Id }).eq('id', project_id);
+      }
+    }
+  }
+  const creditCards = ccAccountId
+    ? allPurchases.filter((c: any) => c.PaymentType === 'CreditCard' && String(c.AccountRef?.value) === String(ccAccountId))
     : [];
 
   const { data: existing } = await supabase
@@ -171,7 +191,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const results: any[] = [];
     for (const project of projects || []) {
       try {
-        const result = await syncProject(supabase, access_token, realm_id, project.id, project.qb_project_id, project.qb_cc_account_id);
+        const result = await syncProject(supabase, access_token, realm_id, project.id, project.qb_project_id, project.name, project.qb_cc_account_id);
         results.push({ project: project.name, ...result });
       } catch (e: any) {
         results.push({ project: project.name, error: e.message });
