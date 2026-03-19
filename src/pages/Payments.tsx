@@ -218,13 +218,14 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
           </select>
         </div>
       </TableCell>
+      {activeTab === 'soft_costs' && <TableCell><Input value={editData.detail || ''} onChange={e => setEditData(d => ({ ...d, detail: e.target.value }))} className="h-6 text-xs w-24 px-1" placeholder="Detail" /></TableCell>}
       <TableCell className="text-right pr-6"><CurrencyInput value={editData.amount || 0} onChange={v => setEditData(d => ({ ...d, amount: v }))} className="h-6 text-xs w-28 px-1" /></TableCell>
       <TableCell className="pl-6">
         <select value={editData.form || 'Check'} onChange={e => setEditData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs border rounded px-1 bg-background w-20">
           <option>Check</option><option>Credit</option><option>Wire</option><option>ACH</option>
         </select>
       </TableCell>
-      <TableCell>{activeTab === 'soft_costs' ? <Input value={editData.detail || ''} onChange={e => setEditData(d => ({ ...d, detail: e.target.value }))} className="h-6 text-xs w-24 px-1" placeholder="Detail" /> : <Input value={editData.check_number || ''} onChange={e => setEditData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" />}</TableCell>
+      {activeTab !== 'soft_costs' && <TableCell><Input value={editData.check_number || ''} onChange={e => setEditData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" /></TableCell>}
       <TableCell className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button><button onClick={cancelEdit} className="text-destructive"><X size={14} /></button></TableCell>
     </>
   );
@@ -236,9 +237,10 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
         {p.name}
         {p.source === 'qb' && <span className="ml-1.5 inline-block text-[9px] font-semibold px-1 py-0.5 rounded bg-[rgba(45,150,80,0.12)] text-green-700 align-middle">QB</span>}
       </TableCell>
+      {activeTab === 'soft_costs' && !isMobile && <TableCell className="text-[11px] md:text-sm text-muted-foreground">{p.detail || '—'}</TableCell>}
       <TableCell className="text-right tabular-nums text-[11px] md:text-sm pr-6">{fmt(p.amount)}</TableCell>
       {!isMobile && <TableCell className="text-[11px] md:text-sm pl-6">{p.form}</TableCell>}
-      {!isMobile && <TableCell className="tabular-nums text-[11px] md:text-sm">{activeTab === 'soft_costs' ? (p.detail || '—') : (p.check_number || '—')}</TableCell>}
+      {!isMobile && activeTab !== 'soft_costs' && <TableCell className="tabular-nums text-[11px] md:text-sm">{p.check_number || '—'}</TableCell>}
       {!readOnly && (
         <TableCell>
           {undoInfo?.id === p.id ? (
@@ -265,9 +267,10 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
       <TableRow className="bg-muted/30" onKeyDown={(e: React.KeyboardEvent) => { if (e.key === 'Enter') { e.preventDefault(); if (newData.date && newData.name) { const np = { id: Date.now().toString(), project_id: selectedProject.id, category: activeTab, ...newData } as Payment; supabase.from('payments').insert(np); setPayments(prev => [...prev, np]); setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); } } else if (e.key === 'Escape') { setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); } }}>
         <TableCell className="pr-6"><SmartDateInput value={newData.date || ''} onChange={v => setNewData(d => ({ ...d, date: v }))} className="h-6 text-[10px] w-full md:w-28 px-1" autoFocus /></TableCell>
         <TableCell className="pl-6"><AutocompleteInput value={newData.name || ''} onChange={v => setNewData(d => ({ ...d, name: v }))} suggestions={nameSuggestions} className="h-6 text-[10px] px-1" placeholder="Name" /></TableCell>
+        {!isMobile && activeTab === 'soft_costs' && <TableCell><Input value={newData.detail || ''} onChange={e => setNewData(d => ({ ...d, detail: e.target.value }))} className="h-6 text-xs w-24 px-1" placeholder="Detail" /></TableCell>}
         <TableCell className="text-right pr-6"><CurrencyInput value={newData.amount || 0} onChange={v => setNewData(d => ({ ...d, amount: v }))} className="h-6 text-[10px] w-full md:w-28 px-1" placeholder="0.00" /></TableCell>
         {!isMobile && <TableCell className="pl-6"><select value={newData.form || 'Check'} onChange={e => setNewData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs border rounded px-1 bg-background w-20"><option>Check</option><option>Credit</option><option>Wire</option><option>ACH</option></select></TableCell>}
-        {!isMobile && <TableCell>{activeTab === 'soft_costs' ? <Input value={newData.detail || ''} onChange={e => setNewData(d => ({ ...d, detail: e.target.value }))} className="h-6 text-xs w-24 px-1" placeholder="Detail" /> : <Input value={newData.check_number || ''} onChange={e => setNewData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" placeholder="Check #" />}</TableCell>}
+        {!isMobile && activeTab !== 'soft_costs' && <TableCell><Input value={newData.check_number || ''} onChange={e => setNewData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" placeholder="Check #" /></TableCell>}
         <TableCell><div className="flex gap-1">
           <button onClick={async () => { if (newData.date && newData.name) { const np = { id: Date.now().toString(), project_id: selectedProject.id, category: activeTab, ...newData } as Payment; await supabase.from('payments').insert(np); setPayments(prev => [...prev, np]); setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
           <button onClick={() => { setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); }} className="text-destructive"><X size={13} /></button>
@@ -293,6 +296,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
             <form onSubmit={handleAdd} className="space-y-3">
               <div className="space-y-1"><Label className="text-xs">Date</Label><SmartDateInput name="date" required className="h-8 text-xs" /></div>
               <div className="space-y-1"><Label className="text-xs">Name</Label><AutocompleteInput name="name" required suggestions={nameSuggestions} className="h-8 text-xs" /></div>
+              {activeTab === 'soft_costs' && <div className="space-y-1"><Label className="text-xs">Detail (optional)</Label><Input name="detail" className="h-8 text-xs" /></div>}
               <div className="space-y-1"><Label className="text-xs">Amount</Label><CurrencyInput name="amount" required className="h-8 text-xs" /></div>
               <div className="space-y-1"><Label className="text-xs">Category</Label>
                 <Select name="category" defaultValue={activeTab}><SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
@@ -305,7 +309,6 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                 </Select>
               </div>
               {activeTab !== 'soft_costs' && <div className="space-y-1"><Label className="text-xs">Check # (optional)</Label><Input name="check_number" className="h-8 text-xs" /></div>}
-              {activeTab === 'soft_costs' && <div className="space-y-1"><Label className="text-xs">Detail (optional)</Label><Input name="detail" className="h-8 text-xs" /></div>}
               <Button type="submit" size="sm" className="w-full">Save</Button>
             </form>
           </DialogContent>
@@ -321,7 +324,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
               </span>
               <Button size="sm" variant="outline" className="h-7 text-xs gap-1" disabled={syncing} onClick={handleSync}>
                 <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
-                {syncing ? 'Syncing...' : 'Sync QB Checks'}
+                {syncing ? 'Syncing...' : 'Sync QB'}
               </Button>
               <button onClick={() => setQbChanging(true)} className="text-[10px] text-muted-foreground hover:text-foreground underline">change</button>
             </>
@@ -361,18 +364,20 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                   <colgroup>
                     <col style={{ width: 88 }} />
                     <col style={{ minWidth: 120 }} />
+                    {!isMobile && t.value === 'soft_costs' && <col style={{ minWidth: 120 }} />}
                     <col style={{ width: 116 }} />
                     {!isMobile && <col style={{ width: 116 }} />}
-                    {!isMobile && <col style={{ width: 80 }} />}
+                    {!isMobile && t.value !== 'soft_costs' && <col style={{ width: 80 }} />}
                     <col style={{ width: 48 }} />
                   </colgroup>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="pr-6">{sh('Date', 'date')}</TableHead>
                       <TableHead className="pl-6">{t.value === 'materials' ? sh('Vendor', 'name') : sh('Name', 'name')}</TableHead>
+                      {!isMobile && t.value === 'soft_costs' && <TableHead>Detail</TableHead>}
                       <TableHead className="text-right pr-6">{sh('Amt', 'amount', 'justify-end')}</TableHead>
                       {!isMobile && <TableHead className="pl-6">{sh('Form', 'form')}</TableHead>}
-                      {!isMobile && <TableHead>{t.value === 'materials' ? '' : t.value === 'soft_costs' ? 'Detail' : sh('Check #', 'check_number')}</TableHead>}
+                      {!isMobile && t.value !== 'soft_costs' && <TableHead>{t.value === 'materials' ? '' : sh('Check #', 'check_number')}</TableHead>}
                       {!readOnly && <TableHead className={isMobile ? 'w-10' : 'w-12'}></TableHead>}
                     </TableRow>
                   </TableHeader>
