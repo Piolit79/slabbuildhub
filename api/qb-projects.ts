@@ -45,10 +45,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     );
     if (!resp.ok) throw new Error(`QB API ${resp.status}`);
     const data = await resp.json();
-    const projects = (data.QueryResponse?.Customer || []).map((c: any) => ({
-      id: c.Id,
-      name: c.FullyQualifiedName || c.DisplayName,
-    }));
+    const projects = (data.QueryResponse?.Customer || [])
+      .filter((c: any) => c.IsProject === true)
+      .map((c: any) => {
+        const full = c.FullyQualifiedName || c.DisplayName || '';
+        const name = full.includes(':') ? full.split(':').pop()!.trim() : full;
+        return { id: c.Id, name };
+      });
     res.json({ projects });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
