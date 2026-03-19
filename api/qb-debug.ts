@@ -32,7 +32,8 @@ async function getValidToken() {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Simple auth check
-  if (req.headers['x-debug-key'] !== process.env.CRON_SECRET) {
+  const provided = req.headers['x-debug-key'] || req.query.key;
+  if (provided !== process.env.CRON_SECRET) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
