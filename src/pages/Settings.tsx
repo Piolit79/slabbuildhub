@@ -21,6 +21,7 @@ export default function Settings() {
   const [creating, setCreating] = useState(false);
   const [qbConnected, setQbConnected] = useState<boolean | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const active = projects.filter(p => p.status !== 'archived');
   const archived = projects.filter(p => p.status === 'archived');
@@ -245,9 +246,17 @@ export default function Settings() {
                     <Button variant="ghost" size="sm" onClick={() => archiveProject(p.id)} title="Archive">
                       <Archive className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => deleteProject(p.id)} className="text-destructive hover:text-destructive" title="Delete">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {confirmDeleteId === p.id ? (
+                      <span className="inline-flex items-center gap-1">
+                        <span className="text-[11px] text-muted-foreground">Delete?</span>
+                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive h-7 px-2 text-xs" onClick={() => { deleteProject(p.id); setConfirmDeleteId(null); }}>Yes</Button>
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setConfirmDeleteId(null)}>No</Button>
+                      </span>
+                    ) : (
+                      <Button variant="ghost" size="sm" onClick={() => setConfirmDeleteId(p.id)} className="text-destructive hover:text-destructive" title="Delete">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -282,9 +291,17 @@ export default function Settings() {
                     <TableCell>{p.created_at}</TableCell>
                     <TableCell className="text-right space-x-1">
                       <Badge variant="secondary" className="text-[10px]">Archived</Badge>
-                      <Button variant="ghost" size="sm" onClick={() => deleteProject(p.id)} className="text-destructive hover:text-destructive" title="Delete permanently">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {confirmDeleteId === p.id ? (
+                        <span className="inline-flex items-center gap-1">
+                          <span className="text-[11px] text-muted-foreground">Delete?</span>
+                          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive h-7 px-2 text-xs" onClick={() => { deleteProject(p.id); setConfirmDeleteId(null); }}>Yes</Button>
+                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => setConfirmDeleteId(null)}>No</Button>
+                        </span>
+                      ) : (
+                        <Button variant="ghost" size="sm" onClick={() => setConfirmDeleteId(p.id)} className="text-destructive hover:text-destructive" title="Delete permanently">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
