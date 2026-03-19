@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,9 +12,10 @@ import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, MessageSquare, Loader2, Undo2, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, MessageSquare, Loader2, Undo2, Trash2, Upload } from 'lucide-react';
 import { BudgetItem } from '@/types';
 import { useIsMobile } from '@/hooks/use-mobile';
+import * as XLSX from 'xlsx';
 
 const fmtUsd = (n: number) => { const d = n % 1 !== 0 ? 2 : 0; return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: d, maximumFractionDigits: d }).format(n); };
 const fmt = (n: number) => n ? fmtUsd(n) : '—';
@@ -37,6 +38,9 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
   const [designFeePct, setDesignFeePct] = useState(0.10);
   const [buildFeePct, setBuildFeePct] = useState(0.15);
   const [loading, setLoading] = useState(true);
+  const [importDate, setImportDate] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   // ── Load data from Supabase ────────────────────────────────────────────
   const loadData = useCallback(async (projectId: string) => {
@@ -55,6 +59,7 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
       setDesignFeePct(0.10);
       setBuildFeePct(0.15);
     }
+    setImportDate(localStorage.getItem(`budget_import_date_${projectId}`) || null);
     setLoading(false);
   }, []);
 
@@ -70,6 +75,129 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
       updated_at: new Date().toISOString(),
     }, { onConflict: 'project_id' });
   }, [selectedProject.id]);
+
+  // ── Excel import ──────────────────────────────────────────────────────
+  const handleImportExcel = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset input so the same file can be re-imported
+    e.target.value = '';
+    setImporting(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const wb = XLSX.read(buffer, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      // Find header row (contains Description / Labor / Material)
+      let headerRowIdx = -1;
+      let colDesc = -1, colLabor = -1, colMaterial = -1, colStatus = -1;
+      for (let i = 0; i < Math.min(10, raw.length); i++) {
+        const row = raw[i].map((c: any) => String(c).toLowerCase().trim());
+        const dIdx = row.findIndex(c => c.includes('description'));
+        if (dIdx !== -1) {
+          headerRowIdx = i;
+          colDesc = dIdx;
+          colLabor = row.findIndex(c => c.includes('labor'));
+          colMaterial = row.findIndex(c => c.includes('material'));
+          colStatus = row.findIndex(c => c.includes('status'));
+          break;
+        }
+      }
+      if (headerRowIdx === -1 || colDesc === -1) {
+        alert('Could not find a "Description" column in the spreadsheet.');
+        setImporting(false);
+        return;
+      }
+
+      // Parse rows into { category, description, labor, material, status }
+      const parsedCats: string[] = [];
+      const parsedItems: { category: string; description: string; labor: number; material: number; status: string }[] = [];
+      let currentCat = DEFAULT_CATEGORIES[0];
+
+      for (let i = headerRowIdx + 1; i < raw.length; i++) {
+        const row = raw[i];
+        const descVal = String(row[colDesc] ?? '').trim();
+        if (!descVal) continue;
+
+        // Detect ALL CAPS header row (category)
+        const isAllCaps = descVal === descVal.toUpperCase() && /[A-Z]/.test(descVal) && descVal.length > 1;
+        // Also treat rows where all numeric cols are empty and description is short as a category
+        const laborVal = colLabor !== -1 ? parseFloat(String(row[colLabor] ?? '').replace(/[^0-9.-]/g, '')) || 0 : 0;
+        const materialVal = colMaterial !== -1 ? parseFloat(String(row[colMaterial] ?? '').replace(/[^0-9.-]/g, '')) || 0 : 0;
+
+        // Skip total/subtotal/fee rows
+        const descLower = descVal.toLowerCase();
+        if (descLower.includes('total') || descLower.includes('subtotal') ||
+            descLower.includes('design fee') || descLower.includes('build fee') ||
+            descLower.includes('grand total')) {
+          continue;
+        }
+
+        if (isAllCaps && laborVal === 0 && materialVal === 0) {
+          // Capitalize nicely: "SITE" → "Site", "FIXTURES & FITTINGS" → "Fixtures & Fittings"
+          currentCat = descVal.split(' ').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ');
+          if (!parsedCats.includes(currentCat)) parsedCats.push(currentCat);
+          continue;
+        }
+
+        if (!parsedCats.includes(currentCat)) parsedCats.push(currentCat);
+
+        const statusRaw = colStatus !== -1 ? String(row[colStatus] ?? '').toLowerCase().trim() : '';
+        const statusMap: Record<string, string> = { contracted: 'contracted', complete: 'complete', proposed: 'proposed', estimated: 'estimated' };
+        const status = statusMap[statusRaw] || 'estimated';
+
+        parsedItems.push({ category: currentCat, description: descVal, labor: laborVal, material: materialVal, status });
+      }
+
+      if (parsedItems.length === 0) {
+        alert('No budget items found in the spreadsheet.');
+        setImporting(false);
+        return;
+      }
+
+      const now = new Date().toISOString();
+
+      // Delete existing items for this project
+      await supabase.from('budget_items').delete().eq('project_id', selectedProject.id);
+
+      // Insert new items
+      const newRows = parsedItems.map((item, i) => ({
+        id: `${Date.now()}_${i}`,
+        project_id: selectedProject.id,
+        category: item.category,
+        description: item.description,
+        labor: item.labor,
+        material: item.material,
+        optional: 0,
+        subcontractor: '',
+        notes: '',
+        status: item.status,
+        sort_order: i,
+      }));
+      await supabase.from('budget_items').insert(newRows);
+
+      // Save categories
+      const finalCats = parsedCats.length ? parsedCats : DEFAULT_CATEGORIES;
+      await supabase.from('budget_settings').upsert({
+        project_id: selectedProject.id,
+        category_order: finalCats,
+        design_fee_pct: designFeePct,
+        build_fee_pct: buildFeePct,
+        updated_at: now,
+      }, { onConflict: 'project_id' });
+
+      // Save import date to localStorage
+      localStorage.setItem(`budget_import_date_${selectedProject.id}`, now);
+
+      setCategories(finalCats);
+      setImportDate(now);
+      setItems(newRows as DbBudgetItem[]);
+    } catch (err: any) {
+      alert('Import failed: ' + err.message);
+    }
+    setImporting(false);
+  }, [selectedProject.id, designFeePct, buildFeePct]);
 
   // ── Category actions ───────────────────────────────────────────────────
   const [editingCat, setEditingCat] = useState<string | null>(null);
@@ -312,9 +440,21 @@ export default function BudgetPage({ readOnly }: { readOnly?: boolean }) {
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Budget</h1>
+        <div>
+          <h1 className="text-lg md:text-xl font-bold tracking-tight" style={{ color: '#7b7c81' }}>Budget</h1>
+          {importDate && (
+            <p className="text-[10px] text-muted-foreground mt-0.5">
+              Last imported: {new Date(importDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+            </p>
+          )}
+        </div>
         {!readOnly && (
           <div className="flex gap-2">
+            <input ref={importFileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportExcel} />
+            <Button size="sm" variant="outline" onClick={() => importFileRef.current?.click()} disabled={importing}>
+              {importing ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+              {importing ? 'Importing...' : 'Import Excel'}
+            </Button>
             <Button size="sm" variant="outline" onClick={() => setAddingCat(true)}><Plus size={14} /> Subgroup</Button>
             <Button size="sm" onClick={() => setAddOpen(true)}><Plus size={14} /> Add</Button>
           </div>
