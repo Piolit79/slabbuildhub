@@ -25,8 +25,8 @@ function SortBtn({ label, active, dir, onClick, className }: { label: string; ac
 }
 
 const tabs: { value: PaymentCategory; label: string }[] = [
-  { value: 'subcontractor', label: 'Subcontractor' },
-  { value: 'materials', label: 'Materials' },
+  { value: 'subcontractor', label: 'Hard Costs - Contracted' },
+  { value: 'materials', label: 'Hard Costs - Materials, Vendors, Fixtures & Fittings' },
   { value: 'soft_costs', label: 'Soft Costs' },
   { value: 'field_labor', label: 'Field Labor' },
 ];
