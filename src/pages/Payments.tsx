@@ -351,6 +351,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
       <TableCell className="text-[11px] md:text-sm truncate max-w-[120px] md:max-w-none pl-6">
         {p.name}
         {p.source === 'qb' && <span className="ml-1.5 inline-block text-[9px] font-semibold px-1 py-0.5 rounded bg-[rgba(45,150,80,0.12)] text-green-700 align-middle">QB</span>}
+        {p.source === 'excel' && <span className="ml-1.5 inline-block text-[9px] font-semibold px-1 py-0.5 rounded bg-[rgba(59,130,246,0.12)] text-blue-600 align-middle">XL</span>}
       </TableCell>
       {activeTab === 'soft_costs' && !isMobile && <TableCell className="text-[11px] md:text-sm text-muted-foreground">{p.detail || '—'}</TableCell>}
       <TableCell className="text-right tabular-nums text-[11px] md:text-sm pr-6">{fmt(p.amount)}</TableCell>
@@ -539,6 +540,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                                     <span className="inline-flex items-center gap-1.5">
                                       <span className="truncate max-w-[110px] md:max-w-none">{group.name}</span>
                                       {group.items.some(p => p.source === 'qb') && <span className="inline-block text-[9px] font-semibold px-1 py-0.5 rounded bg-[rgba(45,150,80,0.12)] text-green-700 shrink-0">QB</span>}
+                                      {group.items.some(p => p.source === 'excel') && <span className="inline-block text-[9px] font-semibold px-1 py-0.5 rounded bg-[rgba(59,130,246,0.12)] text-blue-600 shrink-0">XL</span>}
                                       {group.count > 1 && <span className="inline-block text-[9px] font-medium px-1 py-0.5 rounded bg-muted text-muted-foreground shrink-0">{group.count}</span>}
                                     </span>
                                   </TableCell>
