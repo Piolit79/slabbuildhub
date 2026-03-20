@@ -84,6 +84,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return results;
     };
 
+    // ?mode=payments — show incoming customer payments to inspect structure
+    if (req.query.mode === 'payments') {
+      const payments = await fetchAll('Payment', `Id > '0'`);
+      return res.json({
+        mode: 'payments',
+        total: payments.length,
+        sample: payments.slice(0, 5).map((p: any) => ({
+          id: p.Id,
+          date: p.TxnDate,
+          amount: p.TotalAmt,
+          customer: p.CustomerRef,
+          paymentMethod: p.PaymentMethodRef,
+          paymentRefNum: p.PaymentRefNum,
+          privateNote: p.PrivateNote,
+          depositToAccount: p.DepositToAccountRef,
+          lines: p.Line,
+        })),
+      });
+    }
+
     // ?mode=cc — show all CreditCard purchases and their AccountRef to diagnose materials sync
     if (req.query.mode === 'cc') {
       const purchases = await fetchAll('Purchase', `Id > '0'`);
