@@ -89,7 +89,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     // Fetch all Purchases and BillPayments
-    // QB "Expense" transactions appear as Purchase with PaymentType='Cash' in the API
     const [allPurchases, allBillPayments] = await Promise.all([
       fetchAll('Purchase', `Id > '0'`),
       fetchAll('BillPayment', `Id > '0'`),
@@ -203,6 +202,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       !existingExternalIds.has(`qb_${c.Id}`)
     );
 
+
     if (newChecks.length > 0) {
       const rows = newChecks.map((c: any, i: number) => {
         const name = c.EntityRef?.name || c.VendorRef?.name || 'Unknown';
@@ -302,7 +302,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .update({ qb_last_synced: new Date().toISOString() })
       .eq('id', project_id);
 
-    res.json({ imported: newChecks.length, importedCC: newCC.length, importedFL: newFieldLabor.length, total: checks.length, skipped: checks.length - newChecks.length, removed, _debug: { totalPurchases: allPurchases.length, ccAccountId, creditCardsFound: creditCards.length, existingCount: existing?.length ?? 0, newCCCount: newCC.length } });
+    res.json({ imported: newChecks.length, importedCC: newCC.length, importedFL: newFieldLabor.length, total: checks.length, skipped: checks.length - newChecks.length, removed });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }

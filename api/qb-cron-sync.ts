@@ -170,6 +170,7 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
     !existingExternalIds.has(`qb_${c.Id}`)
   );
 
+
   if (newChecks.length > 0) {
     const rows = newChecks.map((c: any, i: number) => {
       const name = c.EntityRef?.name || c.VendorRef?.name || 'Unknown';
