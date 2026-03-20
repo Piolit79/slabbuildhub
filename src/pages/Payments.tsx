@@ -202,10 +202,17 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
       const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
       if (rows.length === 0) { toast.error('No rows found'); return; }
 
-      // Flexible column matching
+      // Flexible column matching — exact then partial
+      const normalize = (s: string) => s.toLowerCase().replace(/[\s#_\-\.]/g, '');
       const col = (row: any, ...keys: string[]) => {
-        for (const k of Object.keys(row)) {
-          if (keys.some(key => k.toLowerCase().replace(/[\s#_]/g, '') === key.toLowerCase().replace(/[\s#_]/g, ''))) return String(row[k] || '').trim();
+        const rowKeys = Object.keys(row);
+        // exact match first
+        for (const k of rowKeys) {
+          if (keys.some(key => normalize(k) === normalize(key))) return String(row[k] || '').trim();
+        }
+        // partial match fallback
+        for (const k of rowKeys) {
+          if (keys.some(key => normalize(k).includes(normalize(key)) || normalize(key).includes(normalize(k)))) return String(row[k] || '').trim();
         }
         return '';
       };
@@ -227,20 +234,27 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
         return v;
       };
 
-      const newRows: Payment[] = rows.map((row, i) => ({
-        id: `xl_${Date.now()}_${i}`,
-        project_id: selectedProject.id,
-        category: activeTab,
-        date: parseDate(col(row, 'date')),
-        name: col(row, 'name', 'vendor', 'payee'),
-        amount: parseFloat(col(row, 'amount', 'amt').replace(/[$,]/g, '')) || 0,
-        form: col(row, 'form', 'type', 'paymenttype') || 'Check',
-        check_number: col(row, 'check#', 'checknumber', 'checkno', 'invoice') || undefined,
-        detail: col(row, 'detail', 'description', 'memo') || undefined,
-        source: 'excel',
-      })).filter(r => r.date && r.name);
+      const today = new Date().toISOString().slice(0, 10);
+      const newRows: Payment[] = rows.map((row, i) => {
+        const name = col(row, 'name', 'vendor', 'payee', 'description', 'memo');
+        const rawAmt = col(row, 'amount', 'amt', 'total', 'cost', 'price');
+        const amount = parseFloat(rawAmt.replace(/[$,]/g, '')) || 0;
+        const date = parseDate(col(row, 'date', 'txndate', 'transactiondate', 'invoicedate')) || today;
+        return {
+          id: `xl_${Date.now()}_${i}`,
+          project_id: selectedProject.id,
+          category: activeTab,
+          date,
+          name: name || 'Unknown',
+          amount,
+          form: col(row, 'form', 'type', 'paymenttype', 'payment') || 'Check',
+          check_number: col(row, 'check#', 'checknumber', 'checkno', 'invoice', 'ref', 'refno', 'referencenumber') || undefined,
+          detail: col(row, 'detail', 'notes', 'note', 'memo', 'comments') || undefined,
+          source: 'excel',
+        };
+      }).filter(r => r.amount > 0 || r.name !== 'Unknown');
 
-      if (newRows.length === 0) { toast.error('No valid rows — check column headers'); return; }
+      if (newRows.length === 0) { toast.error('No rows with recognizable data found'); return; }
       await supabase.from('payments').insert(newRows);
       setPayments(prev => [...prev, ...newRows]);
       toast.success(`${newRows.length} row${newRows.length !== 1 ? 's' : ''} imported`);
@@ -326,7 +340,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
           <option>Check</option><option>Credit</option><option>Wire</option><option>ACH</option>
         </select>
       </TableCell>
-      {activeTab !== 'soft_costs' && <TableCell><Input value={editData.check_number || ''} onChange={e => setEditData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" /></TableCell>}
+      {!isMobile && <TableCell><Input value={editData.check_number || ''} onChange={e => setEditData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" /></TableCell>}
       <TableCell className="flex gap-1"><button onClick={saveEdit} className="text-[hsl(var(--success))]"><Check size={14} /></button><button onClick={cancelEdit} className="text-destructive"><X size={14} /></button></TableCell>
     </>
   );
@@ -341,7 +355,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
       {activeTab === 'soft_costs' && !isMobile && <TableCell className="text-[11px] md:text-sm text-muted-foreground">{p.detail || '—'}</TableCell>}
       <TableCell className="text-right tabular-nums text-[11px] md:text-sm pr-6">{fmt(p.amount)}</TableCell>
       {!isMobile && <TableCell className="text-[11px] md:text-sm pl-6">{p.form}</TableCell>}
-      {!isMobile && activeTab !== 'soft_costs' && <TableCell className="tabular-nums text-[11px] md:text-sm">{p.check_number || '—'}</TableCell>}
+      {!isMobile && <TableCell className="tabular-nums text-[11px] md:text-sm">{p.check_number || '—'}</TableCell>}
       {!readOnly && (
         <TableCell>
           {undoInfo?.id === p.id ? (
@@ -371,7 +385,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
         {!isMobile && activeTab === 'soft_costs' && <TableCell><Input value={newData.detail || ''} onChange={e => setNewData(d => ({ ...d, detail: e.target.value }))} className="h-6 text-xs w-24 px-1" placeholder="Detail" /></TableCell>}
         <TableCell className="text-right pr-6"><CurrencyInput value={newData.amount || 0} onChange={v => setNewData(d => ({ ...d, amount: v }))} className="h-6 text-[10px] w-full md:w-28 px-1" placeholder="0.00" /></TableCell>
         {!isMobile && <TableCell className="pl-6"><select value={newData.form || 'Check'} onChange={e => setNewData(d => ({ ...d, form: e.target.value }))} className="h-6 text-xs border rounded px-1 bg-background w-20"><option>Check</option><option>Credit</option><option>Wire</option><option>ACH</option></select></TableCell>}
-        {!isMobile && activeTab !== 'soft_costs' && <TableCell><Input value={newData.check_number || ''} onChange={e => setNewData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" placeholder="Check #" /></TableCell>}
+        {!isMobile && <TableCell><Input value={newData.check_number || ''} onChange={e => setNewData(d => ({ ...d, check_number: e.target.value }))} className="h-6 text-xs w-16 px-1" placeholder="Check #" /></TableCell>}
         <TableCell><div className="flex gap-1">
           <button onClick={async () => { if (newData.date && newData.name) { const np = { id: Date.now().toString(), project_id: selectedProject.id, category: activeTab, ...newData } as Payment; await supabase.from('payments').insert(np); setPayments(prev => [...prev, np]); setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); } }} className="text-[hsl(var(--success))]"><Check size={13} /></button>
           <button onClick={() => { setAdding(false); setNewData({ date: '', name: '', amount: 0, form: '', check_number: '' }); }} className="text-destructive"><X size={13} /></button>
@@ -409,7 +423,7 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                   <SelectContent><SelectItem value="Check">Check</SelectItem><SelectItem value="Credit">Credit</SelectItem><SelectItem value="Wire">Wire</SelectItem><SelectItem value="ACH">ACH</SelectItem></SelectContent>
                 </Select>
               </div>
-              {activeTab !== 'soft_costs' && <div className="space-y-1"><Label className="text-xs">Check # (optional)</Label><Input name="check_number" className="h-8 text-xs" /></div>}
+              <div className="space-y-1"><Label className="text-xs">Check # (optional)</Label><Input name="check_number" className="h-8 text-xs" /></div>
               <Button type="submit" size="sm" className="w-full">Save</Button>
             </form>
           </DialogContent>
@@ -490,17 +504,17 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
                     {!isMobile && t.value === 'soft_costs' && <col style={{ minWidth: 120 }} />}
                     <col style={{ width: 116 }} />
                     {!isMobile && <col style={{ width: 116 }} />}
-                    {!isMobile && t.value !== 'soft_costs' && <col style={{ width: 80 }} />}
+                    {!isMobile && <col style={{ width: 80 }} />}
                     <col style={{ width: 48 }} />
                   </colgroup>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="pr-6">{sh('Date', 'date')}</TableHead>
                       <TableHead className="pl-6">{t.value === 'materials' ? sh('Vendor', 'name') : sh('Name', 'name')}</TableHead>
-                      {!isMobile && t.value === 'soft_costs' && <TableHead>Detail</TableHead>}
+                      {!isMobile && t.value === 'soft_costs' && <TableHead className="normal-case">Detail</TableHead>}
                       <TableHead className="text-right pr-6">{sh('Amt', 'amount', 'justify-end')}</TableHead>
                       {!isMobile && <TableHead className="pl-6">{sh('Form', 'form')}</TableHead>}
-                      {!isMobile && t.value !== 'soft_costs' && <TableHead>{t.value === 'materials' ? '' : sh('Check #', 'check_number')}</TableHead>}
+                      {!isMobile && <TableHead>{t.value === 'materials' ? '' : sh('Check #', 'check_number')}</TableHead>}
                       {!readOnly && <TableHead className={isMobile ? 'w-10' : 'w-12'}></TableHead>}
                     </TableRow>
                   </TableHeader>
