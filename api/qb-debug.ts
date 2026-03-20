@@ -84,6 +84,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return results;
     };
 
+    // ?mode=cc — show all CreditCard purchases and their AccountRef to diagnose materials sync
+    if (req.query.mode === 'cc') {
+      const purchases = await fetchAll('Purchase', `Id > '0'`);
+      const ccPurchases = purchases.filter((c: any) => c.PaymentType === 'CreditCard');
+      // Group by AccountRef to see what account IDs exist
+      const byAccount = new Map<string, { name: string; count: number; sample: any[] }>();
+      for (const c of ccPurchases) {
+        const id = String(c.AccountRef?.value || 'none');
+        const name = c.AccountRef?.name || '?';
+        if (!byAccount.has(id)) byAccount.set(id, { name, count: 0, sample: [] });
+        const entry = byAccount.get(id)!;
+        entry.count++;
+        if (entry.sample.length < 3) entry.sample.push({ id: c.Id, date: c.TxnDate, amount: c.TotalAmt, payee: c.EntityRef?.name || c.VendorRef?.name });
+      }
+      return res.json({
+        mode: 'cc',
+        total_cc_purchases: ccPurchases.length,
+        accounts: [...byAccount.entries()].map(([id, v]) => ({ account_id: id, account_name: v.name, count: v.count, sample_transactions: v.sample })),
+      });
+    }
+
     // ?mode=field_labor — dump raw field labor (Francisco) purchases to inspect memo fields
     if (req.query.mode === 'field_labor') {
       const purchases = await fetchAll('Purchase', `Id > '0'`);
