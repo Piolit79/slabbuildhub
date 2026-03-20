@@ -215,7 +215,7 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
       amount: c.TotalAmt || 0,
       category: 'field_labor',
       form: 'ACH',
-      check_number: c.PrivateNote || c.DocNumber || null,
+      check_number: null,
       external_id: `qb_${c._entity}_${c.Id}`,
       source: 'qb',
     }));
