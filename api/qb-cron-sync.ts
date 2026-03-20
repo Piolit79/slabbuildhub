@@ -111,7 +111,7 @@ async function syncProject(supabase: any, access_token: string, realm_id: string
       { headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' } });
     if (r.ok) {
       const d = await r.json();
-      const projName = project_name.toLowerCase();
+      const projName = project_name.toLowerCase().replace(/,?\s*(llc|inc|corp|ltd)\.?$/i, '').trim();
       const match = (d.QueryResponse?.Account || []).find((a: any) => {
         const aName = (a.FullyQualifiedName || a.Name || '').toLowerCase();
         return aName.includes(projName) || projName.includes(aName);

@@ -138,7 +138,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         { headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' } });
       if (r.ok) {
         const d = await r.json();
-        const projName = projectRow.name.toLowerCase();
+        const projName = projectRow.name.toLowerCase().replace(/,?\s*(llc|inc|corp|ltd)\.?$/i, '').trim();
         const match = (d.QueryResponse?.Account || []).find((a: any) => {
           const aName = (a.FullyQualifiedName || a.Name || '').toLowerCase();
           return aName.includes(projName) || projName.includes(aName);
