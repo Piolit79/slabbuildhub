@@ -302,7 +302,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .update({ qb_last_synced: new Date().toISOString() })
       .eq('id', project_id);
 
-    res.json({ imported: newChecks.length, importedCC: newCC.length, importedFL: newFieldLabor.length, total: checks.length, skipped: checks.length - newChecks.length, removed });
+    res.json({ imported: newChecks.length, importedCC: newCC.length, importedFL: newFieldLabor.length, total: checks.length, skipped: checks.length - newChecks.length, removed, _debug: { totalPurchases: allPurchases.length, ccAccountId, creditCardsFound: creditCards.length, existingCount: existing?.length ?? 0, newCCCount: newCC.length } });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
