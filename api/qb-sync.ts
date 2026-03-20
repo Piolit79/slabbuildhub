@@ -246,7 +246,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         id: `fl_${Date.now()}_${i}_${c.Id}`,
         project_id,
         date: c.TxnDate,
-        name: c.EntityRef?.name || c.VendorRef?.name || 'Unknown',
+        name: 'Field Labor',
         amount: c.TotalAmt || 0,
         category: 'field_labor',
         form: 'ACH',
