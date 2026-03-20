@@ -249,8 +249,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         name: c.EntityRef?.name || c.VendorRef?.name || 'Unknown',
         amount: c.TotalAmt || 0,
         category: 'field_labor',
-        form: c.PaymentType === 'Check' ? 'Check' : 'ACH',
-        check_number: c.DocNumber || null,
+        form: 'ACH',
+        check_number: c.PrivateNote || c.DocNumber || null,
         external_id: `qb_${c._entity}_${c.Id}`,
         source: 'qb',
       }));
