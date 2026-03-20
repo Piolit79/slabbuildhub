@@ -84,6 +84,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return results;
     };
 
+    // ?mode=field_labor — dump raw field labor (Francisco) purchases to inspect memo fields
+    if (req.query.mode === 'field_labor') {
+      const purchases = await fetchAll('Purchase', `Id > '0'`);
+      const fieldLabor = purchases.filter((c: any) => {
+        const name = (c.EntityRef?.name || c.VendorRef?.name || '').toLowerCase();
+        return name.includes('francisco');
+      }).slice(0, 10).map((c: any) => ({
+        id: c.Id,
+        date: c.TxnDate,
+        amount: c.TotalAmt,
+        payee: c.EntityRef?.name || c.VendorRef?.name,
+        PaymentType: c.PaymentType,
+        DocNumber: c.DocNumber,
+        PrivateNote: c.PrivateNote,
+        Memo: c.Memo,
+        CustomerMemo: c.CustomerMemo,
+        line_descriptions: (c.Line || []).map((l: any) => l.Description),
+        line_detail_memo: (c.Line || []).map((l: any) => l.PurchaseItemLineDetail?.Memo || l.AccountBasedExpenseLineDetail?.Memo),
+      }));
+      return res.json({ mode: 'field_labor', count: fieldLabor.length, transactions: fieldLabor });
+    }
+
     const [purchases, allBillPayments] = await Promise.all([
       fetchAll('Purchase', `Id > '0'`),
       fetchAll('BillPayment', `Id > '0'`),
