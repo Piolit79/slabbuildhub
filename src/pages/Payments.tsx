@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { useProject } from '@/contexts/ProjectContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,7 +13,7 @@ import { AutocompleteInput } from '@/components/ui/autocomplete-input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SmartDateInput } from '@/components/ui/smart-date-input';
-import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown, Undo2, Trash2, RefreshCw, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Check, X, ChevronUp, ChevronDown, ChevronsUpDown, Undo2, Trash2, RefreshCw, ChevronRight, Trash, Upload } from 'lucide-react';
 import { Payment, PaymentCategory } from '@/types';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -150,6 +151,79 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
     next.has(name) ? next.delete(name) : next.add(name);
     return next;
   });
+
+  const [clearConfirmTab, setClearConfirmTab] = useState<PaymentCategory | null>(null);
+  const [importing, setImporting] = useState(false);
+  const xlsxInputRef = useRef<HTMLInputElement>(null);
+
+  const handleClearTab = async () => {
+    if (!clearConfirmTab) return;
+    await supabase.from('payments').delete().eq('project_id', selectedProject.id).eq('category', clearConfirmTab);
+    setPayments(prev => prev.filter(p => !(p.project_id === selectedProject.id && p.category === clearConfirmTab)));
+    setClearConfirmTab(null);
+    toast.success('Cleared — reimport when ready');
+  };
+
+  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+    setImporting(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf);
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      if (rows.length === 0) { toast.error('No rows found'); return; }
+
+      // Flexible column matching
+      const col = (row: any, ...keys: string[]) => {
+        for (const k of Object.keys(row)) {
+          if (keys.some(key => k.toLowerCase().replace(/[\s#_]/g, '') === key.toLowerCase().replace(/[\s#_]/g, ''))) return String(row[k] || '').trim();
+        }
+        return '';
+      };
+
+      const parseDate = (v: string) => {
+        if (!v) return '';
+        // Excel serial number
+        const n = Number(v);
+        if (!isNaN(n) && n > 1000) {
+          const d = XLSX.SSF.parse_date_code(n);
+          return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+        }
+        // Try MM/DD/YY or MM/DD/YYYY
+        const m = v.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+        if (m) {
+          const yr = m[3].length === 2 ? `20${m[3]}` : m[3];
+          return `${yr}-${m[1].padStart(2,'0')}-${m[2].padStart(2,'0')}`;
+        }
+        return v;
+      };
+
+      const newRows: Payment[] = rows.map((row, i) => ({
+        id: `xl_${Date.now()}_${i}`,
+        project_id: selectedProject.id,
+        category: activeTab,
+        date: parseDate(col(row, 'date')),
+        name: col(row, 'name', 'vendor', 'payee'),
+        amount: parseFloat(col(row, 'amount', 'amt').replace(/[$,]/g, '')) || 0,
+        form: col(row, 'form', 'type', 'paymenttype') || 'Check',
+        check_number: col(row, 'check#', 'checknumber', 'checkno', 'invoice') || undefined,
+        detail: col(row, 'detail', 'description', 'memo') || undefined,
+        source: 'excel',
+      })).filter(r => r.date && r.name);
+
+      if (newRows.length === 0) { toast.error('No valid rows — check column headers'); return; }
+      await supabase.from('payments').insert(newRows);
+      setPayments(prev => [...prev, ...newRows]);
+      toast.success(`${newRows.length} row${newRows.length !== 1 ? 's' : ''} imported`);
+    } catch (err: any) {
+      toast.error('Import failed', { description: err.message });
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const [undoInfo, setUndoInfo] = useState<{ id: string; prev: Payment } | null>(null);
   const undoTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -345,6 +419,8 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
         </div>
       )}
 
+      <input ref={xlsxInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleExcelImport} />
+
       <Tabs value={activeTab} onValueChange={v => { setActiveTab(v as PaymentCategory); setSortKey('date'); setSortDir('asc'); setEditId(null); }}>
         <TabsList className="h-auto flex-wrap bg-[rgba(195,126,135,0.12)]">
           {tabs.map(t => <TabsTrigger key={t.value} value={t.value} className="text-[10px] md:text-xs px-2 md:px-3 py-1 data-[state=active]:bg-[#c37e87] data-[state=active]:text-white">{t.label}</TabsTrigger>)}
@@ -353,13 +429,33 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
           <TabsContent key={t.value} value={t.value}>
             <Card>
               <CardContent className="p-0">
-                <div className="px-3 py-2 border-b bg-secondary/30 flex justify-between items-center">
+                <div className="px-3 py-2 border-b bg-secondary/30 flex justify-between items-center gap-2">
                   <span className="text-xs font-medium">
                     {t.value === 'materials'
                       ? `${materialGroups.length} vendor${materialGroups.length !== 1 ? 's' : ''}`
                       : `${sorted.length} entries`}
                   </span>
-                  <span className="text-xs font-semibold tabular-nums">Total: {fmt(tabTotal)}</span>
+                  <div className="flex items-center gap-2">
+                    {!readOnly && (
+                      <>
+                        <button onClick={() => xlsxInputRef.current?.click()} disabled={importing} className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground border rounded px-1.5 py-0.5">
+                          <Upload size={10} />{importing ? 'Importing...' : 'Import Excel'}
+                        </button>
+                        {clearConfirmTab === t.value ? (
+                          <span className="inline-flex items-center gap-1 text-[10px]">
+                            <span className="text-muted-foreground">Clear all?</span>
+                            <button onClick={handleClearTab} className="text-destructive hover:opacity-70 font-medium">Yes</button>
+                            <button onClick={() => setClearConfirmTab(null)} className="text-muted-foreground hover:text-foreground">No</button>
+                          </span>
+                        ) : (
+                          <button onClick={() => setClearConfirmTab(t.value)} className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-destructive border rounded px-1.5 py-0.5">
+                            <Trash size={10} />Clear All
+                          </button>
+                        )}
+                      </>
+                    )}
+                    <span className="text-xs font-semibold tabular-nums">Total: {fmt(tabTotal)}</span>
+                  </div>
                 </div>
                 <Table>
                   <colgroup>
