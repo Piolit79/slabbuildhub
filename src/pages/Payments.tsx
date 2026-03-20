@@ -161,7 +161,33 @@ export default function PaymentsPage({ readOnly }: { readOnly?: boolean }) {
     await supabase.from('payments').delete().eq('project_id', selectedProject.id).eq('category', clearConfirmTab);
     setPayments(prev => prev.filter(p => !(p.project_id === selectedProject.id && p.category === clearConfirmTab)));
     setClearConfirmTab(null);
-    toast.success('Cleared — reimport when ready');
+    // Auto-sync from QB if connected
+    if (qbProjectId) {
+      toast.info('Cleared — syncing from QB...');
+      setSyncing(true);
+      try {
+        const resp = await fetch('/api/qb-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project_id: selectedProject.id, qb_project_id: qbProjectId }),
+        });
+        const result = await resp.json();
+        if (!resp.ok) throw new Error(result.error);
+        const { data } = await supabase.from('payments').select('*').eq('project_id', selectedProject.id);
+        if (data) setPayments(data as Payment[]);
+        const parts = [];
+        if (result.imported > 0) parts.push(`${result.imported} check${result.imported !== 1 ? 's' : ''}`);
+        if (result.importedCC > 0) parts.push(`${result.importedCC} CC transaction${result.importedCC !== 1 ? 's' : ''}`);
+        if (result.importedFL > 0) parts.push(`${result.importedFL} field labor payment${result.importedFL !== 1 ? 's' : ''}`);
+        toast.success(parts.length > 0 ? `Reimported: ${parts.join(', ')}` : 'Synced — nothing new found');
+      } catch (e: any) {
+        toast.error('Sync failed', { description: e.message });
+      } finally {
+        setSyncing(false);
+      }
+    } else {
+      toast.success('Cleared — use Import Excel or connect QB to reimport');
+    }
   };
 
   const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
